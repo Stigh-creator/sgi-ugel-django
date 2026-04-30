@@ -577,10 +577,18 @@
                                 req.el.querySelector('i').className = 'bi bi-circle me-2';
                             });
                         } else {
+                            let errorText = data.message || 'No se pudo actualizar la contraseña.';
+                            if (data.errors) {
+                                if (data.errors.new_password1 && data.errors.new_password1.length > 0) {
+                                    errorText = data.errors.new_password1[0];
+                                } else if (data.errors.__all__ && data.errors.__all__.length > 0) {
+                                    errorText = data.errors.__all__[0];
+                                }
+                            }
                             Swal.fire({
                                 icon: 'error',
-                                title: 'Error',
-                                text: data.message || 'No se pudo actualizar la contraseña.',
+                                title: 'Error de Seguridad',
+                                text: errorText,
                                 customClass: { popup: 'rounded-4' }
                             });
                         }

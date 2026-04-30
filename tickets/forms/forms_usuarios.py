@@ -79,7 +79,21 @@ class CustomPasswordChangeForm(PasswordChangeForm):
 
     def clean_new_password1(self):
         password = self.cleaned_data.get("new_password1", "")
-        dni = getattr(self.user, "username", "")
+        
+        # Verificación de privacidad: evitar datos personales
+        password_lower = password.lower()
+        personal_data = []
+        if self.user.first_name:
+            personal_data.extend(self.user.first_name.lower().split())
+        if self.user.last_name:
+            personal_data.extend(self.user.last_name.lower().split())
+        if self.user.username:
+            personal_data.append(self.user.username.lower())
+            
+        for data in personal_data:
+            if data and len(data) >= 3 and data in password_lower:
+                raise ValidationError("La contraseña no cumple con las políticas de seguridad de la organización. Por favor, asegúrate de que no contenga información personal (nombres, apellidos o datos de perfil) para proteger tu cuenta.")
+
         if len(password) < 10:
             raise ValidationError("La contraseña debe tener al menos 10 caracteres.")
         if not re.search(r"[A-Z]", password):
@@ -90,8 +104,6 @@ class CustomPasswordChangeForm(PasswordChangeForm):
             raise ValidationError("Debe incluir al menos un número.")
         if not re.search(r"[@#$%^&+=.!*?]", password):
             raise ValidationError("Debe incluir al menos un carácter especial (@#$%^&+=.!*?).")
-        if dni and dni in password:
-            raise ValidationError("La contraseña es demasiado similar a sus datos personales. Por seguridad, no utilice secuencias de su nombre de usuario o DNI.")
         return password
 
 
