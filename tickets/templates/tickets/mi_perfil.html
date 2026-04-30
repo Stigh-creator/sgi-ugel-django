@@ -90,8 +90,9 @@
                     <h5 class="fw-bold mb-0">Información Personal</h5>
                 </div>
 
-                <form method="post" class="profile-form" id="form-profile">
+                <form method="post" class="profile-form js-ajax-user-form" id="form-profile">
                     {% csrf_token %}
+                    <div class="alert alert-danger d-none js-form-alert mb-3"></div>
 
                     {% if user.role != 'administrador' %}
                     <div class="admin-lock-banner mb-4">
@@ -170,6 +171,7 @@
 
                 <form method="post" class="password-form js-ajax-user-form" id="form-password">
                     {% csrf_token %}
+                    <div class="alert alert-danger d-none js-form-alert mb-3"></div>
 
                     <div class="row g-4">
                         <div class="col-12">
@@ -276,6 +278,53 @@
         const getCsrfToken = () => {
             const csrfInput = document.querySelector('[name="csrfmiddlewaretoken"]');
             return csrfInput ? csrfInput.value : '';
+        };
+
+        const clearFormState = (form) => {
+            if (!form) return;
+            form.querySelectorAll('.is-invalid').forEach((field) => field.classList.remove('is-invalid'));
+            form.querySelectorAll('.border-danger').forEach((group) => {
+                group.classList.remove('border', 'border-danger');
+                group.style.boxShadow = '';
+            });
+            form.querySelectorAll('.invalid-feedback[data-generated="true"]').forEach((item) => item.remove());
+            const alert = form.querySelector('.js-form-alert');
+            if (alert) {
+                alert.textContent = '';
+                alert.classList.add('d-none');
+            }
+        };
+
+        const renderFieldErrors = (form, errors) => {
+            Object.entries(errors || {}).forEach(([fieldName, fieldErrors]) => {
+                if (fieldName === '__all__') {
+                    const alert = form.querySelector('.js-form-alert');
+                    if (alert) {
+                        alert.textContent = fieldErrors.join(' ');
+                        alert.classList.remove('d-none');
+                    }
+                    return;
+                }
+                const field = form.querySelector(`[name="${fieldName}"]`);
+                if (!field) return;
+                
+                field.classList.add('is-invalid');
+                const inputGroup = field.closest('.input-group-custom') || field.parentElement;
+                
+                // Aplicar borde rojo al contenedor
+                inputGroup.classList.add('border', 'border-danger');
+                inputGroup.style.boxShadow = '0 0 0 0.2rem rgba(220, 53, 69, 0.25)';
+                
+                // Colocar el mensaje debajo del input group
+                let feedback = inputGroup.parentElement.querySelector('.invalid-feedback[data-generated="true"]');
+                if (!feedback) {
+                    feedback = document.createElement('div');
+                    feedback.className = 'invalid-feedback d-block text-danger mt-1 fw-semibold small';
+                    feedback.dataset.generated = 'true';
+                    inputGroup.parentElement.appendChild(feedback);
+                }
+                feedback.textContent = fieldErrors.join(' ');
+            });
         };
 
         const fotoInput = document.getElementById('foto-input');
@@ -562,6 +611,7 @@
                     formData.append('change_password', '1');
 
                     try {
+                        clearFormState(formPassword);
                         const response = await fetch(window.location.href, {
                             method: 'POST',
                             body: formData,
@@ -590,52 +640,47 @@
                             throw { isJson: true, data: data };
                         }
                     } catch (error) {
-                        let errorText = 'Hubo un problema al conectar con el servidor.';
-                        
-                        // Parsear JSON error si viene del backend
                         if (error.isJson) {
-                            const errData = error.data;
-                            errorText = errData.message || errorText;
-                            if (errData.errors) {
-                                if (errData.errors.new_password1 && errData.errors.new_password1.length > 0) {
-                                    errorText = errData.errors.new_password1[0];
-                                } else if (errData.errors.__all__ && errData.errors.__all__.length > 0) {
-                                    errorText = errData.errors.__all__[0];
-                                }
-                            }
+                            renderFieldErrors(formPassword, error.data.errors);
                         } else if (error instanceof Response) {
                             try {
                                 const errData = await error.json();
-                                errorText = errData.message || errorText;
-                                if (errData.errors) {
-                                    if (errData.errors.new_password1 && errData.errors.new_password1.length > 0) {
-                                        errorText = errData.errors.new_password1[0];
-                                    } else if (errData.errors.__all__ && errData.errors.__all__.length > 0) {
-                                        errorText = errData.errors.__all__[0];
-                                    }
-                                }
-                            } catch(e) {}
+                                renderFieldErrors(formPassword, errData.errors);
+                            } catch(e) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error de Seguridad',
+                                    text: 'Hubo un problema al conectar con el servidor.',
+                                    customClass: { popup: 'rounded-4' }
+                                });
+                            }
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error de Seguridad',
+                                text: 'Hubo un problema al conectar con el servidor.',
+                                customClass: { popup: 'rounded-4' }
+                            });
                         }
                         
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error de Seguridad',
-                            text: errorText,
-                            customClass: { popup: 'rounded-4' }
-                        }).then(() => {
-                            const newPasswordInput = document.getElementById('id_new_password1');
-                            if (newPasswordInput) {
-                                newPasswordInput.focus();
-                                updateButtonStatus(); // Actualizar estado visual
-                            }
-                        });
+                        const newPasswordInput = document.getElementById('id_new_password1');
+                        if (newPasswordInput) {
+                            newPasswordInput.focus();
+                            updateButtonStatus(); // Actualizar estado visual
+                        }
                     } finally {
-                        if (window.releaseFormSubmission) window.releaseFormSubmission(formPassword, btn);
+                        if (window.removeLoadingState) window.removeLoadingState(btn);
+                        formPassword.removeAttribute('data-submitted');
+                        formPassword.removeAttribute('data-submitting');
+                        if (btn) btn.disabled = false;
                         updateButtonStatus();
                     }
                 } else {
                     // CANCELACIÓN
-                    if (window.releaseFormSubmission) window.releaseFormSubmission(formPassword, btn);
+                    if (window.removeLoadingState) window.removeLoadingState(btn);
+                    formPassword.removeAttribute('data-submitted');
+                    formPassword.removeAttribute('data-submitting');
+                    if (btn) btn.disabled = false;
                     updateButtonStatus();
                 }
             });
@@ -672,6 +717,7 @@
                     formData.append('update_profile', '1');
 
                     try {
+                        clearFormState(formProfile);
                         const response = await fetch(window.location.href, {
                             method: 'POST',
                             body: formData,
@@ -681,6 +727,7 @@
                             }
                         });
 
+                        if (!response.ok) throw response;
                         const data = await response.json();
 
                         if (data.success) {
@@ -693,25 +740,40 @@
                                 customClass: { popup: 'rounded-4' }
                             });
                         } else {
+                            throw { isJson: true, data: data };
+                        }
+                    } catch (error) {
+                        if (error.isJson) {
+                            renderFieldErrors(formProfile, error.data.errors);
+                        } else if (error instanceof Response) {
+                            try {
+                                const errData = await error.json();
+                                renderFieldErrors(formProfile, errData.errors);
+                            } catch(e) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: 'Hubo un problema al procesar la respuesta del servidor.',
+                                    customClass: { popup: 'rounded-4' }
+                                });
+                            }
+                        } else {
                             Swal.fire({
                                 icon: 'error',
-                                title: 'Error',
-                                text: data.message || 'No se pudieron actualizar los datos.',
+                                title: 'Error de red',
+                                text: 'Hubo un problema al conectar con el servidor.',
                                 customClass: { popup: 'rounded-4' }
                             });
                         }
-                    } catch (error) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error de red',
-                            text: 'Hubo un problema al conectar con el servidor.',
-                            customClass: { popup: 'rounded-4' }
-                        });
                     } finally {
-                        if (window.releaseFormSubmission) window.releaseFormSubmission(formProfile, btn);
+                        if (window.removeLoadingState) window.removeLoadingState(btn);
+                        formProfile.removeAttribute('data-submitted');
+                        if (btn) btn.removeAttribute('disabled');
                     }
                 } else {
-                    if (window.releaseFormSubmission) window.releaseFormSubmission(formProfile, btn);
+                    if (window.removeLoadingState) window.removeLoadingState(btn);
+                    formProfile.removeAttribute('data-submitted');
+                    if (btn) btn.removeAttribute('disabled');
                 }
             });
         }
