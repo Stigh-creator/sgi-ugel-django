@@ -205,10 +205,16 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.js-disable-on-submit').forEach(form => {
-            form.addEventListener('submit', function() {
+            form.dataset.localSubmitGuard = 'true';
+            form.addEventListener('submit', function(event) {
+                if (form.dataset.submitted === 'true') {
+                    event.preventDefault();
+                    return;
+                }
+                form.dataset.submitted = 'true';
                 const button = form.querySelector('[data-loading-disable]');
                 if (!button) return;
-                button.disabled = true;
+                if (window.setLoadingState) window.setLoadingState(button);
                 button.querySelector('.submit-spinner')?.classList.remove('d-none');
                 const label = button.querySelector('.submit-label');
                 if (label) {

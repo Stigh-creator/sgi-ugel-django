@@ -168,13 +168,8 @@
                     <h5 class="fw-bold mb-0">Seguridad y Acceso</h5>
                 </div>
 
-                <form method="post" class="password-form" id="form-password">
+                <form method="post" class="password-form js-ajax-user-form" id="form-password">
                     {% csrf_token %}
-
-                    <input type="text" name="profile_username_hint" value="{{ user.username }}"
-                        autocomplete="username" class="d-none" tabindex="-1" aria-hidden="true">
-                    <input type="password" name="profile_password_hint" value=""
-                        autocomplete="current-password" class="d-none" tabindex="-1" aria-hidden="true">
 
                     <div class="row g-4">
                         <div class="col-12">
@@ -451,6 +446,11 @@
 
         const updateButtonStatus = () => {
             if (!newPassword || !btnSubmitPassword || !currentPassword) return;
+            if (btnSubmitPassword.classList.contains('loading')) return;
+            
+            const formPassword = document.getElementById('form-password');
+            if (btnSubmitPassword.classList.contains('disabled') || (formPassword && formPassword.hasAttribute('data-submitting'))) return;
+
             const val = newPassword.value;
             const confirmVal = confirmPassword ? confirmPassword.value : "";
             const currentVal = currentPassword.value;
@@ -469,6 +469,7 @@
 
         if (newPassword) {
             newPassword.addEventListener('input', function () {
+                if (btnSubmitPassword.classList.contains('loading')) return;
                 const val = this.value;
                 Object.keys(requirements).forEach(key => {
                     const req = requirements[key];
@@ -500,6 +501,7 @@
         }
 
         function checkMatch() {
+            if (btnSubmitPassword.classList.contains('loading')) return;
             if (newPassword && confirmPassword) {
                 const val = newPassword.value;
                 const cVal = confirmPassword.value;
@@ -531,6 +533,13 @@
             formPassword.addEventListener('submit', async function (e) {
                 e.preventDefault();
                 const btn = e.submitter || this.querySelector('button[type="submit"]');
+                if (formPassword.dataset.submitted === 'true') return;
+                formPassword.dataset.submitted = 'true';
+                if (formPassword.checkValidity && !formPassword.checkValidity()) {
+                    formPassword.dataset.submitted = 'false';
+                    updateButtonStatus();
+                    return;
+                }
                 
                 const result = await Swal.fire({
                     title: '¿Confirmar cambio?',
@@ -545,7 +554,11 @@
                 });
 
                 if (result.isConfirmed) {
-                    const formData = new FormData(this);
+                    if (window.setLoadingState) window.setLoadingState(btn);
+                    formPassword.setAttribute('data-submitting', 'true');
+                    
+                    // Asegurar captura de datos frescos en este instante
+                    const formData = new FormData(formPassword);
                     formData.append('change_password', '1');
 
                     try {
@@ -558,6 +571,7 @@
                             }
                         });
 
+                        if (!response.ok) throw response; // Forzar errores al catch
                         const data = await response.json();
 
                         if (data.success) {
@@ -566,44 +580,63 @@
                                 title: '¡Éxito!',
                                 text: data.message || 'Contraseña actualizada correctamente.',
                                 timer: 3000,
-                                showConfirmButton: false,
+                                showConfirmButton: true,
+                                confirmButtonText: 'OK',
                                 customClass: { popup: 'rounded-4' }
-                            });
-                            formPassword.reset();
-                            updateButtonStatus();
-                            matchMessage.textContent = '';
-                            Object.values(requirements).forEach(req => {
-                                req.el.classList.remove('text-success', 'text-danger');
-                                req.el.querySelector('i').className = 'bi bi-circle me-2';
+                            }).then(() => {
+                                window.location.reload(); // Evitar estado ambiguo
                             });
                         } else {
-                            let errorText = data.message || 'No se pudo actualizar la contraseña.';
-                            if (data.errors) {
-                                if (data.errors.new_password1 && data.errors.new_password1.length > 0) {
-                                    errorText = data.errors.new_password1[0];
-                                } else if (data.errors.__all__ && data.errors.__all__.length > 0) {
-                                    errorText = data.errors.__all__[0];
-                                }
-                            }
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error de Seguridad',
-                                text: errorText,
-                                customClass: { popup: 'rounded-4' }
-                            });
+                            throw { isJson: true, data: data };
                         }
                     } catch (error) {
+                        let errorText = 'Hubo un problema al conectar con el servidor.';
+                        
+                        // Parsear JSON error si viene del backend
+                        if (error.isJson) {
+                            const errData = error.data;
+                            errorText = errData.message || errorText;
+                            if (errData.errors) {
+                                if (errData.errors.new_password1 && errData.errors.new_password1.length > 0) {
+                                    errorText = errData.errors.new_password1[0];
+                                } else if (errData.errors.__all__ && errData.errors.__all__.length > 0) {
+                                    errorText = errData.errors.__all__[0];
+                                }
+                            }
+                        } else if (error instanceof Response) {
+                            try {
+                                const errData = await error.json();
+                                errorText = errData.message || errorText;
+                                if (errData.errors) {
+                                    if (errData.errors.new_password1 && errData.errors.new_password1.length > 0) {
+                                        errorText = errData.errors.new_password1[0];
+                                    } else if (errData.errors.__all__ && errData.errors.__all__.length > 0) {
+                                        errorText = errData.errors.__all__[0];
+                                    }
+                                }
+                            } catch(e) {}
+                        }
+                        
                         Swal.fire({
                             icon: 'error',
-                            title: 'Error de red',
-                            text: 'Hubo un problema al conectar con el servidor.',
+                            title: 'Error de Seguridad',
+                            text: errorText,
                             customClass: { popup: 'rounded-4' }
+                        }).then(() => {
+                            const newPasswordInput = document.getElementById('id_new_password1');
+                            if (newPasswordInput) {
+                                newPasswordInput.focus();
+                                updateButtonStatus(); // Actualizar estado visual
+                            }
                         });
                     } finally {
-                        if (window.removeLoadingState) window.removeLoadingState(btn);
+                        if (window.releaseFormSubmission) window.releaseFormSubmission(formPassword, btn);
+                        updateButtonStatus();
                     }
                 } else {
-                    if (window.removeLoadingState) window.removeLoadingState(btn);
+                    // CANCELACIÓN
+                    if (window.releaseFormSubmission) window.releaseFormSubmission(formPassword, btn);
+                    updateButtonStatus();
                 }
             });
         }
@@ -614,6 +647,12 @@
             formProfile.addEventListener('submit', async function (e) {
                 e.preventDefault();
                 const btn = e.submitter || this.querySelector('button[type="submit"]');
+                if (formProfile.dataset.submitted === 'true') return;
+                formProfile.dataset.submitted = 'true';
+                if (formProfile.checkValidity && !formProfile.checkValidity()) {
+                    formProfile.dataset.submitted = 'false';
+                    return;
+                }
 
                 const result = await Swal.fire({
                     title: '¿Guardar cambios?',
@@ -628,6 +667,7 @@
                 });
 
                 if (result.isConfirmed) {
+                    if (window.setLoadingState) window.setLoadingState(btn);
                     const formData = new FormData(this);
                     formData.append('update_profile', '1');
 
@@ -668,10 +708,10 @@
                             customClass: { popup: 'rounded-4' }
                         });
                     } finally {
-                        if (window.removeLoadingState) window.removeLoadingState(btn);
+                        if (window.releaseFormSubmission) window.releaseFormSubmission(formProfile, btn);
                     }
                 } else {
-                    if (window.removeLoadingState) window.removeLoadingState(btn);
+                    if (window.releaseFormSubmission) window.releaseFormSubmission(formProfile, btn);
                 }
             });
         }

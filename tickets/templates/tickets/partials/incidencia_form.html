@@ -188,6 +188,7 @@
             return;
         }
         form.dataset.enhanced = 'true';
+        form.dataset.localSubmitGuard = 'true';
 
         const inputs = form.querySelectorAll('input, select, textarea');
         inputs.forEach(el => {
@@ -272,6 +273,10 @@
         updateChecklist();
 
         form.addEventListener('submit', function(e) {
+            if (form.dataset.submitted === 'true') {
+                e.preventDefault();
+                return;
+            }
             let valid = true;
             const requiredFields = [
                 { id: 'id_categoria', group: '#categoryChips' },
@@ -300,6 +305,7 @@
 
             if (!valid) {
                 e.preventDefault();
+                form.dataset.submitted = 'false';
                 Swal.fire({
                     icon: 'error',
                     title: 'Campos incompletos',
@@ -313,10 +319,15 @@
         if (submitButton) {
             form.addEventListener('submit', function(e) {
                 if (e.defaultPrevented) {
-                    submitButton.disabled = false;
+                    if (window.releaseFormSubmission) window.releaseFormSubmission(form, submitButton);
                     return;
                 }
-                submitButton.disabled = true;
+                if (form.dataset.submitted === 'true') {
+                    e.preventDefault();
+                    return;
+                }
+                form.dataset.submitted = 'true';
+                if (window.setLoadingState) window.setLoadingState(submitButton);
                 submitButton.classList.add('is-loading');
                 const label = submitButton.querySelector('.submit-label');
                 if (label) {
@@ -325,7 +336,7 @@
             });
 
             form.addEventListener('htmx:responseError', function() {
-                submitButton.disabled = false;
+                if (window.releaseFormSubmission) window.releaseFormSubmission(form, submitButton);
                 submitButton.classList.remove('is-loading');
                 const label = submitButton.querySelector('.submit-label');
                 if (label) {

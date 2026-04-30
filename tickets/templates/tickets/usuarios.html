@@ -279,8 +279,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 renderFieldErrors(form, data.errors);
                 showToast('error', data.message || 'Hay errores de validación.');
             } finally {
-                form.dataset.submitted = 'false';
-                if (window.removeLoadingState) window.removeLoadingState(submitter);
+                if (window.releaseFormSubmission) window.releaseFormSubmission(form, submitter);
             }
         });
     });
@@ -338,8 +337,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (data) {
                 showToast('error', data.message || 'No se pudo actualizar el estado.');
             } finally {
-                form.dataset.submitted = 'false';
-                if (window.removeLoadingState) window.removeLoadingState(submitter);
+                if (window.releaseFormSubmission) window.releaseFormSubmission(form, submitter);
             }
         });
     }, true);
@@ -389,8 +387,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (data) {
                 showToast('error', data.message || 'No se pudo restablecer la contraseña.');
             } finally {
-                form.dataset.submitted = 'false';
-                if (window.removeLoadingState) window.removeLoadingState(submitter);
+                if (window.releaseFormSubmission) window.releaseFormSubmission(form, submitter);
             }
         });
     }, true);

@@ -235,6 +235,7 @@
             // Prevención de envíos múltiples y estados de carga
             window.setLoadingState = function(btn) {
                 if (!btn || btn.classList.contains('no-loading') || btn.closest('.no-loading')) return;
+                if (btn.classList.contains('loading')) return;
                 
                 if (btn.type === 'submit' && btn.name && btn.form) {
                     const hiddenInput = document.createElement('input');
@@ -249,19 +250,41 @@
                 const spinnerText = btn.tagName === 'A' || btn.classList.contains('btn-sm') || btn.classList.contains('btn-icon') ? '' : ' Cargando...';
                 btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>' + spinnerText;
                 btn.classList.add('disabled');
+                btn.classList.add('loading');
                 btn.disabled = true;
+                btn.style.pointerEvents = 'none';
             };
 
             window.removeLoadingState = function(btn) {
                 if (!btn || !btn.dataset.originalText) return;
                 btn.innerHTML = btn.dataset.originalText;
                 btn.classList.remove('disabled');
+                btn.classList.remove('loading');
                 btn.disabled = false;
+                btn.style.pointerEvents = '';
                 
                 if (btn.form) {
                     const hiddens = btn.form.querySelectorAll('.loading-hidden-input');
                     hiddens.forEach(h => h.remove());
                 }
+            };
+
+            window.guardFormSubmission = function(form, evt) {
+                if (!form) return false;
+                if (form.dataset.submitted === 'true') {
+                    if (evt) evt.preventDefault();
+                    return false;
+                }
+                form.dataset.submitted = 'true';
+                return true;
+            };
+
+            window.releaseFormSubmission = function(form, btn) {
+                if (form) {
+                    form.dataset.submitted = 'false';
+                    form.removeAttribute('data-submitting');
+                }
+                window.removeLoadingState(btn);
             };
 
             document.body.addEventListener('htmx:beforeRequest', function(evt) {
@@ -285,24 +308,27 @@
                     targetBtn = elt;
                 }
                 window.removeLoadingState(targetBtn);
+                if (elt.tagName === 'FORM') {
+                    elt.dataset.submitted = 'false';
+                }
             });
 
             document.addEventListener('submit', function(evt) {
                 const form = evt.target;
-                if (!form.hasAttribute('hx-post') && !form.hasAttribute('hx-get') && !form.hasAttribute('hx-put') && 
-                    !form.classList.contains('js-ajax-user-form') && 
+                if (evt.defaultPrevented) return;
+                if (!form.classList.contains('js-ajax-user-form') && 
                     !form.classList.contains('js-toggle-status-form') && 
-                    !form.classList.contains('js-reset-password-form')) {
-                    if (form.dataset.submitted === 'true') {
-                        evt.preventDefault();
-                        return;
-                    }
+                    !form.classList.contains('js-reset-password-form') &&
+                    form.dataset.localSubmitGuard !== 'true') {
                     if (form.checkValidity && !form.checkValidity()) {
+                        form.dataset.submitted = 'false';
                         return;
                     }
-                    form.dataset.submitted = 'true';
+                    if (!window.guardFormSubmission(form, evt)) return;
                     const submitter = evt.submitter || form.querySelector('button[type="submit"]');
-                    window.setLoadingState(submitter);
+                    if (!form.hasAttribute('hx-post') && !form.hasAttribute('hx-get') && !form.hasAttribute('hx-put')) {
+                        window.setLoadingState(submitter);
+                    }
                 }
             });
 

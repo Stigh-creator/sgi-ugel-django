@@ -1,5 +1,6 @@
 import os
 import re
+import unicodedata
 
 from django import forms
 from django.contrib.auth.forms import PasswordChangeForm
@@ -12,6 +13,13 @@ from ..models import CustomUser
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png"}
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
 MAX_PROFILE_PHOTO_SIZE = 2 * 1024 * 1024
+
+
+def normalize_string(text):
+    if not text:
+        return ""
+    text = text.lower()
+    return "".join(c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) != "Mn")
 
 
 def validate_dni(value):
@@ -81,18 +89,18 @@ class CustomPasswordChangeForm(PasswordChangeForm):
         password = self.cleaned_data.get("new_password1", "")
         
         # Verificación de privacidad: evitar datos personales
-        password_lower = password.lower()
+        password_normalized = normalize_string(password)
         personal_data = []
         if self.user.first_name:
-            personal_data.extend(self.user.first_name.lower().split())
+            personal_data.extend(normalize_string(self.user.first_name).split())
         if self.user.last_name:
-            personal_data.extend(self.user.last_name.lower().split())
+            personal_data.extend(normalize_string(self.user.last_name).split())
         if self.user.username:
-            personal_data.append(self.user.username.lower())
+            personal_data.append(normalize_string(self.user.username))
             
         for data in personal_data:
-            if data and len(data) >= 3 and data in password_lower:
-                raise ValidationError("La contraseña no cumple con las políticas de seguridad de la organización. Por favor, asegúrate de que no contenga información personal (nombres, apellidos o datos de perfil) para proteger tu cuenta.")
+            if data and len(data) >= 3 and data in password_normalized:
+                raise ValidationError("La contraseña es demasiado similar a sus datos personales.")
 
         if len(password) < 10:
             raise ValidationError("La contraseña debe tener al menos 10 caracteres.")

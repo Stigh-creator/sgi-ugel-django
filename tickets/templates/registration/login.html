@@ -30,7 +30,7 @@
                 <p class="text-muted">Identifícate para gestionar tus reportes</p>
             </div>
 
-            <form method="post" class="animate__animated animate__fadeInUp animate__delay-1s">
+            <form id="loginForm" method="post" class="animate__animated animate__fadeInUp animate__delay-1s js-ajax-user-form">
                 {% csrf_token %}
                 <div class="mb-4">
                     <label class="form-label fw-semibold text-dark mb-2">Usuario</label>
@@ -59,7 +59,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn-new w-100 py-3 mb-4 d-flex justify-content-center" tabindex="3">
+                <button type="submit" id="btnLoginSubmit" class="btn-new w-100 py-3 mb-4 d-flex justify-content-center" tabindex="3">
                     Ingresar al Sistema <i class="bi bi-arrow-right-short fs-4 ms-1"></i>
                 </button>
 
@@ -105,6 +105,61 @@
                 setTimeout(() => {
                     this.style.transform = 'translateY(-50%) scale(1)';
                 }, 100);
+            });
+        }
+
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm) {
+            loginForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const btn = document.getElementById('btnLoginSubmit');
+                if (loginForm.dataset.submitted === 'true') return;
+                loginForm.dataset.submitted = 'true';
+                if (loginForm.checkValidity && !loginForm.checkValidity()) {
+                    loginForm.dataset.submitted = 'false';
+                    return;
+                }
+                if (window.setLoadingState) window.setLoadingState(btn);
+
+                const formData = new FormData(this);
+                try {
+                    const response = await fetch(window.location.href, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    
+                    if (!response.ok) throw new Error('Error de red');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        window.location.href = data.redirect_url;
+                    } else {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Acceso Denegado',
+                                text: data.message,
+                                customClass: { popup: 'rounded-4' }
+                            });
+                        } else {
+                            alert(data.message);
+                        }
+                    }
+                } catch (error) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error de Red',
+                            text: 'No se pudo conectar con el servidor.',
+                            customClass: { popup: 'rounded-4' }
+                        });
+                    }
+                } finally {
+                    if (window.releaseFormSubmission) window.releaseFormSubmission(loginForm, btn);
+                }
             });
         }
     });

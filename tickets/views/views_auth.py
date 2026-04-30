@@ -4,10 +4,14 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
 from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.http import JsonResponse
+from django.urls import reverse
 
 from auditoria.utils import registrar_auditoria
 from .views_utils import add_form_errors_to_messages
 from ..forms.forms_usuarios import CustomPasswordChangeForm
+
+CURRENT_PASSWORD_ERROR = "La contraseña actual no es correcta."
 
 def custom_login_view(request):
     if request.user.is_authenticated:
@@ -18,13 +22,23 @@ def custom_login_view(request):
         if form.is_valid():
             user = form.get_user()
             login(request, user)
+            
+            redirect_url = "mis_incidencias"
             if user.cambio_clave_pendiente:
-                return redirect("password_change_forced")
-            if user.role == "administrador":
-                return redirect("dashboard_admin")
-            if user.role == "tecnico":
-                return redirect("dashboard_tecnico")
-            return redirect("mis_incidencias")
+                redirect_url = "password_change_forced"
+            elif user.role == "administrador":
+                redirect_url = "dashboard_admin"
+            elif user.role == "tecnico":
+                redirect_url = "dashboard_tecnico"
+                
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 'fetch' in request.headers.get('Sec-Fetch-Mode', ''):
+                return JsonResponse({"success": True, "redirect_url": reverse(redirect_url)})
+                
+            return redirect(redirect_url)
+            
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 'fetch' in request.headers.get('Sec-Fetch-Mode', ''):
+            return JsonResponse({"success": False, "message": "Usuario o contraseña incorrectos, o la cuenta está inactiva."})
+            
         messages.error(request, "Usuario o contraseña incorrectos, o la cuenta está inactiva.")
     return render(request, "registration/login.html", {"form": form})
 
@@ -38,6 +52,10 @@ def logout_view(request):
 def password_change_forced(request):
     form = CustomPasswordChangeForm(request.user, request.POST or None)
     if request.method == "POST":
+        if not request.user.check_password(request.POST.get("old_password", "")):
+            messages.error(request, CURRENT_PASSWORD_ERROR)
+            return render(request, "tickets/forced_change.html", {"form": form}, status=400)
+
         if form.is_valid():
             user = form.save(commit=False)
             user.cambio_clave_pendiente = False

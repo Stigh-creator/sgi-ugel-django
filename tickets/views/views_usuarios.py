@@ -25,6 +25,7 @@ from ..forms.forms_usuarios import (
 )
 
 REGISTROS_POR_PAGINA = 10
+CURRENT_PASSWORD_ERROR = "La contraseña actual no es correcta."
 
 def delete_user_sessions(user):
     for session in Session.objects.all():
@@ -283,6 +284,21 @@ def mi_perfil(request):
                 }, status=400)
             add_form_errors_to_messages(request, profile_form)
         elif "change_password" in request.POST:
+            if not user.check_password(request.POST.get("old_password", "")):
+                if is_fetch_request(request):
+                    return JsonResponse({
+                        "success": False,
+                        "message": CURRENT_PASSWORD_ERROR,
+                        "errors": {"old_password": [CURRENT_PASSWORD_ERROR]},
+                    }, status=400)
+                messages.error(request, CURRENT_PASSWORD_ERROR)
+                return render(
+                    request,
+                    "tickets/mi_perfil.html",
+                    {"profile_form": profile_form, "password_form": password_form},
+                    status=400,
+                )
+
             password_form = CustomPasswordChangeForm(user, request.POST)
             if password_form.is_valid():
                 user_updated = password_form.save(commit=False)
