@@ -1,0 +1,694 @@
+{% extends 'tickets/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/usuarios/mi_perfil.css' %}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+{% endblock %}
+
+{% block title %}Mi Perfil - UGEL Morropón{% endblock %}
+
+{% block header_title %}
+<div class="mb-4">
+    <h3 class="fw-bold mb-0 text-dark">Configuración de Perfil</h3>
+    <p class="text-muted">Personaliza tu cuenta y mantén tu seguridad al día.</p>
+</div>
+{% endblock %}
+
+{% block content %}
+{% if user.must_change_password %}
+<div class="alert alert-warning d-flex align-items-center gap-3 mb-4 rounded-4 shadow-sm" role="alert">
+    <i class="bi bi-shield-exclamation fs-4 text-warning flex-shrink-0"></i>
+    <div>
+        <strong>Debes cambiar tu contraseña</strong> antes de continuar usando el sistema.
+        Tu clave fue generada automáticamente. Por seguridad, establece una nueva contraseña abajo.
+    </div>
+</div>
+{% endif %}
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card profile-card text-center p-4">
+            <div class="card-body">
+                <div class="mb-4">
+                    <div class="profile-avatar-container">
+                        {% if user.foto %}
+                        <img src="{{ user.foto.url }}" id="img-preview" alt="Avatar"
+                            class="rounded-circle img-main-profile">
+                        {% else %}
+                        <img src="https://ui-avatars.com/api/?name={{ user.get_full_name|default:user.username }}&background=0D6EFD&color=fff&size=128"
+                            id="img-preview" alt="Avatar" class="rounded-circle img-main-profile">
+                        {% endif %}
+                        <label for="foto-input" class="btn-camera-upload">
+                            <i class="bi bi-camera-fill"></i>
+                        </label>
+                        <input type="file" id="foto-input" class="d-none" accept="image/*">
+                    </div>
+                </div>
+
+                <h4 class="fw-bold mb-1 text-dark">{{ user.get_full_name|default:user.username }}</h4>
+                <p class="profile-username mb-3">@{{ user.username }}</p>
+                <div class="mb-3">
+                    <span class="badge {% if user.is_online %}bg-success{% else %}bg-secondary{% endif %} rounded-pill">
+                        {% if user.is_online %}En línea{% else %}Última actividad: {{ user.last_activity_text }}{% endif %}
+                    </span>
+                </div>
+
+                <div class="mb-4">
+                    {% if user.role == 'administrador' %}
+                    <span class="badge bg-danger rounded-pill badge-role">Administrador</span>
+                    {% elif user.role == 'tecnico' %}
+                    <span class="badge bg-primary rounded-pill badge-role">Técnico</span>
+                    {% else %}
+                    <span class="badge bg-secondary rounded-pill badge-role">Trabajador</span>
+                    {% endif %}
+                </div>
+
+                <div class="p-3 profile-area" style="background-color: var(--warning-soft);">
+                    <p class="mb-1 small text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Área de Trabajo
+                    </p>
+                    <div class="d-flex align-items-center justify-content-center text-dark">
+                        {% if user.area %}
+                        <i class="bi bi-briefcase-fill text-warning me-2"></i>
+                        <span class="fw-bold">{{ user.area.name }}</span>
+                        {% else %}
+                        <span class="text-muted small italic">Sin área asignada</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-4">
+                    <div class="bg-primary bg-opacity-10 p-2 rounded-3 me-3">
+                        <i class="bi bi-person-badge text-primary fs-4"></i>
+                    </div>
+                    <h5 class="fw-bold mb-0">Información Personal</h5>
+                </div>
+
+                <form method="post" class="profile-form" id="form-profile">
+                    {% csrf_token %}
+
+                    {% if user.role != 'administrador' %}
+                    <div class="admin-lock-banner mb-4">
+                        <small class="admin-lock-note">
+                            <i class="bi bi-shield-lock-fill"></i>
+                            Nombres y apellidos son gestionados por el <strong>Administrador</strong>.
+                        </small>
+                    </div>
+                    {% endif %}
+
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Nombre</label>
+                            <div class="input-group-custom {% if user.role != 'administrador' %}is-readonly{% endif %}">
+                                <span class="icon-box"><i class="bi bi-person"></i></span>
+                                <input type="text" name="first_name" class="form-control-custom"
+                                    value="{{ user.first_name }}"
+                                    oninput="this.value = this.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ ]/g, '')" 
+                                    {% if user.role != 'administrador' %}readonly{% endif %}>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Apellido</label>
+                            <div class="input-group-custom {% if user.role != 'administrador' %}is-readonly{% endif %}">
+                                <span class="icon-box"><i class="bi bi-person"></i></span>
+                                <input type="text" name="last_name" class="form-control-custom"
+                                    value="{{ user.last_name }}"
+                                    oninput="this.value = this.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ ]/g, '')" 
+                                    {% if user.role != 'administrador' %}readonly{% endif %}>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Correo Electrónico</label>
+                            <div class="input-group-custom" id="group-email">
+                                <span class="icon-box"><i class="bi bi-envelope"></i></span>
+                                <input type="email" name="email" id="id_email" class="form-control-custom"
+                                    value="{{ user.email }}" placeholder="Ej. usuario@ugelmorropon.gob.pe" required>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Teléfono</label>
+                            <div class="input-group-custom" id="group-telefono">
+                                <span class="icon-box"><i class="bi bi-phone"></i></span>
+                                <input type="text" name="telefono" id="id_telefono" class="form-control-custom"
+                                    value="{{ user.telefono|default:'' }}" placeholder="Ej. 987654321" maxlength="9"
+                                    oninput="this.value = this.value.replace(/[^0-9]/g, '')" pattern="[0-9]{9}"
+                                    title="Debe ingresar exactamente 9 números">
+                            </div>
+                        </div>
+
+                        <div class="col-12 mt-5">
+                            <hr class="border-light">
+                            <div class="d-flex justify-content-end">
+                                <button type="submit" name="update_profile"
+                                    class="btn-pill btn-primary-custom shadow-sm">
+                                    <i class="bi bi-check-circle-fill me-2"></i> Guardar Cambios
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-4">
+                    <div class="bg-warning bg-opacity-10 p-2 rounded-3 me-3">
+                        <i class="bi bi-shield-check text-warning fs-4"></i>
+                    </div>
+                    <h5 class="fw-bold mb-0">Seguridad y Acceso</h5>
+                </div>
+
+                <form method="post" class="password-form" id="form-password">
+                    {% csrf_token %}
+
+                    <input type="text" name="profile_username_hint" value="{{ user.username }}"
+                        autocomplete="username" class="d-none" tabindex="-1" aria-hidden="true">
+                    <input type="password" name="profile_password_hint" value=""
+                        autocomplete="current-password" class="d-none" tabindex="-1" aria-hidden="true">
+
+                    <div class="row g-4">
+                        <div class="col-12">
+                            <label class="form-label-custom">Contraseña Actual</label>
+                            <div class="input-group-custom">
+                                <span class="icon-box"><i class="bi bi-key"></i></span>
+                                <input type="password" name="old_password" id="id_old_password"
+                                    class="form-control-custom" placeholder="Ingresa tu clave actual" required
+                                    autocomplete="off" data-password-autofill-guard="true" readonly>
+                                <button class="btn-toggle-view toggle-password" type="button"
+                                    data-target="id_old_password">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Nueva Contraseña</label>
+                            <div class="input-group-custom mb-3">
+                                <span class="icon-box"><i class="bi bi-lock"></i></span>
+                                <input type="password" name="new_password1" id="id_new_password1"
+                                    class="form-control-custom" placeholder="Mínimo 10 caracteres" required
+                                    autocomplete="new-password">
+                                <button class="btn-toggle-view toggle-password" type="button"
+                                    data-target="id_new_password1">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+
+                            <div class="requirements-container-vertical">
+                                <h6 class="req-title-simple">Requisitos de seguridad:</h6>
+                                <div id="password-requirements" class="req-list">
+                                    <div class="req-item-v" data-req="length">
+                                        <i class="bi bi-circle"></i> <span>Mínimo 10 caracteres</span>
+                                    </div>
+                                    <div class="req-item-v" data-req="case">
+                                        <i class="bi bi-circle"></i> <span>Mayúsculas y minúsculas</span>
+                                    </div>
+                                    <div class="req-item-v" data-req="number">
+                                        <i class="bi bi-circle"></i> <span>Al menos un número (0-9)</span>
+                                    </div>
+                                    <div class="req-item-v" data-req="special">
+                                        <i class="bi bi-circle"></i> <span>Carácter especial (@#$!)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Confirmar Contraseña</label>
+                            <div class="input-group-custom">
+                                <span class="icon-box"><i class="bi bi-shield-lock"></i></span>
+                                <input type="password" name="new_password2" id="id_new_password2"
+                                    class="form-control-custom" placeholder="Repite la contraseña" required
+                                    autocomplete="new-password">
+                                <button class="btn-toggle-view toggle-password" type="button"
+                                    data-target="id_new_password2">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <div id="match-message" class="small mt-2 px-2 fw-bold"></div>
+                        </div>
+
+                        <div class="col-12 text-end mt-4">
+                            <button type="submit" name="change_password" id="btn-submit-password"
+                                class="btn-pill btn-update-password shadow-sm" disabled>
+                                <i class="bi bi-arrow-repeat me-2"></i> Actualizar Contraseña
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL PARA RECORTE DE FOTO -->
+<div class="modal fade" id="cropperModal" tabindex="-1" aria-labelledby="cropperModalLabel" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-4 shadow-lg border-0">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="cropperModalLabel">Ajustar Foto de Perfil</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted small mb-4">Usa el recuadro para centrar tu foto. Se guardará en formato cuadrado obligatoriamente.</p>
+                <div class="cropper-container-wrapper">
+                    <img id="cropper-image" src="" style="max-width: 100%; display: block;">
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" id="btn-crop-save" class="btn btn-primary rounded-pill px-4 shadow-sm">
+                    <i class="bi bi-crop me-2"></i> Recortar y Subir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const getCsrfToken = () => {
+            const csrfInput = document.querySelector('[name="csrfmiddlewaretoken"]');
+            return csrfInput ? csrfInput.value : '';
+        };
+
+        const fotoInput = document.getElementById('foto-input');
+        const imgPreview = document.getElementById('img-preview');
+        const cropperModalElement = document.getElementById('cropperModal');
+
+        if (typeof Cropper === 'undefined' || !cropperModalElement || !fotoInput || !imgPreview) {
+            return;
+        }
+
+        const cropperModal = new bootstrap.Modal(document.getElementById('cropperModal'));
+        const cropperImage = document.getElementById('cropper-image');
+        const btnCropSave = document.getElementById('btn-crop-save');
+        let cropper = null;
+        let pendingUpload = false;
+
+        const setCropButtonState = (loading) => {
+            pendingUpload = loading;
+            btnCropSave.disabled = loading;
+            btnCropSave.innerHTML = loading
+                ? '<span class="spinner-border spinner-border-sm me-2"></span>Subiendo...'
+                : '<i class="bi bi-crop me-2"></i> Recortar y Subir';
+        };
+
+        const updateSidebarPhoto = (url) => {
+            document.querySelectorAll('.sidebar-user-avatar, .topbar-user-avatar').forEach(img => {
+                img.src = url;
+            });
+
+            const sidebarInitials = document.querySelector('.sidebar-user-avatar-initials');
+            if (sidebarInitials) {
+                const replacement = document.createElement('img');
+                replacement.src = url;
+                replacement.alt = 'Usuario';
+                replacement.className = 'sidebar-user-avatar';
+                sidebarInitials.replaceWith(replacement);
+            }
+        };
+
+        const fileNeedsCrop = (file, imageDataUrl) => new Promise((resolve) => {
+            const image = new Image();
+            image.onload = () => resolve(file.size > (1024 * 1024) || image.width > 1200 || image.height > 1200);
+            image.onerror = () => resolve(true);
+            image.src = imageDataUrl;
+        });
+
+        fotoInput.addEventListener('change', async function () {
+            const file = this.files[0];
+            if (!file) return;
+
+            if (!['image/jpeg', 'image/png'].includes(file.type)) {
+                Swal.fire('Error', 'Solo se permiten imágenes JPG o PNG.', 'error');
+                this.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const imageDataUrl = e.target.result;
+                if (await fileNeedsCrop(file, imageDataUrl)) {
+                    cropperImage.src = imageDataUrl;
+                    cropperModal.show();
+                } else {
+                    subirFoto(file);
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+
+        cropperModalElement.addEventListener('shown.bs.modal', function () {
+            cropper = new Cropper(cropperImage, {
+                aspectRatio: 1,
+                viewMode: 2,
+                dragMode: 'move',
+                autoCropArea: 1,
+                restore: false,
+                guides: true,
+                center: true,
+                highlight: false,
+                cropBoxMovable: true,
+                cropBoxResizable: true,
+                toggleDragModeOnDblclick: false,
+            });
+        });
+
+        cropperModalElement.addEventListener('hidden.bs.modal', function () {
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+            setCropButtonState(false);
+            fotoInput.value = '';
+        });
+
+        btnCropSave.addEventListener('click', function () {
+            if (!cropper || pendingUpload) return;
+            setCropButtonState(true);
+
+            const canvas = cropper.getCroppedCanvas({
+                width: 500,
+                height: 500,
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high',
+            });
+
+            canvas.toBlob((blob) => {
+                subirFoto(blob);
+            }, 'image/jpeg', 0.9);
+        });
+
+        async function subirFoto(fileOrBlob) {
+            const formData = new FormData();
+            const uploadName = fileOrBlob.name || 'perfil_recortado.jpg';
+            formData.append('foto', fileOrBlob, uploadName);
+
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+
+            try {
+                const response = await fetch('{% url "update_photo" %}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-CSRFToken': getCsrfToken() }
+                });
+
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Error desconocido');
+                }
+
+                imgPreview.src = data.url;
+                updateSidebarPhoto(data.url);
+                cropperModal.hide();
+
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Foto actualizada correctamente'
+                });
+            } catch (error) {
+                Toast.fire({
+                    icon: 'error',
+                    title: error.message
+                });
+            } finally {
+                setCropButtonState(false);
+                fotoInput.value = '';
+            }
+        }
+
+        // --- VALIDACIÓN DE REQUISITOS DE CONTRASEÑA ---
+        const newPassword = document.getElementById('id_new_password1');
+        const confirmPassword = document.getElementById('id_new_password2');
+        const currentPassword = document.getElementById('id_old_password');
+        const matchMessage = document.getElementById('match-message');
+        const btnSubmitPassword = document.getElementById('btn-submit-password');
+
+        const requirements = {
+            length: { regex: /.{10,}/, el: document.querySelector('[data-req="length"]') },
+            case: { regex: /(?=.*[a-z])(?=.*[A-Z])/, el: document.querySelector('[data-req="case"]') },
+            number: { regex: /[0-9]/, el: document.querySelector('[data-req="number"]') },
+            special: { regex: /[@#$!%*?&]/, el: document.querySelector('[data-req="special"]') }
+        };
+
+        const updateButtonStatus = () => {
+            if (!newPassword || !btnSubmitPassword || !currentPassword) return;
+            const val = newPassword.value;
+            const confirmVal = confirmPassword ? confirmPassword.value : "";
+            const currentVal = currentPassword.value;
+
+            const allValid = Object.values(requirements).every(req => req.regex.test(val));
+            const match = (val === confirmVal) && val.length > 0;
+            const currentFilled = currentVal.length > 0;
+            const isReady = allValid && match && currentFilled;
+
+            btnSubmitPassword.disabled = !isReady;
+            btnSubmitPassword.style.opacity = isReady ? "1" : "0.5";
+            btnSubmitPassword.style.cursor = isReady ? "pointer" : "not-allowed";
+        };
+
+        updateButtonStatus();
+
+        if (newPassword) {
+            newPassword.addEventListener('input', function () {
+                const val = this.value;
+                Object.keys(requirements).forEach(key => {
+                    const req = requirements[key];
+                    if (!req.el) return;
+                    const icon = req.el.querySelector('i');
+                    const isDone = req.regex.test(val);
+
+                    req.el.classList.toggle('text-success', isDone);
+                    req.el.classList.toggle('text-danger', !isDone && val.length > 0);
+                    icon.className = isDone ? 'bi bi-check-circle-fill me-2' : 'bi bi-circle me-2';
+                });
+                checkMatch();
+            });
+        }
+
+        if (confirmPassword) {
+            confirmPassword.addEventListener('input', checkMatch);
+        }
+
+        if (currentPassword) {
+            currentPassword.addEventListener('input', updateButtonStatus);
+            const unlockPasswordField = () => currentPassword.removeAttribute('readonly');
+            currentPassword.addEventListener('focus', unlockPasswordField, { once: true });
+            currentPassword.addEventListener('pointerdown', unlockPasswordField, { once: true });
+            currentPassword.addEventListener('keydown', unlockPasswordField, { once: true });
+
+            requestAnimationFrame(() => { currentPassword.value = ''; });
+            window.addEventListener('pageshow', () => { currentPassword.value = ''; });
+        }
+
+        function checkMatch() {
+            if (newPassword && confirmPassword) {
+                const val = newPassword.value;
+                const cVal = confirmPassword.value;
+                const isMatch = val === cVal;
+                if (val && cVal) {
+                    matchMessage.textContent = isMatch ? '✓ Las contraseñas coinciden' : '✕ Las contraseñas no coinciden';
+                    matchMessage.className = `small mt-2 px-2 fw-bold ${isMatch ? 'text-success' : 'text-danger'}`;
+                } else {
+                    matchMessage.textContent = '';
+                }
+                updateButtonStatus();
+            }
+        }
+
+        // --- TOGGLE PASSWORD VISIBILITY ---
+        document.querySelectorAll('.toggle-password').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const target = document.getElementById(this.dataset.target);
+                const icon = this.querySelector('i');
+                const isPass = target.type === 'password';
+                target.type = isPass ? 'text' : 'password';
+                icon.classList.replace(isPass ? 'bi-eye' : 'bi-eye-slash', isPass ? 'bi-eye-slash' : 'bi-eye');
+            });
+        });
+
+        // --- AJAX PARA CAMBIO DE CONTRASEÑA ---
+        const formPassword = document.getElementById('form-password');
+        if (formPassword) {
+            formPassword.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const btn = e.submitter || this.querySelector('button[type="submit"]');
+                
+                const result = await Swal.fire({
+                    title: '¿Confirmar cambio?',
+                    text: 'Se actualizará tu contraseña de acceso.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, cambiar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#F59E0B',
+                    reverseButtons: true,
+                    customClass: { popup: 'rounded-4 shadow-lg' }
+                });
+
+                if (result.isConfirmed) {
+                    const formData = new FormData(this);
+                    formData.append('change_password', '1');
+
+                    try {
+                        const response = await fetch(window.location.href, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRFToken': getCsrfToken()
+                            }
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Éxito!',
+                                text: data.message || 'Contraseña actualizada correctamente.',
+                                timer: 3000,
+                                showConfirmButton: false,
+                                customClass: { popup: 'rounded-4' }
+                            });
+                            formPassword.reset();
+                            updateButtonStatus();
+                            matchMessage.textContent = '';
+                            Object.values(requirements).forEach(req => {
+                                req.el.classList.remove('text-success', 'text-danger');
+                                req.el.querySelector('i').className = 'bi bi-circle me-2';
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.message || 'No se pudo actualizar la contraseña.',
+                                customClass: { popup: 'rounded-4' }
+                            });
+                        }
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error de red',
+                            text: 'Hubo un problema al conectar con el servidor.',
+                            customClass: { popup: 'rounded-4' }
+                        });
+                    } finally {
+                        if (window.removeLoadingState) window.removeLoadingState(btn);
+                    }
+                } else {
+                    if (window.removeLoadingState) window.removeLoadingState(btn);
+                }
+            });
+        }
+
+        // --- AJAX PARA DATOS PERSONALES ---
+        const formProfile = document.getElementById('form-profile');
+        if (formProfile) {
+            formProfile.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const btn = e.submitter || this.querySelector('button[type="submit"]');
+
+                const result = await Swal.fire({
+                    title: '¿Guardar cambios?',
+                    text: 'Se actualizará tu información de contacto.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, guardar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#0D6EFD',
+                    reverseButtons: true,
+                    customClass: { popup: 'rounded-4 shadow-lg' }
+                });
+
+                if (result.isConfirmed) {
+                    const formData = new FormData(this);
+                    formData.append('update_profile', '1');
+
+                    try {
+                        const response = await fetch(window.location.href, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRFToken': getCsrfToken()
+                            }
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Actualizado!',
+                                text: data.message || 'Datos personales actualizados.',
+                                timer: 3000,
+                                showConfirmButton: false,
+                                customClass: { popup: 'rounded-4' }
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.message || 'No se pudieron actualizar los datos.',
+                                customClass: { popup: 'rounded-4' }
+                            });
+                        }
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error de red',
+                            text: 'Hubo un problema al conectar con el servidor.',
+                            customClass: { popup: 'rounded-4' }
+                        });
+                    } finally {
+                        if (window.removeLoadingState) window.removeLoadingState(btn);
+                    }
+                } else {
+                    if (window.removeLoadingState) window.removeLoadingState(btn);
+                }
+            });
+        }
+
+        // --- ESCUCHA DE MENSAJES DE DJANGO (ALERTAS TOAST) ---
+        {% if messages %}
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
+
+        {% for message in messages %}
+        Toast.fire({
+            icon: '{{ message.tags }}' === 'error' ? 'error' : 'success',
+            title: '{{ message }}'
+        });
+        {% endfor %}
+        {% endif %}
+    });
+</script>
+{% endblock content %}

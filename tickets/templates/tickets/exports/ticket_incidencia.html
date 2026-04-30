@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: a4;
+            margin: 2cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11pt;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #0D6EFD;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: #0D6EFD;
+            margin: 0;
+            font-size: 20pt;
+        }
+        .section-title {
+            background-color: #f8f9fa;
+            padding: 5px 10px;
+            font-weight: bold;
+            border-left: 4px solid #0D6EFD;
+            margin-top: 15px;
+            margin-bottom: 10px;
+        }
+        .info-grid {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .info-grid td {
+            padding: 5px;
+            vertical-align: top;
+        }
+        .label {
+            font-weight: bold;
+            width: 30%;
+        }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 8pt;
+            color: #777;
+            border-top: 1px solid #eee;
+            padding-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>TICKET DE ATENCIÓN</h1>
+        <p>UGEL Morropón - Soporte Técnico</p>
+        <p><strong>Código: {{ incidencia.codigo }}</strong></p>
+    </div>
+
+    <div class="section-title">Información General</div>
+    <table class="info-grid">
+        <tr>
+            <td class="label">Fecha de Reporte:</td>
+            <td>{{ incidencia.fecha_creacion|date:"d/m/Y H:i" }}</td>
+        </tr>
+        <tr>
+            <td class="label">Estado Actual:</td>
+            <td>{{ incidencia.get_estado_display|default:incidencia.estado.name }}</td>
+        </tr>
+        <tr>
+            <td class="label">Prioridad:</td>
+            <td>{{ incidencia.get_prioridad_display }}</td>
+        </tr>
+        <tr>
+            <td class="label">Categoría:</td>
+            <td>{{ incidencia.get_categoria_display }}</td>
+        </tr>
+    </table>
+
+    <div class="section-title">Datos del Solicitante</div>
+    <table class="info-grid">
+        <tr>
+            <td class="label">Usuario:</td>
+            <td>{{ incidencia.creador.get_full_name }} ({{ incidencia.creador.username }})</td>
+        </tr>
+        <tr>
+            <td class="label">Área:</td>
+            <td>{{ incidencia.area }}</td>
+        </tr>
+    </table>
+
+    <div class="section-title">Descripción del Problema</div>
+    <div style="padding: 5px 10px; border: 1px solid #eee; min-height: 50px;">
+        {{ incidencia.descripcion|linebreaks }}
+    </div>
+
+    <div class="section-title">Detalles de la Solución</div>
+    <table class="info-grid">
+        <tr>
+            <td class="label">Técnico Asignado:</td>
+            <td>{{ incidencia.tecnico_asignado.get_full_name|default:"Sin asignar" }}</td>
+        </tr>
+        <tr>
+            <td class="label">Fecha de Resolución:</td>
+            <td>{{ incidencia.fecha_resolucion|date:"d/m/Y H:i"|default:"Pendiente" }}</td>
+        </tr>
+    </table>
+    
+    <div style="margin-top: 10px; padding: 5px 10px; border: 1px solid #eee; min-height: 80px;">
+        <strong>Solución:</strong><br>
+        {{ incidencia.solucion_aplicada|default:"Aún no se ha registrado una solución técnica."|linebreaks }}
+    </div>
+
+    <div class="footer">
+        Documento generado automáticamente por el Sistema de Gestión de Incidencias - UGEL Morropón
+    </div>
+</body>
+</html>

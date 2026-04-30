@@ -1,0 +1,347 @@
+<div class="row g-4">
+    <!-- Fila 1: Categoría y Prioridad -->
+    <div class="col-12">
+        <label class="form-label-custom">Categoría de Falla</label>
+        <div style="display:none;">{{ form.categoria }}</div>
+        <div class="category-chips {% if form.categoria.errors %}is-invalid-group{% endif %}" id="categoryChips">
+            {% for value, label in form.categoria.field.choices %}
+                {% if value %}
+                <div class="category-chip {% if form.categoria.value == value %}selected{% endif %}" 
+                     data-value="{{ value }}" 
+                     onclick="selectChip(this, 'id_categoria')">
+                    {{ label }}
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% if form.categoria.errors %}<div class="text-danger tiny-text mt-1">{{ form.categoria.errors.0 }}</div>{% endif %}
+    </div>
+
+    <div class="col-12">
+        <label class="form-label-custom">Nivel de Prioridad</label>
+        <div style="display:none;">{{ form.prioridad }}</div>
+        <div class="priority-cards {% if form.prioridad.errors %}is-invalid-group{% endif %}" id="priorityCards">
+            {% for value, label in form.prioridad.field.choices %}
+                {% if value %}
+                <div class="priority-card {% if form.prioridad.value == value %}selected{% endif %}" 
+                     data-value="{{ value }}" 
+                     onclick="selectPriority(this, 'id_prioridad')">
+                    <div class="prio-dot"></div>
+                    <span class="prio-name">{{ label }}</span>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% if form.prioridad.errors %}<div class="text-danger tiny-text mt-1">{{ form.prioridad.errors.0 }}</div>{% endif %}
+    </div>
+
+    <!-- Área -->
+    <div class="col-12">
+        <label class="form-label-custom">Área / Oficina Solicitante</label>
+        {{ form.area }}
+        {% if form.area.errors %}<div class="text-danger tiny-text mt-1">{{ form.area.errors.0 }}</div>{% endif %}
+    </div>
+
+    <!-- Sección Equipo (Condicional) -->
+    <div id="sectionEquipo" class="col-12" style="display: none;">
+        <div class="section-equipo-container">
+            <label class="form-label-custom">Equipo Afectado</label>
+            {{ form.equipo }}
+            
+            <!-- Campos OTRO -->
+            <div id="sectionOtroEquipo" class="mt-4 pt-4 border-top" style="display: none;">
+                <p class="tiny-text fw-bold text-primary mb-4 text-center">
+                    <i class="fas fa-microchip me-2"></i>ESPECIFICACIONES DEL EQUIPO NO LISTADO
+                </p>
+                
+                <div class="row g-4">
+                    <!-- Fila 1: TIPO y MARCA -->
+                    <div class="col-md-6">
+                        <label class="form-label-custom tiny-text fw-bold">TIPO DE EQUIPO</label>
+                        {{ form.otro_tipo }}
+                        <div class="invalid-feedback">Especifique el tipo de equipo.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label-custom tiny-text fw-bold">MARCA</label>
+                        {{ form.otro_marca }}
+                        <div class="invalid-feedback">Especifique la marca.</div>
+                    </div>
+
+                    <!-- Fila 2: MODELO y SERIE -->
+                    <div class="col-md-6">
+                        <label class="form-label-custom tiny-text fw-bold">MODELO</label>
+                        {{ form.otro_modelo }}
+                        <div class="invalid-feedback">Especifique el modelo.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label-custom tiny-text fw-bold">NRO. DE SERIE (OPCIONAL)</label>
+                        {{ form.otro_serie }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Descripción -->
+    <div class="col-12">
+        <label class="form-label-custom">Descripción Detallada del Problema</label>
+        {{ form.descripcion }}
+        <div class="d-flex justify-content-between align-items-center mt-2">
+            <p class="text-muted tiny-text mb-0">Describe qué ocurrió, desde cuándo y cómo impacta el trabajo.</p>
+            <span id="descriptionCounter" class="tiny-text text-muted">0 / 20</span>
+        </div>
+        {% if form.descripcion.errors %}<div class="text-danger tiny-text mt-1">{{ form.descripcion.errors.0 }}</div>{% endif %}
+    </div>
+
+    <!-- Evidencia -->
+    <div class="col-12">
+        <label class="form-label-custom">Evidencias de la Falla (1 a 3 imágenes)</label>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="p-3 border rounded-4 bg-white shadow-sm">
+                    <label class="tiny-text fw-bold text-primary mb-1">IMAGEN 1 (PRINCIPAL) *</label>
+                    {{ form.imagen_adjunta }}
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-3 border rounded-4 bg-white shadow-sm">
+                    <label class="tiny-text fw-bold text-muted mb-1">IMAGEN 2 (OPCIONAL)</label>
+                    {{ form.imagen_2 }}
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-3 border rounded-4 bg-white shadow-sm">
+                    <label class="tiny-text fw-bold text-muted mb-1">IMAGEN 3 (OPCIONAL)</label>
+                    {{ form.imagen_3 }}
+                </div>
+            </div>
+        </div>
+        <p class="text-muted tiny-text mt-2 mb-0 ps-1"><i class="bi bi-info-circle me-1"></i>Formatos: JPG, PNG. Máx 2MB por archivo.</p>
+        {% if form.imagen_adjunta.errors %}<div class="text-danger tiny-text mt-1">{{ form.imagen_adjunta.errors.0 }}</div>{% endif %}
+        {% if form.imagen_2.errors %}<div class="text-danger tiny-text mt-1">{{ form.imagen_2.errors.0 }}</div>{% endif %}
+        {% if form.imagen_3.errors %}<div class="text-danger tiny-text mt-1">{{ form.imagen_3.errors.0 }}</div>{% endif %}
+    </div>
+
+    <!-- Asignación Directa (Admin) -->
+    {% if form.tecnico_asignado %}
+    <div class="col-12">
+        <div class="p-3 bg-primary bg-opacity-10 rounded-4 border border-primary border-opacity-25">
+            <label class="form-label-custom text-primary">Asignación Especialista{% if form.tecnico_asignado.field.required %} *{% endif %}</label>
+            {{ form.tecnico_asignado }}
+            {% if form.tecnico_asignado.errors %}<div class="text-danger tiny-text mt-2">{{ form.tecnico_asignado.errors.0 }}</div>{% endif %}
+            {% if form.tecnico_asignado.field.required %}<p class="tiny-text text-primary mb-0 mt-2">La incidencia debe nacer con un técnico responsable asignado.</p>{% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    function selectChip(el, selectId) {
+        const root = el.closest('form, .modal-content, .container-fluid') || document;
+        root.querySelectorAll('#categoryChips .category-chip').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        const input = root.querySelector(`#${selectId}`);
+        if(input) {
+            input.value = el.dataset.value;
+            input.dispatchEvent(new Event('change'));
+        }
+    }
+
+    function selectPriority(el, selectId) {
+        const root = el.closest('form, .modal-content, .container-fluid') || document;
+        root.querySelectorAll('#priorityCards .priority-card').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        const input = root.querySelector(`#${selectId}`);
+        if(input) {
+            input.value = el.dataset.value;
+            input.dispatchEvent(new Event('change'));
+        }
+    }
+
+    function toggleEquipoSection(selectEl) {
+        const root = selectEl.closest('form, .modal-content, .container-fluid') || document;
+        const section = root.querySelector('#sectionEquipo');
+        if (!section) return;
+        const value = selectEl.value;
+        if (value === 'hardware') {
+            section.style.display = 'block';
+        } else {
+            section.style.display = 'none';
+        }
+    }
+
+    function toggleEquipoOtro(selectEl) {
+        const root = selectEl.closest('form, .modal-content, .container-fluid') || document;
+        const section = root.querySelector('#sectionOtroEquipo');
+        if (!section) return;
+        if (selectEl.value === 'otro') {
+            section.style.display = 'block';
+        } else {
+            section.style.display = 'none';
+        }
+    }
+
+    window.initIncidenciaExperience = function(root) {
+        const scope = root || document;
+        const form = scope.querySelector('#incidenciaForm');
+        if (!form || form.dataset.enhanced === 'true') {
+            return;
+        }
+        form.dataset.enhanced = 'true';
+
+        const inputs = form.querySelectorAll('input, select, textarea');
+        inputs.forEach(el => {
+            if (!el.classList.contains('form-check-input')) {
+                el.classList.add('input-custom');
+            }
+        });
+
+        const catSelect = form.querySelector('#id_categoria');
+        const eqSelect = form.querySelector('#id_equipo');
+        const areaSelect = form.querySelector('#id_area');
+        const descriptionInput = form.querySelector('#id_descripcion');
+        const descriptionCounter = form.querySelector('#descriptionCounter');
+        const mainImageInput = form.querySelector('#id_imagen_adjunta');
+        const prioritySelect = form.querySelector('#id_prioridad');
+        const recommendationChecks = {
+            category: form.closest('.modal-content, .container-fluid')?.querySelector('[data-check-target="category"]'),
+            priority: form.closest('.modal-content, .container-fluid')?.querySelector('[data-check-target="priority"]'),
+            description: form.closest('.modal-content, .container-fluid')?.querySelector('[data-check-target="description"]'),
+            area: form.closest('.modal-content, .container-fluid')?.querySelector('[data-check-target="area"]'),
+            equipment: form.closest('.modal-content, .container-fluid')?.querySelector('[data-check-target="equipment"]'),
+            image: form.closest('.modal-content, .container-fluid')?.querySelector('[data-check-target="image"]')
+        };
+
+        const setRecommendationStatus = (key, completed) => {
+            const item = recommendationChecks[key];
+            if (!item) return;
+            item.classList.toggle('is-complete', completed);
+        };
+
+        const updateChecklist = () => {
+            const descriptionLength = (descriptionInput?.value || '').trim().length;
+            const categoryValue = catSelect?.value || '';
+            const priorityValue = prioritySelect?.value || '';
+            const areaValue = areaSelect?.value || areaSelect?.getAttribute('value') || '';
+            const equipoValue = eqSelect?.value || '';
+            const hasOtherEquipment = ['id_otro_tipo', 'id_otro_marca', 'id_otro_modelo']
+                .every(id => (form.querySelector(`#${id}`)?.value || '').trim().length > 0);
+            const hasImage = Boolean(mainImageInput?.files?.length || mainImageInput?.value);
+
+            if (descriptionCounter) {
+                descriptionCounter.textContent = `${descriptionLength} / 20`;
+                descriptionCounter.className = `tiny-text ${descriptionLength >= 20 ? 'text-success fw-bold' : 'text-muted'}`;
+            }
+
+            setRecommendationStatus('category', Boolean(categoryValue));
+            setRecommendationStatus('priority', Boolean(priorityValue));
+            setRecommendationStatus('description', descriptionLength >= 20);
+            setRecommendationStatus('area', Boolean(areaValue));
+            setRecommendationStatus('equipment', Boolean(equipoValue && equipoValue !== 'otro') || (equipoValue === 'otro' && hasOtherEquipment));
+            setRecommendationStatus('image', hasImage);
+        };
+        
+        if (catSelect) {
+            catSelect.addEventListener('change', () => {
+                toggleEquipoSection(catSelect);
+                updateChecklist();
+            });
+            toggleEquipoSection(catSelect);
+        }
+        if (catSelect) {
+            catSelect.setAttribute('required', 'required');
+        }
+        if (prioritySelect) {
+            prioritySelect.setAttribute('required', 'required');
+            prioritySelect.addEventListener('change', updateChecklist);
+        }
+        if (eqSelect) {
+            eqSelect.addEventListener('change', () => toggleEquipoOtro(eqSelect));
+            toggleEquipoOtro(eqSelect);
+        }
+        [eqSelect, areaSelect, descriptionInput, mainImageInput, prioritySelect].forEach(el => {
+            if (el) {
+                el.addEventListener('change', updateChecklist);
+                el.addEventListener('input', updateChecklist);
+            }
+        });
+        ['id_otro_tipo', 'id_otro_marca', 'id_otro_modelo'].forEach(id => {
+            const el = form.querySelector(`#${id}`);
+            if (el) el.addEventListener('input', updateChecklist);
+        });
+        updateChecklist();
+
+        form.addEventListener('submit', function(e) {
+            let valid = true;
+            const requiredFields = [
+                { id: 'id_categoria', group: '#categoryChips' },
+                { id: 'id_prioridad', group: '#priorityCards' },
+                { id: 'id_descripcion' },
+                { id: 'id_imagen_adjunta' }
+            ];
+            const tecnicoAsignado = form.querySelector('#id_tecnico_asignado');
+            if (tecnicoAsignado && tecnicoAsignado.required) {
+                requiredFields.push({ id: 'id_tecnico_asignado' });
+            }
+
+            requiredFields.forEach(field => {
+                const el = form.querySelector(`#${field.id}`);
+                const group = field.group ? form.querySelector(field.group) : null;
+                const hasValue = el?.type === 'file' ? Boolean(el.files?.length || el.value) : Boolean(el?.value);
+                if (!hasValue) {
+                    valid = false;
+                    el?.classList.add('is-invalid');
+                    group?.classList.add('is-invalid-group');
+                } else {
+                    el?.classList.remove('is-invalid');
+                    group?.classList.remove('is-invalid-group');
+                }
+            });
+
+            if (!valid) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Campos incompletos',
+                    text: 'Completa los datos obligatorios para registrar la incidencia.',
+                    confirmButtonColor: '#0d6efd'
+                });
+            }
+        });
+
+        const submitButton = form.querySelector('[data-loading-disable]');
+        if (submitButton) {
+            form.addEventListener('submit', function(e) {
+                if (e.defaultPrevented) {
+                    submitButton.disabled = false;
+                    return;
+                }
+                submitButton.disabled = true;
+                submitButton.classList.add('is-loading');
+                const label = submitButton.querySelector('.submit-label');
+                if (label) {
+                    label.textContent = submitButton.dataset.loadingLabel || 'Guardando...';
+                }
+            });
+
+            form.addEventListener('htmx:responseError', function() {
+                submitButton.disabled = false;
+                submitButton.classList.remove('is-loading');
+                const label = submitButton.querySelector('.submit-label');
+                if (label) {
+                    label.textContent = submitButton.dataset.defaultLabel || 'Guardar incidencia';
+                }
+            });
+        }
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () {
+            window.initIncidenciaExperience(document);
+        }, { once: true });
+    } else {
+        window.requestAnimationFrame(function () {
+            window.initIncidenciaExperience(document);
+        });
+    }
+</script>

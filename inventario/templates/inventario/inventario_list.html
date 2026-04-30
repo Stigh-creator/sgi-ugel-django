@@ -1,0 +1,458 @@
+{% extends 'tickets/base.html' %}
+{% load static %}
+
+{% block title %}Inventario de Equipos - UGEL Morropón{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/inventario/inventario.css' %}">
+{% endblock %}
+
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+            <div class="header-icon">
+                <i class="bi bi-pc-display"></i>
+            </div>
+            <div>
+                <h2 class="h4 mb-0 fw-bold">Inventario de Equipos</h2>
+                <p class="text-muted mb-0">Gestión de activos tecnológicos institucionales.</p>
+            </div>
+        </div>
+        <button type="button" class="btn-new btn-hover-scale" data-bs-toggle="modal" data-bs-target="#modalNuevoEquipo">
+            <i class="bi bi-plus-lg"></i> Registrar Equipo
+        </button>
+    </div>
+
+    <div class="d-flex gap-2 mb-4">
+        <a href="{% url 'inventario_list' %}?vista=activos" class="btn {% if vista_selected != 'bajas' %}btn-primary{% else %}btn-light border{% endif %} rounded-pill">
+            Activos operativos
+        </a>
+        <a href="{% url 'inventario_list' %}?vista=bajas" class="btn {% if vista_selected == 'bajas' %}btn-danger{% else %}btn-light border{% endif %} rounded-pill">
+            Bajas administrativas ({{ total_bajas }})
+        </a>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row g-4 mb-4">
+        <div class="col-md">
+            <div class="stat-card">
+                <div class="stat-icon icon-total"><i class="bi bi-box"></i></div>
+                <h3 class="h2 fw-bold mb-0">{{ stats.total }}</h3>
+                <p class="text-muted small mb-0">Total Equipos</p>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="stat-card">
+                <div class="stat-icon icon-operativo"><i class="bi bi-check-circle"></i></div>
+                <h3 class="h2 fw-bold mb-0 text-success">{{ stats.operativos }}</h3>
+                <p class="text-muted small mb-0">Operativos</p>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="stat-card">
+                <div class="stat-icon icon-reparacion"><i class="bi bi-search"></i></div>
+                <h3 class="h2 fw-bold mb-0 text-info">{{ stats.en_revision }}</h3>
+                <p class="text-muted small mb-0">En Revisión</p>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="stat-card">
+                <div class="stat-icon icon-reparacion"><i class="bi bi-tools"></i></div>
+                <h3 class="h2 fw-bold mb-0 text-warning">{{ stats.reparacion }}</h3>
+                <p class="text-muted small mb-0">En Reparación</p>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="stat-card">
+                <div class="stat-icon icon-inoperativo"><i class="bi bi-exclamation-triangle"></i></div>
+                <h3 class="h2 fw-bold mb-0 text-danger">{{ stats.inoperativos }}</h3>
+                <p class="text-muted small mb-0">Inoperativos</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-section">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small fw-bold text-muted">Buscador</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" class="form-control bg-light border-start-0" placeholder="Código, nombre, modelo..." value="{{ query|default:'' }}">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-muted">Área</label>
+                <select name="area" class="form-select bg-light">
+                    <option value="">Todas</option>
+                    {% for area in areas %}
+                    <option value="{{ area.id }}" {% if area_selected == area.id|stringformat:"s" %}selected{% endif %}>{{ area.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-muted">Estado</label>
+                <div class="filter-select-wrap w-100" id="estadoFilterWrap">
+                    <span class="filter-state-dot is-hidden" id="estadoFilterDot" aria-hidden="true"></span>
+                    <input type="hidden" name="estado" id="estadoFilter" value="{{ estado_selected|default:'' }}">
+                    <button type="button" class="filter-select-button" id="estadoFilterButton" aria-haspopup="listbox" aria-expanded="false">
+                        <span id="estadoFilterLabel">Todos</span>
+                    </button>
+                    <div class="filter-select-menu" id="estadoFilterMenu" role="listbox" aria-label="Filtrar por estado">
+                        <button type="button" class="filter-select-option" data-value="" data-label="Todos" data-state-name="">
+                            <span class="filter-option-dot is-hidden"></span>
+                            <span>Todos</span>
+                        </button>
+                        <button type="button" class="filter-select-option" data-value="Operativo" data-label="Operativo" data-state-name="operativo">
+                            <span class="filter-option-dot state-operativo"></span>
+                            <span>Operativo</span>
+                        </button>
+                        <button type="button" class="filter-select-option" data-value="En revisión" data-label="En revisión" data-state-name="en-revision">
+                            <span class="filter-option-dot state-en-revision"></span>
+                            <span>En revisión</span>
+                        </button>
+                        <button type="button" class="filter-select-option" data-value="En reparación" data-label="En reparación" data-state-name="en-reparacion">
+                            <span class="filter-option-dot state-en-reparacion"></span>
+                            <span>En reparación</span>
+                        </button>
+                        <button type="button" class="filter-select-option" data-value="Inoperativo" data-label="Inoperativo" data-state-name="inoperativo">
+                            <span class="filter-option-dot state-inoperativo"></span>
+                            <span>Inoperativo</span>
+                        </button>
+                        <button type="button" class="filter-select-option" data-value="Dado de baja" data-label="Dado de baja" data-state-name="dado-de-baja">
+                            <span class="filter-option-dot state-dado-de-baja"></span>
+                            <span>Dado de baja</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-muted">Tipo</label>
+                <select name="tipo" class="form-select bg-light">
+                    <option value="">Todos</option>
+                    {% for t in tipos %}
+                    <option value="{{ t.id }}" {% if tipo_selected == t.id|stringformat:"s" %}selected{% endif %}>{{ t.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-muted">Marca</label>
+                <select name="marca" class="form-select bg-light">
+                    <option value="">Todas</option>
+                    {% for m in marcas %}
+                    <option value="{{ m.id }}" {% if marca_selected == m.id|stringformat:"s" %}selected{% endif %}>{{ m.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+            </div>
+            <div class="col-md-2">
+                <a href="{% url 'inventario_list' %}" class="btn btn-light border w-100">Limpiar filtros</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Table -->
+    <div class="equipos-table shadow-sm">
+        <div class="table-responsive-custom">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4 py-3 text-muted small fw-bold text-uppercase sortable">Equipo <i class="sort-icon"></i></th>
+                        <th class="py-3 text-muted small fw-bold text-uppercase">Foto</th>
+                        <th class="py-3 text-muted small fw-bold text-uppercase sortable">Marca / Modelo <i class="sort-icon"></i></th>
+                        <th class="py-3 text-muted small fw-bold text-uppercase sortable">Área <i class="sort-icon"></i></th>
+                        <th class="py-3 text-muted small fw-bold text-uppercase sortable">Estado <i class="sort-icon"></i></th>
+                        <th class="text-center py-3 text-muted small fw-bold text-uppercase">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for equipo in equipos %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="bg-primary bg-opacity-10 text-primary rounded-3 p-2">
+                                    <i class="bi {% if equipo.tipo_equipo.nombre == 'PC' %}bi-pc-display{% elif equipo.tipo_equipo.nombre == 'Laptop' %}bi-laptop{% elif equipo.tipo_equipo.nombre == 'Impresora' %}bi-printer{% else %}bi-device-hdd{% endif %} fs-5"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold">{{ equipo.codigo_equipo }}</h6>
+                                    <small class="text-muted">{{ equipo.nombre_equipo }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            {% if equipo.foto_estado %}
+                            <a href="{{ equipo.foto_estado.url }}" target="_blank">
+                                <img src="{{ equipo.foto_estado.url }}" class="rounded shadow-sm border" style="width: 45px; height: 45px; object-fit: cover;" alt="Foto estado">
+                            </a>
+                            {% else %}
+                            <div class="bg-light rounded text-muted d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;">
+                                <i class="bi bi-camera small"></i>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex flex-column">
+                                <span class="fw-medium">{{ equipo.marca }}</span>
+                                <small class="text-muted">{{ equipo.modelo }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border">{{ equipo.area.name|default:"Sin asignar" }}</span>
+                        </td>
+                        <td>
+                            <span class="badge-estado badge-{{ equipo.estado|slugify }}">
+                                <span class="dot dot-{{ equipo.estado|slugify }}"></span>
+                                {{ equipo.estado }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <div class="d-flex justify-content-center gap-2">
+                                <a href="{% url 'equipo_detalle' equipo.pk %}" class="btn btn-sm btn-outline-info rounded-pill px-3" title="Ver detalle">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if vista_selected != 'bajas' %}
+                                <button class="btn btn-sm btn-outline-primary rounded-pill px-3" 
+                                    data-bs-toggle="modal" data-bs-target="#modalEditarEquipo"
+                                    data-id="{{ equipo.pk }}"
+                                    data-codigo="{{ equipo.codigo_equipo }}"
+                                    data-nombre="{{ equipo.nombre_equipo }}"
+                                    data-tipo="{{ equipo.tipo_equipo.id }}"
+                                    data-marca="{{ equipo.marca.id }}"
+                                    data-modelo="{{ equipo.modelo }}"
+                                    data-serie="{{ equipo.numero_serie|default:'' }}"
+                                    data-area="{{ equipo.area.id|default:'' }}"
+                                    data-foto="{% if equipo.foto_estado %}{{ equipo.foto_estado.url }}{% endif %}"
+                                    data-obs="{{ equipo.observaciones|default:'' }}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <form action="{% url 'equipo_eliminar' equipo.pk %}" method="POST" class="d-inline js-confirm-delete">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                            No se encontraron equipos en el inventario.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if page_obj.has_other_pages %}
+        <div class="px-4 py-3 border-top bg-light d-flex justify-content-between align-items-center">
+            <span class="small text-muted">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if area_selected %}&area={{ area_selected }}{% endif %}{% if estado_selected %}&estado={{ estado_selected }}{% endif %}{% if vista_selected %}&vista={{ vista_selected }}{% endif %}"><i class="bi bi-chevron-left"></i></a></li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                    <li class="page-item {% if page_obj.number == num %}active{% endif %}"><a class="page-link" href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}{% if area_selected %}&area={{ area_selected }}{% endif %}{% if estado_selected %}&estado={{ estado_selected }}{% endif %}{% if vista_selected %}&vista={{ vista_selected }}{% endif %}">{{ num }}</a></li>
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if area_selected %}&area={{ area_selected }}{% endif %}{% if estado_selected %}&estado={{ estado_selected }}{% endif %}{% if vista_selected %}&vista={{ vista_selected }}{% endif %}"><i class="bi bi-chevron-right"></i></a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% include 'inventario/modals/equipo_nuevo.html' %}
+{% include 'inventario/modals/equipo_editar.html' %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function syncFilterLabel(filterId, wrapId, dotId, labelId, defaultLabel) {
+        const filter = document.getElementById(filterId);
+        const wrap = document.getElementById(wrapId);
+        const dot = document.getElementById(dotId);
+        const labelEl = document.getElementById(labelId);
+        const options = Array.from(wrap?.querySelectorAll('.filter-select-option') || []);
+        if (!filter || !wrap) return;
+
+        const selectedOption = options.find(option => option.dataset.value === filter.value) || options[0];
+        const selectedLabel = selectedOption?.dataset.label || defaultLabel;
+        const stateName = selectedOption?.dataset.stateName || '';
+        
+        wrap.classList.toggle('is-active', Boolean(filter.value));
+        if (labelEl) {
+            labelEl.textContent = selectedLabel;
+        }
+        options.forEach(option => {
+            option.classList.toggle('is-active', option === selectedOption);
+        });
+        if (dot) {
+            const normalizedState = stateName.replace(/\s+/g, '-').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            dot.className = `filter-state-dot${stateName ? ` state-${normalizedState}` : ' is-hidden'}`;
+        }
+    }
+
+    function syncAllFilters() {
+        syncFilterLabel('estadoFilter', 'estadoFilterWrap', 'estadoFilterDot', 'estadoFilterLabel', 'Todos');
+    }
+
+    function previewImage(input, previewId) {
+        const previewContainer = document.getElementById(previewId);
+        const previewImage = previewContainer.querySelector('img');
+        
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImage.src = e.target.result;
+                previewContainer.classList.remove('d-none');
+            }
+            reader.readAsDataURL(input.files[0]);
+        } else {
+            previewContainer.classList.add('d-none');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        syncAllFilters();
+        
+        document.addEventListener('click', function (event) {
+            const option = event.target.closest('.filter-select-option');
+            if (option) {
+                const wrap = option.closest('.filter-select-wrap');
+                const input = wrap?.querySelector('input[type="hidden"]');
+                const form = wrap?.closest('form');
+                if (input && form) {
+                    input.value = option.dataset.value || '';
+                    syncAllFilters();
+                    wrap.classList.remove('is-open');
+                    wrap.querySelector('.filter-select-button')?.setAttribute('aria-expanded', 'false');
+                    form.submit();
+                }
+            }
+            
+            const btn = event.target.closest('.filter-select-button');
+            if (btn) {
+                event.stopPropagation();
+                const wrap = btn.closest('.filter-select-wrap');
+                const willOpen = !wrap?.classList.contains('is-open');
+                document.querySelectorAll('.filter-select-wrap.is-open').forEach(el => {
+                    if (el !== wrap) el.classList.remove('is-open');
+                });
+                if (wrap) {
+                    wrap.classList.toggle('is-open', willOpen);
+                }
+                btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+            } else {
+                document.querySelectorAll('.filter-select-wrap.is-open').forEach(wrap => {
+                    wrap.classList.remove('is-open');
+                    wrap.querySelector('.filter-select-button')?.setAttribute('aria-expanded', 'false');
+                });
+            }
+        });
+
+        document.querySelectorAll('.js-disable-on-submit').forEach(form => {
+            form.addEventListener('submit', function() {
+                const button = form.querySelector('[data-loading-disable]');
+                if (!button) return;
+                button.disabled = true;
+                button.querySelector('.submit-spinner')?.classList.remove('d-none');
+                const label = button.querySelector('.submit-label');
+                if (label) {
+                    label.textContent = button.dataset.loadingLabel || 'Guardando...';
+                }
+            });
+        });
+
+        // Modal Editar
+        const modalEditar = document.getElementById('modalEditarEquipo');
+        if (modalEditar) {
+            modalEditar.addEventListener('show.bs.modal', event => {
+                const button = event.relatedTarget;
+                const id = button.getAttribute('data-id');
+                modalEditar.querySelector('form').action = `/inventario/${id}/editar/`;
+                modalEditar.querySelector('[name="codigo_equipo"]').value = button.getAttribute('data-codigo');
+                modalEditar.querySelector('[name="nombre_equipo"]').value = button.getAttribute('data-nombre');
+                modalEditar.querySelector('[name="tipo_equipo"]').value = button.getAttribute('data-tipo');
+                modalEditar.querySelector('[name="marca"]').value = button.getAttribute('data-marca');
+                modalEditar.querySelector('[name="modelo"]').value = button.getAttribute('data-modelo');
+                modalEditar.querySelector('[name="numero_serie"]').value = button.getAttribute('data-serie');
+                modalEditar.querySelector('[name="area"]').value = button.getAttribute('data-area');
+                modalEditar.querySelector('[name="observaciones"]').value = button.getAttribute('data-obs');
+
+                const fotoUrl = button.getAttribute('data-foto');
+                const containerFotoActual = modalEditar.querySelector('#container_foto_actual');
+                const imgFotoActual = modalEditar.querySelector('#img_foto_actual');
+                const previewNuevo = modalEditar.querySelector('#preview_editar');
+
+                if (fotoUrl) {
+                    imgFotoActual.src = fotoUrl;
+                    containerFotoActual.classList.remove('d-none');
+                } else {
+                    containerFotoActual.classList.add('d-none');
+                }
+                previewNuevo.classList.add('d-none');
+            });
+        }
+
+        // Confirmación de eliminación lógica
+        document.querySelectorAll('.js-confirm-delete').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                Swal.fire({
+                    title: '¿Dar de baja equipo?',
+                    text: 'Especifique el motivo de la baja del equipo:',
+                    input: 'textarea',
+                    inputPlaceholder: 'Ej. Equipo obsoleto, daño irreparable...',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    confirmButtonText: 'Sí, dar de baja',
+                    cancelButtonText: 'Cancelar',
+                    reverseButtons: true,
+                    inputValidator: (value) => {
+                        if (!value) {
+                            return '¡Debe ingresar un motivo para dar de baja!';
+                        }
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const inputMotivo = document.createElement('input');
+                        inputMotivo.type = 'hidden';
+                        inputMotivo.name = 'motivo';
+                        inputMotivo.value = result.value;
+                        this.appendChild(inputMotivo);
+                        this.submit();
+                    }
+                });
+            });
+        });
+
+        // Auto-abrir modales
+        {% if show_modal_nuevo %}
+        const modalNuevo = new bootstrap.Modal(document.getElementById('modalNuevoEquipo'));
+        modalNuevo.show();
+        {% endif %}
+
+        {% if show_modal_editar %}
+        const modalEdit = new bootstrap.Modal(document.getElementById('modalEditarEquipo'));
+        modalEdit._element.querySelector('form').action = `/inventario/{{ equipo_id_error }}/editar/`;
+        modalEdit.show();
+        {% endif %}
+    });
+</script>
+{% endblock %}

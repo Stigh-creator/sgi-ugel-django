@@ -1,0 +1,68 @@
+{% extends "tickets/base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/tickets/dashboards.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Panel de Administración</h1>
+            <p class="text-muted mb-0">Gestiona accesos, usuarios y el monitoreo general del sistema.</p>
+        </div>
+        <a href="{% url 'usuarios' %}" class="btn btn-primary rounded-pill px-4">Gestionar Usuarios</a>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-muted text-uppercase small mb-2">Rol actual</p>
+                            <h2 class="h4 mb-0">{{ user.get_role_display }}</h2>
+                        </div>
+                        <div class="icon-shape bg-gradient-primary text-white shadow">
+                            <i class="bi bi-shield-lock fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-muted text-uppercase small mb-2">Área</p>
+                            <h2 class="h4 mb-0">{{ user.area.name|default:"Sin área asignada" }}</h2>
+                        </div>
+                        <div class="icon-shape bg-gradient-success text-white shadow">
+                            <i class="bi bi-briefcase fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-muted text-uppercase small mb-2">Estado</p>
+                            <span class="badge-soft {% if user.is_online %}badge-soft-success{% else %}badge-soft-warning{% endif %}">
+                                {% if user.is_online %}En línea{% else %}Sin actividad reciente{% endif %}
+                            </span>
+                        </div>
+                        <div class="icon-shape bg-gradient-warning text-white shadow">
+                            <i class="bi bi-activity fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

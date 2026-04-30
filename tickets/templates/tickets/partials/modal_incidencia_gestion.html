@@ -1,0 +1,61 @@
+<div class="modal-header app-modal-header">
+    <div>
+        <p class="app-modal-eyebrow mb-1">Gestión administrativa</p>
+        <h5 class="modal-title fw-bold mb-0">Configurar Ticket {{ incidencia.codigo }}</h5>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<form hx-post="{% url 'gestionar_incidencia' incidencia.id %}" 
+      hx-target="closest .modal-content" 
+      hx-swap="innerHTML"
+      enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="modal-body p-4 p-lg-5">
+        <div class="modal-form-shell">
+        <div class="row g-4">
+            <div class="col-md-6">
+                <label class="form-label-custom">Especialista Asignado</label>
+                {{ form.tecnico_asignado }}
+                {% if form.tecnico_asignado.errors %}<div class="text-danger tiny-text mt-1">{{ form.tecnico_asignado.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label-custom">Nivel de Prioridad</label>
+                {{ form.prioridad }}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label-custom">Fecha de Atención</label>
+                {{ form.fecha_programada_atencion }}
+                {% if form.fecha_programada_atencion.errors %}<div class="text-danger tiny-text mt-1">{{ form.fecha_programada_atencion.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label-custom">Hora de Atención</label>
+                {{ form.hora_programada_atencion }}
+                {% if form.hora_programada_atencion.errors %}<div class="text-danger tiny-text mt-1">{{ form.hora_programada_atencion.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+                <label class="form-label-custom">Estado Actual</label>
+                <div class="d-flex align-items-center gap-2 pt-1">
+                    <span class="status-badge {{ incidencia.estado_badge_class }}">
+                        <span class="status-dot-indicator"></span>
+                        {{ incidencia.estado_visual }}
+                    </span>
+                    <span class="text-muted tiny-text">Este estado se actualiza automáticamente.</span>
+                </div>
+            </div>
+            <div class="col-12">
+                <label class="form-label-custom">Observaciones Internas</label>
+                {{ form.observaciones_internas }}
+                <p class="text-muted tiny-text mt-2 mb-0">Estas notas son visibles solo para el circuito técnico.</p>
+            </div>
+        </div>
+        </div>
+    </div>
+    <div class="modal-footer app-modal-footer">
+        <button type="button" class="btn btn-light border rounded-pill px-4 fw-semibold" data-bs-dismiss="modal">
+            Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+            Guardar cambios
+        </button>
+    </div>
+</form>

@@ -1,0 +1,65 @@
+{% extends "tickets/base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/tickets/dashboards.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="mb-4">
+        <h1 class="h3 fw-bold mb-1">Panel Técnico</h1>
+        <p class="text-muted mb-0">Consulta tu estado de trabajo y los accesos habilitados para soporte.</p>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-6 col-xl-4">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-muted text-uppercase small mb-2">Usuario</p>
+                            <h2 class="h5 mb-0">{{ user.get_full_name|default:user.username }}</h2>
+                        </div>
+                        <div class="icon-shape bg-gradient-primary text-white shadow">
+                            <i class="bi bi-person-workspace fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-4">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-muted text-uppercase small mb-2">Área</p>
+                            <h2 class="h5 mb-0">{{ user.area.name|default:"Sin área asignada" }}</h2>
+                        </div>
+                        <div class="icon-shape bg-gradient-success text-white shadow">
+                            <i class="bi bi-hdd-network fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-12 col-xl-4">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-muted text-uppercase small mb-2">Actividad</p>
+                            <span class="badge-soft {% if user.is_online %}badge-soft-success{% else %}badge-soft-warning{% endif %}">
+                                {% if user.is_online %}En línea{% else %}Última actividad: {{ user.last_activity_text }}{% endif %}
+                            </span>
+                        </div>
+                        <div class="icon-shape bg-gradient-warning text-white shadow">
+                            <i class="bi bi-router fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,412 @@
+{% extends 'tickets/base.html' %}
+{% load static %}
+
+{% block title %}Gestión de Usuarios - UGEL Morropón{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/usuarios/usuarios.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <div class="header-icon">
+                <i class="bi bi-people-fill"></i>
+            </div>
+            <div>
+                <h2 class="page-title mb-0">Gestión de Usuarios</h2>
+                <p class="text-muted mb-0">Panel de control de personal y accesos al sistema.</p>
+            </div>
+        </div>
+        <button type="button" class="btn-new btn-hover-scale" data-bs-toggle="modal" data-bs-target="#modalNuevoUsuario">
+            <i class="bi bi-person-plus-fill"></i> Nuevo Usuario
+        </button>
+    </div>
+
+    <div class="toolbar mb-4">
+        <form method="GET" class="d-flex align-items-center flex-wrap gap-3 w-100">
+            <div class="search-wrap flex-grow-1">
+                <i class="bi bi-search ms-3 text-muted"></i>
+                <input type="text" name="q" placeholder="Buscar por nombre, DNI o correo..." value="{{ request.GET.q|default:'' }}">
+            </div>
+
+            <div class="filter-wrap" style="min-width: 220px;">
+                <select name="area" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()" style="height: 45px; border: 1px solid #e2e8f0; padding-left: 1rem; font-size: 0.85rem;">
+                    <option value="">-- Filtrar por Área --</option>
+                    {% for area in areas %}
+                    <option value="{{ area.id }}" {% if request.GET.area == area.id|stringformat:"i" %}selected{% endif %}>{{ area.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="btn-search px-4">Buscar</button>
+
+            {% if request.GET.q or request.GET.area %}
+            <a href="{% url 'usuarios' %}" class="btn-clear-filters">
+                <i class="bi bi-eraser-fill"></i>
+                <span>Limpiar filtros</span>
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <div class="app-card border-0 shadow-sm overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4 py-3 text-muted small fw-bold text-uppercase sortable" data-col="0">
+                            Usuario <i class="sort-icon"></i>
+                        </th>
+                        <th class="py-3 text-muted small fw-bold text-uppercase sortable" data-col="1">
+                            Área <i class="sort-icon"></i>
+                        </th>
+                        <th class="py-3 text-muted small fw-bold text-uppercase sortable" data-col="2">
+                            Rol <i class="sort-icon"></i>
+                        </th>
+                        <th class="py-3 text-muted small fw-bold text-uppercase sortable" data-col="3">
+                            Estado <i class="sort-icon"></i>
+                        </th>
+                        <th class="text-center py-3 text-muted small fw-bold text-uppercase">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="usuarios-list-tbody">
+                    {% for user_obj in users %}
+                    {% include 'tickets/partials/usuario_row.html' with user_obj=user_obj %}
+                    {% empty %}
+                    <tr id="usuarios-empty-row">
+                        <td colspan="5" class="text-center py-5">
+                            <div class="text-muted">
+                                <i class="bi bi-people fs-1 d-block mb-2"></i>
+                                No se encontraron usuarios registrados.
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if page_obj.has_other_pages %}
+        <div class="d-flex justify-content-between align-items-center px-4 py-3 border-top">
+            <small class="text-muted">
+                Mostrando {{ page_obj.start_index }}–{{ page_obj.end_index }} de {{ page_obj.paginator.count }} usuarios
+            </small>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.area %}&area={{ request.GET.area }}{% endif %}">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% for num in page_obj.paginator.page_range %}
+                    <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                        <a class="page-link" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.area %}&area={{ request.GET.area }}{% endif %}">
+                            {{ num }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.area %}&area={{ request.GET.area }}{% endif %}">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% include 'tickets/modals/usuario_nuevo.html' %}
+{% include 'tickets/modals/usuario_editar.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" crossorigin="anonymous"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const tbody = document.getElementById('usuarios-list-tbody');
+    const modalNuevoEl = document.getElementById('modalNuevoUsuario');
+    const modalEditarEl = document.getElementById('modalEditarUsuario');
+    const modalNuevo = modalNuevoEl ? bootstrap.Modal.getOrCreateInstance(modalNuevoEl) : null;
+    const modalEditar = modalEditarEl ? bootstrap.Modal.getOrCreateInstance(modalEditarEl) : null;
+    const formNuevo = document.getElementById('formNuevoUsuario');
+    const formEditar = document.getElementById('formEditarUsuario');
+
+    const showToast = (icon, text) => {
+        if (typeof Swal === 'undefined') return;
+        Swal.fire({
+            icon,
+            title: icon === 'error' ? '¡Atención!' : '¡Listo!',
+            text,
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 4000,
+            timerProgressBar: true
+        });
+    };
+
+    const clearFormState = (form) => {
+        if (!form) return;
+        form.querySelectorAll('.is-invalid').forEach((field) => field.classList.remove('is-invalid'));
+        form.querySelectorAll('.invalid-feedback[data-generated="true"]').forEach((item) => item.remove());
+        const alert = form.querySelector('.js-form-alert');
+        if (alert) {
+            alert.textContent = '';
+            alert.classList.add('d-none');
+        }
+    };
+
+    const resetModalForm = (modalEl, form) => {
+        if (!modalEl || !form) return;
+        modalEl.addEventListener('hidden.bs.modal', () => {
+            form.reset();
+            clearFormState(form);
+            if (form.dataset.baseAction) {
+                form.action = form.dataset.baseAction;
+            }
+        });
+    };
+
+    const showFormAlert = (form, message) => {
+        const alert = form.querySelector('.js-form-alert');
+        if (!alert) return;
+        alert.textContent = message;
+        alert.classList.remove('d-none');
+    };
+
+    const renderFieldErrors = (form, errors) => {
+        Object.entries(errors || {}).forEach(([fieldName, fieldErrors]) => {
+            if (fieldName === '__all__') {
+                showFormAlert(form, fieldErrors.join(' '));
+                return;
+            }
+            const field = form.querySelector(`[name="${fieldName}"]`);
+            if (!field) return;
+            field.classList.add('is-invalid');
+            let feedback = field.parentElement.querySelector('.invalid-feedback[data-generated="true"]');
+            if (!feedback) {
+                feedback = document.createElement('div');
+                feedback.className = 'invalid-feedback';
+                feedback.dataset.generated = 'true';
+                field.parentElement.appendChild(feedback);
+            }
+            feedback.textContent = fieldErrors.join(' ');
+        });
+    };
+
+    const getCsrfToken = (form) => form.querySelector('[name="csrfmiddlewaretoken"]')?.value || '';
+
+    const removeEmptyState = () => {
+        const emptyRow = document.getElementById('usuarios-empty-row');
+        if (emptyRow) emptyRow.remove();
+    };
+
+    const replaceOrInsertRow = (userId, rowHtml, prepend = false) => {
+        if (!tbody || !rowHtml) return;
+        const wrapper = document.createElement('tbody');
+        wrapper.innerHTML = rowHtml.trim();
+        const newRow = wrapper.firstElementChild;
+        const currentRow = document.getElementById(`usuario-row-${userId}`);
+        if (currentRow) {
+            currentRow.replaceWith(newRow);
+            return;
+        }
+        removeEmptyState();
+        if (prepend) {
+            tbody.prepend(newRow);
+        } else {
+            tbody.appendChild(newRow);
+        }
+    };
+
+    const sendAjaxForm = async (form, options = {}) => {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCsrfToken(form)
+            },
+            body: new FormData(form)
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw data;
+        }
+        if (data.row_html) {
+            replaceOrInsertRow(data.user_id, data.row_html, options.prependRow === true);
+        }
+        if (options.modalInstance) {
+            options.modalInstance.hide();
+        }
+        if (options.resetForm) {
+            form.reset();
+        }
+        clearFormState(form);
+        showToast('success', data.message);
+        return data;
+    };
+
+    [formNuevo, formEditar].forEach((form) => {
+        if (!form) return;
+        if (!form.dataset.baseAction) {
+            form.dataset.baseAction = form.action;
+        }
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (form.dataset.submitted === 'true') return;
+            
+            clearFormState(form);
+            form.dataset.submitted = 'true';
+            const submitter = event.submitter || form.querySelector('button[type="submit"]');
+            if (window.setLoadingState) window.setLoadingState(submitter);
+            
+            try {
+                await sendAjaxForm(form, {
+                    modalInstance: form === formNuevo ? modalNuevo : modalEditar,
+                    resetForm: form === formNuevo,
+                    prependRow: form === formNuevo
+                });
+            } catch (data) {
+                showFormAlert(form, data.message || 'No se pudo procesar el formulario.');
+                renderFieldErrors(form, data.errors);
+                showToast('error', data.message || 'Hay errores de validación.');
+            } finally {
+                form.dataset.submitted = 'false';
+                if (window.removeLoadingState) window.removeLoadingState(submitter);
+            }
+        });
+    });
+
+    resetModalForm(modalNuevoEl, formNuevo);
+    resetModalForm(modalEditarEl, formEditar);
+
+    if (modalEditarEl && formEditar) {
+        modalEditarEl.addEventListener('show.bs.modal', (event) => {
+            const button = event.relatedTarget;
+            if (!button) return;
+            clearFormState(formEditar);
+            formEditar.action = `/usuarios/${button.getAttribute('data-id')}/editar/`;
+            formEditar.querySelector('[name="first_name"]').value = button.getAttribute('data-nombre') || '';
+            formEditar.querySelector('[name="last_name"]').value = button.getAttribute('data-apellido') || '';
+            formEditar.querySelector('[name="email"]').value = button.getAttribute('data-email') || '';
+            formEditar.querySelector('[name="telefono"]').value = button.getAttribute('data-telefono') || '';
+            formEditar.querySelector('[name="role"]').value = button.getAttribute('data-role') || '';
+            formEditar.querySelector('[name="area"]').value = button.getAttribute('data-area') || '';
+        });
+    }
+
+    document.addEventListener('submit', function (event) {
+        const form = event.target.closest('.js-toggle-status-form');
+        if (!form) return;
+        event.preventDefault();
+        
+        if (form.dataset.submitted === 'true') return;
+
+        const fullname = form.getAttribute('data-fullname');
+        const isActive = form.getAttribute('data-active') === '1';
+        const willActivate = !isActive;
+        const action = willActivate ? 'activar' : 'suspender';
+
+        Swal.fire({
+            title: `¿${action.charAt(0).toUpperCase() + action.slice(1)} usuario?`,
+            html: `¿Deseas <b>${action}</b> el acceso al sistema para <b>${fullname}</b>?<br><br>` +
+                (willActivate ? '<small class="text-muted">Podrá volver a iniciar sesión.</small>' : '<small class="text-danger">Se cerrará su sesión actual y no podrá ingresar.</small>'),
+            icon: willActivate ? 'info' : 'warning',
+            showCancelButton: true,
+            confirmButtonColor: willActivate ? '#22c55e' : '#dc2626',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: `Sí, ${action}`,
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true
+        }).then(async (result) => {
+            if (!result.isConfirmed) return;
+            
+            form.dataset.submitted = 'true';
+            const submitter = form.querySelector('button[type="submit"]');
+            if (window.setLoadingState) window.setLoadingState(submitter);
+            
+            try {
+                await sendAjaxForm(form);
+            } catch (data) {
+                showToast('error', data.message || 'No se pudo actualizar el estado.');
+            } finally {
+                form.dataset.submitted = 'false';
+                if (window.removeLoadingState) window.removeLoadingState(submitter);
+            }
+        });
+    }, true);
+
+    document.addEventListener('submit', function (event) {
+        const form = event.target.closest('.js-reset-password-form');
+        if (!form) return;
+        event.preventDefault();
+        
+        if (form.dataset.submitted === 'true') return;
+        
+        const username = form.getAttribute('data-username');
+
+        Swal.fire({
+            title: '¿Restablecer clave?',
+            html: `Especifique el motivo para restablecer la clave del usuario <b>${username}</b>:<br><br><small class="text-muted">El usuario será obligado a cambiarla en su primer inicio de sesión.</small>`,
+            input: 'textarea',
+            inputPlaceholder: 'Ej. Olvido de contraseña, solicitud del usuario...',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#0D6EFD',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, restablecer',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true,
+            inputValidator: (value) => {
+                if (!value) {
+                    return '¡Debe ingresar un motivo para el reseteo!';
+                }
+            }
+        }).then(async (result) => {
+            if (!result.isConfirmed) return;
+            
+            form.dataset.submitted = 'true';
+            const submitter = form.querySelector('button[type="submit"]');
+            if (window.setLoadingState) window.setLoadingState(submitter);
+            
+            // Añadir el motivo al formulario
+            const inputMotivo = document.createElement('input');
+            inputMotivo.type = 'hidden';
+            inputMotivo.name = 'motivo';
+            inputMotivo.value = result.value;
+            form.appendChild(inputMotivo);
+            
+            try {
+                await sendAjaxForm(form);
+            } catch (data) {
+                showToast('error', data.message || 'No se pudo restablecer la contraseña.');
+            } finally {
+                form.dataset.submitted = 'false';
+                if (window.removeLoadingState) window.removeLoadingState(submitter);
+            }
+        });
+    }, true);
+
+
+    {% if show_modal_nuevo %}
+    if (modalNuevo) {
+        modalNuevo.show();
+    }
+    {% endif %}
+
+    {% if show_modal_editar %}
+    if (modalEditar) {
+        modalEditar.show();
+    }
+    {% endif %}
+});
+</script>
+{% endblock %}

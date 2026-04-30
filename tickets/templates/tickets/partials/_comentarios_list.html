@@ -1,0 +1,72 @@
+{% for comentario in comentarios %}
+<div class="comentario-item 
+    {% if comentario.usuario.role == 'tecnico' %}tecnico{% endif %}
+    {% if comentario.usuario.role == 'administrador' %}admin{% endif %}
+    {% if comentario.usuario.role == 'usuario' %}usuario{% endif %}
+    {% if comentario.tipo_comentario == 'confirmacion' %}comentario-sistema{% endif %}">
+
+    <div class="comentario-row">
+
+        <div class="comentario-avatar-column">
+            {% if comentario.usuario.foto %}
+                <img src="{{ comentario.usuario.foto.url }}" 
+                     class="comentario-avatar"
+                     alt="{{ comentario.usuario.username }}">
+            {% else %}
+                <div class="comentario-avatar avatar-iniciales">
+                    {{ comentario.usuario.first_name|slice:":1"|upper }}{{ comentario.usuario.last_name|slice:":1"|upper }}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="comentario-bubble">
+
+            <div class="comentario-header">
+                <div class="comentario-meta">
+                    <span class="comentario-autor">
+                        {{ comentario.usuario.get_full_name|default:comentario.usuario.username }}
+                    </span>
+
+                    <span class="comentario-rol">
+                        {{ comentario.usuario.role|title }}
+                    </span>
+                </div>
+
+                <span class="comentario-fecha" title="{{ comentario.fecha_creacion|date:'d/m/Y H:i' }}">
+                    {{ comentario.fecha_creacion|date:"H:i" }}
+                </span>
+            </div>
+
+            <div class="comentario-texto 
+                {% if comentario.tipo_comentario == 'confirmacion' %}comentario-sistema-texto{% endif %}">
+                {{ comentario.texto }}
+            </div>
+
+            {% if comentario.evidencia_adjunta %}
+            <div class="comentario-evidencia">
+                <img src="{{ comentario.evidencia_adjunta.url }}" 
+                     class="comentario-evidencia-img" 
+                     onclick="openLightbox('{{ comentario.evidencia_adjunta.url }}')">
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+{% empty %}
+<div class="text-center text-muted py-5">
+    <i class="bi bi-chat-square-dots fs-2 d-block mb-2 opacity-25"></i>
+    <small>Aún no hay comentarios en esta incidencia.</small>
+</div>
+{% endfor %}
+
+{# Indicador de escritura OOB (Out-of-Band swap) #}
+<div id="typing-indicator" hx-swap-oob="true" class="text-muted small mb-1" style="height: 20px; font-style: italic;">
+    {% if typing_users %}
+        <i class="bi bi-pencil-fill me-1"></i>
+        {% for name in typing_users %}
+            {{ name }}{% if not forloop.last %}, {% endif %}
+        {% endfor %} está escribiendo...
+    {% endif %}
+</div>

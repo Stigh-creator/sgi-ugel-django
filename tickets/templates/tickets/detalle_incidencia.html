@@ -1,0 +1,619 @@
+{% extends 'tickets/base.html' %}
+{% load static %}
+
+{% block title %}Incidencia {{ incidencia.codigo }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/tickets/detalle_incidencia.css' %}">
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet" crossorigin="anonymous">
+{% endblock %}
+
+{% block header_title %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="{% url 'index' %}" class="text-decoration-none text-muted">Tickets</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Detalle</li>
+            </ol>
+        </nav>
+        <h2 class="ticket-header-num mb-3">Ticket {{ incidencia.codigo }}</h2>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <span id="badge-estado" class="status-badge {{ incidencia.estado_badge_class }}">
+                <span class="status-dot-indicator"></span>
+                {{ incidencia.estado_visual }}
+            </span>
+            <span class="priority-pill priority-{{ incidencia.prioridad|lower }}">{{ incidencia.get_prioridad_display }}</span>
+            <span class="header-support-text">{{ incidencia.get_categoria_display|default:"Soporte TI" }}</span>
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% if request.user.role == 'administrador' %}{% url 'dashboard_admin' %}{% else %}{% url 'incidencias_list' %}{% endif %}" class="btn btn-light border rounded-pill px-4 fw-bold">
+            <i class="fas fa-arrow-left me-2"></i>
+            Volver
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="detalle-wrapper" class="ticket-detail-layout">
+    {% if incidencia.estado_visual == 'Reabierto' and incidencia.solucion_aplicada and incidencia.creador != request.user %}
+    <div class="alert alert-reabierto mb-4 d-flex align-items-center p-4 rounded-4">
+        <i class="bi bi-exclamation-triangle-fill fs-3 me-3 text-warning"></i>
+        <div>
+            <h5 class="fw-bold mb-1">Incidencia Reabierta</h5>
+            <p class="mb-0">El solicitante no ha quedado conforme. Revisa el seguimiento y actualiza la resolución.</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-5">
+        <div class="col-lg-8 col-xl-9">
+            <section class="detail-section">
+                <div class="detail-header-line">
+                    <div>
+                        <p class="info-label mb-2">Descripción de la incidencia</p>
+                        <h3 class="detail-title">{{ incidencia.descripcion }}</h3>
+                    </div>
+                </div>
+
+                <div class="detail-meta-grid">
+                    <div class="detail-meta-item">
+                        <span class="info-label">Categoría</span>
+                        <span class="info-value">{{ incidencia.get_categoria_display|default:"Soporte TI" }}</span>
+                    </div>
+                    <div class="detail-meta-item">
+                        <span class="info-label">Prioridad</span>
+                        <span class="priority-pill priority-{{ incidencia.prioridad|lower }}">{{ incidencia.get_prioridad_display }}</span>
+                    </div>
+                    <div class="detail-meta-item">
+                        <span class="info-label">Área</span>
+                        <span class="info-value">{{ incidencia.area.name|default:"Sede Central" }}</span>
+                    </div>
+                    <div class="detail-meta-item detail-meta-item-wide">
+                        <span class="info-label">Equipo afectado</span>
+                        {% if incidencia.equipo %}
+                        <span class="info-value">{{ incidencia.equipo.codigo_equipo }} · {{ incidencia.equipo.nombre_equipo }}</span>
+                        <small class="info-helper">{{ incidencia.equipo.marca }} {{ incidencia.equipo.modelo }}{% if incidencia.equipo.numero_serie %} · Serie {{ incidencia.equipo.numero_serie }}{% endif %}</small>
+                        {% elif incidencia.otro_tipo or incidencia.otro_marca or incidencia.otro_modelo %}
+                        <span class="info-value">
+                            {{ incidencia.otro_tipo|default:"Equipo no listado" }}
+                            {% if incidencia.otro_marca %}· {{ incidencia.otro_marca }}{% endif %}
+                            {% if incidencia.otro_modelo %}· {{ incidencia.otro_modelo }}{% endif %}
+                        </span>
+                        {% if incidencia.otro_serie %}
+                        <small class="info-helper">Serie referencial: {{ incidencia.otro_serie }}</small>
+                        {% endif %}
+                        {% else %}
+                        <span class="info-value text-muted">Sin equipo asociado</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if incidencia.tecnico_asignado and request.user.role != 'trabajador' %}
+                <div class="detail-subsection">
+                    <div class="detail-subsection-head">
+                        <h5 class="fw-bold mb-0">Asignación y programación</h5>
+                    </div>
+                    <div class="detail-meta-grid compact">
+                        <div class="detail-meta-item">
+                            <span class="info-label">Fecha programada</span>
+                            <span class="info-value">{{ incidencia.fecha_programada_atencion|date:"d/m/Y"|default:"Pendiente" }}</span>
+                        </div>
+                        <div class="detail-meta-item">
+                            <span class="info-label">Hora estimada</span>
+                            <span class="info-value">{{ incidencia.hora_programada_atencion|time:"H:i"|default:"Pendiente" }}</span>
+                        </div>
+                    </div>
+                    {% if incidencia.observaciones_internas %}
+                    <div class="detail-note">
+                        <span class="info-label">Nota interna</span>
+                        <p class="mb-0">{{ incidencia.observaciones_internas }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <div class="detail-subsection">
+                    <div class="detail-subsection-head">
+                        <h5 class="fw-bold mb-0">Galería de evidencias</h5>
+                        <p class="text-muted small mb-0">Haz clic en una miniatura para ampliarla.</p>
+                    </div>
+                    {% if incidencia.imagen_adjunta or incidencia.imagenes.all or incidencia.evidencia_solucion %}
+                    <div class="evidencia-viewer">
+                        <div class="evidencia-main-frame" onclick="openLightbox(document.getElementById('mainEvidenceImage').src)">
+                            {% if incidencia.imagen_adjunta %}
+                            <img id="mainEvidenceImage" src="{{ incidencia.imagen_adjunta.url }}" class="evidencia-main-image" alt="Vista principal de evidencia">
+                            {% elif incidencia.imagenes.all %}
+                            {% for img_obj in incidencia.imagenes.all %}
+                            {% if forloop.first %}
+                            <img id="mainEvidenceImage" src="{{ img_obj.imagen.url }}" class="evidencia-main-image" alt="Vista principal de evidencia">
+                            {% endif %}
+                            {% endfor %}
+                            {% elif incidencia.evidencia_solucion %}
+                            <img id="mainEvidenceImage" src="{{ incidencia.evidencia_solucion.url }}" class="evidencia-main-image" alt="Vista principal de evidencia">
+                            {% endif %}
+                        </div>
+                        <div class="evidencia-grid">
+                            {% if incidencia.imagen_adjunta %}
+                            <button type="button" class="evidencia-thumb active" onclick="changeEvidence('{{ incidencia.imagen_adjunta.url }}', this)">
+                                <img src="{{ incidencia.imagen_adjunta.url }}" class="evidencia-item" alt="Evidencia principal">
+                                <span class="evidencia-caption">Principal</span>
+                            </button>
+                            {% endif %}
+                            {% for img_obj in incidencia.imagenes.all %}
+                            <button type="button" class="evidencia-thumb" onclick="changeEvidence('{{ img_obj.imagen.url }}', this)">
+                                <img src="{{ img_obj.imagen.url }}" class="evidencia-item" alt="Evidencia adicional">
+                                <span class="evidencia-caption">Adjunta {{ forloop.counter }}</span>
+                            </button>
+                            {% endfor %}
+                            {% if incidencia.evidencia_solucion %}
+                            <button type="button" class="evidencia-thumb evidencia-thumb-success" onclick="changeEvidence('{{ incidencia.evidencia_solucion.url }}', this)">
+                                <img src="{{ incidencia.evidencia_solucion.url }}" class="evidencia-item" alt="Evidencia de solución">
+                                <span class="evidencia-caption">Solución 1</span>
+                            </button>
+                            {% endif %}
+                            {% if incidencia.evidencia_solucion_2 %}
+                            <button type="button" class="evidencia-thumb evidencia-thumb-success" onclick="changeEvidence('{{ incidencia.evidencia_solucion_2.url }}', this)">
+                                <img src="{{ incidencia.evidencia_solucion_2.url }}" class="evidencia-item" alt="Evidencia de solución 2">
+                                <span class="evidencia-caption">Solución 2</span>
+                            </button>
+                            {% endif %}
+                            {% if incidencia.evidencia_solucion_3 %}
+                            <button type="button" class="evidencia-thumb evidencia-thumb-success" onclick="changeEvidence('{{ incidencia.evidencia_solucion_3.url }}', this)">
+                                <img src="{{ incidencia.evidencia_solucion_3.url }}" class="evidencia-item" alt="Evidencia de solución 3">
+                                <span class="evidencia-caption">Solución 3</span>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="evidencia-grid">
+                        <div class="empty-evidence">
+                            <i class="fas fa-image"></i>
+                            <span>Sin evidencias visuales registradas.</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if incidencia.estado_visual == 'Resuelto' or incidencia.estado_visual == 'Cerrado' %}
+                <div class="detail-subsection detail-subsection-success">
+                    <div class="detail-subsection-head">
+                        <h5 class="fw-bold mb-0">Resumen de solución</h5>
+                        <span class="solution-badge"><i class="bi bi-check-circle-fill"></i> Solución registrada</span>
+                    </div>
+                    <p class="solution-copy mb-0">{{ incidencia.solucion_aplicada }}</p>
+                    {% if incidencia.creador == request.user and incidencia.estado_visual == 'Resuelto' %}
+                    <div class="solicitante-actions">
+                        <p class="small text-muted mb-3 fw-bold text-uppercase">¿Se solucionó su problema?</p>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button class="btn btn-success px-4 rounded-pill" onclick="confirmarCierre('{{ incidencia.id }}')">
+                                <i class="bi bi-check-lg me-1"></i> Sí, cerrar ticket
+                            </button>
+                            <button type="button" class="btn btn-outline-danger px-4 rounded-pill" data-bs-toggle="modal" data-bs-target="#reabrirIncidenciaModal">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i> No, reabrir
+                            </button>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if incidencia.tecnico_asignado == request.user and incidencia.estado_visual != 'Cerrado' and incidencia.estado_visual != 'Resuelto' %}
+                <div class="detail-subsection">
+                    <div class="detail-subsection-head">
+                        <h5 class="fw-bold mb-0">{% if incidencia.solucion_aplicada %}Actualizar resolución{% else %}Completar atención{% endif %}</h5>
+                    </div>
+                    <form method="post" action="{% url 'resolver_incidencia' incidencia.id %}" enctype="multipart/form-data" class="resolution-form">
+                        {% csrf_token %}
+                        <div class="mb-4">
+                            <label for="solucion_aplicada" class="form-label-custom">Detalle de la solución</label>
+                            <textarea id="solucion_aplicada" name="solucion_aplicada" class="form-control resolution-textarea" rows="4" placeholder="Describe detalladamente las acciones realizadas..." required minlength="20">{{ incidencia.solucion_aplicada|default:'' }}</textarea>
+                            <div class="mt-2 text-end">
+                                <small id="char-counter" class="text-muted">0 / 20 caracteres mínimos</small>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label-custom">Fotos de evidencia (Mínimo 1, Máximo 3)</label>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="evidence-input-wrapper">
+                                        <input type="file" name="evidencia_solucion" id="evidencia_solucion" class="form-control" accept="image/*" capture="camera" required>
+                                        <small class="text-muted d-block mt-1"><i class="bi bi-info-circle me-1"></i>Obligatoria</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="evidence-input-wrapper">
+                                        <input type="file" name="evidencia_solucion_2" id="evidencia_solucion_2" class="form-control" accept="image/*" capture="camera">
+                                        <small class="text-muted d-block mt-1">Opcional 1</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="evidence-input-wrapper">
+                                        <input type="file" name="evidencia_solucion_3" id="evidencia_solucion_3" class="form-control" accept="image/*" capture="camera">
+                                        <small class="text-muted d-block mt-1">Opcional 2</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12">
+                                <button type="submit" class="btn resolution-submit-btn w-100 fw-bold rounded-pill py-3">
+                                    <i class="bi bi-check-circle-fill me-2"></i> Marcar como resuelto
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                {% endif %}
+            </section>
+
+            <section class="detail-section mt-5">
+                <div class="detail-subsection-head">
+                    <h5 class="fw-bold mb-0">Seguimiento y comentarios</h5>
+                    <span id="comentario-count" class="comments-count-badge">{{ comentarios.count }}</span>
+                </div>
+                <div class="comments-shell">
+                    <div id="comentarios-scroll-area" class="comments-panel">
+                        <div id="comentarios-lista-inner" hx-get="{{ request.path }}" hx-trigger="every 5s" hx-swap="innerHTML">
+                        {% include 'tickets/partials/_comentarios_list.html' %}
+                        </div>
+                    </div>
+
+                    <div class="comments-composer">
+                        <div id="typing-indicator" class="text-muted small mb-2" style="height: 20px; font-style: italic;"></div>
+                        {% if incidencia.estado.name != 'Cerrado' %}
+                            {% if incidencia.tecnico_asignado %}
+                                <form id="comment-form" hx-post="{% url 'agregar_comentario' incidencia.id %}" hx-target="#comentarios-lista-inner" hx-encoding="multipart/form-data" hx-on::after-request="if(event.detail.successful && event.detail.elt === this) { this.reset(); document.getElementById('preview-container').innerHTML = ''; scrollChat(); }">
+                                    {% csrf_token %}
+                                    <div id="preview-container" class="d-flex flex-wrap gap-2 mb-2"></div>
+                                    <div class="composer-row">
+                                        <textarea id="texto_comentario" name="texto" class="form-control composer-textarea" placeholder="Escribe un mensaje..." rows="1" style="resize: none;" required hx-post="{% url 'marcar_escribiendo' incidencia.id %}" hx-trigger="keyup changed delay:500ms" hx-swap="none"></textarea>
+                                        <label for="id_evidencia_adjunta" class="composer-icon-btn" title="Adjuntar imagen">
+                                            <i class="bi bi-camera-fill"></i>
+                                            <input type="file" name="evidencia_adjunta" id="id_evidencia_adjunta" accept="image/*" capture="camera" class="d-none" onchange="previewImage(this)">
+                                        </label>
+                                        <button type="submit" class="composer-send-btn">
+                                            <i class="bi bi-send-fill"></i>
+                                        </button>
+                                    </div>
+                                </form>
+                            {% else %}
+                                <div class="alert alert-info border-0 rounded-3 m-0 py-2">
+                                    <i class="bi bi-info-circle-fill me-2"></i> El seguimiento se habilitará cuando se asigne un técnico.
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="chat-bloqueado p-3 text-center">
+                                <i class="bi bi-lock-fill me-2"></i> Esta incidencia está <strong>Cerrada</strong>. El chat no admite más comentarios.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-lg-4 col-xl-3">
+            <aside class="detail-aside">
+                {% if user.role == 'administrador' and incidencia.estado_visual != 'Resuelto' and incidencia.estado_visual != 'Cerrado' %}
+                <div class="aside-group">
+                    <div class="aside-title-row">
+                        <h6 class="mb-0 fw-bold">Gestión</h6>
+                    </div>
+                    <p class="small text-muted mb-3">Ajusta prioridad, asignación y programación desde un solo panel.</p>
+                    <button type="button" class="btn btn-primary w-100 rounded-pill fw-bold" data-bs-toggle="modal" data-bs-target="#ticketAdminModal" hx-get="{% url 'gestionar_incidencia' incidencia.id %}" hx-target="#ticketAdminModalContent">
+                        Configurar ticket
+                    </button>
+                </div>
+                {% elif user.role == 'administrador' %}
+                <div class="aside-group aside-group-locked">
+                    <div class="aside-title-row">
+                        <h6 class="mb-0 fw-bold">Gestión</h6>
+                    </div>
+                    <p class="small text-muted mb-3">
+                        {% if incidencia.estado_visual == 'Resuelto' %}
+                        Esta incidencia ya fue resuelta. Ahora queda esperando la confirmación del creador o una reapertura si el problema persiste.
+                        {% else %}
+                        Esta incidencia ya fue cerrada y no admite cambios de técnico ni reprogramación.
+                        {% endif %}
+                    </p>
+                    <button type="button" class="btn btn-light w-100 rounded-pill fw-bold" disabled>
+                        <i class="bi bi-lock-fill me-2"></i> Configuración bloqueada
+                    </button>
+                </div>
+                {% endif %}
+
+                <div class="aside-group">
+                    <div class="aside-title-row">
+                        <h6 class="mb-0 fw-bold">Ficha de incidencia</h6>
+                    </div>
+                    <dl class="aside-list">
+                        <div>
+                            <dt>Fecha de creación</dt>
+                            <dd>{{ incidencia.fecha_creacion|date:"d/m/Y H:i" }}</dd>
+                        </div>
+                        <div>
+                            <dt>Fecha de asignación</dt>
+                            <dd>{{ incidencia.fecha_asignacion|date:"d/m/Y H:i"|default:"Pendiente" }}</dd>
+                        </div>
+                        <div>
+                            <dt>Programado</dt>
+                            <dd>
+                                {% if incidencia.fecha_programada_atencion %}
+                                    {{ incidencia.fecha_programada_atencion|date:"d/m/Y" }}{% if incidencia.hora_programada_atencion %} {{ incidencia.hora_programada_atencion|time:"H:i" }}{% endif %}
+                                {% else %}
+                                    Pendiente
+                                {% endif %}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>Estado</dt>
+                            <dd>{{ incidencia.estado_visual }}</dd>
+                        </div>
+                        <div>
+                            <dt>Área</dt>
+                            <dd>{{ incidencia.area.name|default:"Sin área" }}</dd>
+                        </div>
+                        <div>
+                            <dt>Prioridad</dt>
+                            <dd>{{ incidencia.get_prioridad_display }}</dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <div class="aside-group">
+                    <div class="aside-title-row">
+                        <h6 class="mb-0 fw-bold">Personas involucradas</h6>
+                    </div>
+                    <div class="person-line">
+                        <div class="person-avatar-wrap">
+                            {% if incidencia.creador.foto %}
+                            <img src="{{ incidencia.creador.foto.url }}" class="person-avatar" alt="Solicitante">
+                            {% else %}
+                            <div class="person-avatar-initials">{{ incidencia.creador.username|slice:":1"|upper }}</div>
+                            {% endif %}
+                            <span class="person-status {% if incidencia.creador.is_online %}is-online{% endif %}"></span>
+                        </div>
+                        <div class="person-copy">
+                            <span class="person-role">Solicitante</span>
+                            <strong>{{ incidencia.creador.get_full_name|default:incidencia.creador.username }}</strong>
+                            <small>{{ incidencia.creador.role_short_label }}</small>
+                            <small class="d-block text-muted"><i class="bi bi-telephone me-1"></i>{{ incidencia.creador.telefono|default:"none" }}</small>
+                        </div>
+                    </div>
+                    <div class="person-line">
+                        <div class="person-avatar-wrap">
+                            {% if incidencia.tecnico_asignado and incidencia.tecnico_asignado.foto %}
+                            <img src="{{ incidencia.tecnico_asignado.foto.url }}" class="person-avatar" alt="Especialista">
+                            {% elif incidencia.tecnico_asignado %}
+                            <div class="person-avatar-initials">{{ incidencia.tecnico_asignado.username|slice:":1"|upper }}</div>
+                            {% else %}
+                            <div class="person-avatar-initials"><i class="bi bi-person"></i></div>
+                            {% endif %}
+                            {% if incidencia.tecnico_asignado %}
+                            <span class="person-status {% if incidencia.tecnico_asignado.is_online %}is-online{% endif %}"></span>
+                            {% endif %}
+                        </div>
+                        <div class="person-copy">
+                            <span class="person-role">Especialista TI</span>
+                            <strong>{{ incidencia.tecnico_asignado.get_full_name|default:"Sin asignar" }}</strong>
+                            <small>{% if incidencia.tecnico_asignado %}{{ incidencia.tecnico_asignado.role_short_label }}{% else %}Pendiente de asignación{% endif %}</small>
+                            {% if incidencia.tecnico_asignado %}
+                            <small class="d-block text-muted"><i class="bi bi-telephone me-1"></i>{{ incidencia.tecnico_asignado.telefono|default:"none" }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="ticketAdminModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered app-modal-wide">
+        <div class="modal-content" id="ticketAdminModalContent">
+            <div class="modal-body text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if incidencia.creador == request.user and incidencia.estado_visual == 'Resuelto' %}
+<div class="modal fade" id="reabrirIncidenciaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <form method="post" action="{% url 'reabrir_incidencia' incidencia.id %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0">
+                    <div>
+                        <h5 class="modal-title fw-bold">Reabrir incidencia</h5>
+                        <p class="text-muted mb-0 small">Indica qué sigue fallando antes de devolver el ticket a atención.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body pt-3">
+                    <div class="mb-3">
+                        <label for="id_reabrir_motivo" class="form-label-custom">Motivo de reapertura</label>
+                        <textarea id="id_reabrir_motivo" name="motivo" class="form-control resolution-textarea" rows="4" required minlength="10" placeholder="Describe por qué la solución no resolvió el problema..."></textarea>
+                        <small class="text-muted d-block mt-2">Este campo es obligatorio.</small>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label-custom" for="id_reabrir_imagen_1">Foto 1 (opcional)</label>
+                            <input type="file" name="imagen_1" id="id_reabrir_imagen_1" class="form-control" accept="image/*" capture="camera">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label-custom" for="id_reabrir_imagen_2">Foto 2 (opcional)</label>
+                            <input type="file" name="imagen_2" id="id_reabrir_imagen_2" class="form-control" accept="image/*" capture="camera">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label-custom" for="id_reabrir_imagen_3">Foto 3 (opcional)</label>
+                            <input type="file" name="imagen_3" id="id_reabrir_imagen_3" class="form-control" accept="image/*" capture="camera">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-outline-danger rounded-pill px-4 fw-bold">
+                        <i class="bi bi-arrow-counterclockwise me-2"></i> Confirmar reapertura
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js" crossorigin="anonymous"></script>
+<script>
+    function confirmarCierre(id) {
+        Swal.fire({
+            title: '¿Confirmar solución?',
+            text: "Al cerrar el ticket, confirmas que el problema ha sido resuelto satisfactoriamente.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#198754',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, cerrar ticket',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                htmx.ajax('POST', `/incidencias/${id}/cerrar/`, {
+                    headers: {'X-CSRFToken': '{{ csrf_token }}'},
+                    swap: 'none'
+                }).then(() => {
+                    window.location.reload();
+                });
+            }
+        })
+    }
+
+    const scrollChat = () => {
+        const area = document.getElementById('comentarios-scroll-area');
+        if (area) area.scrollTop = area.scrollHeight;
+    }
+
+    document.body.addEventListener('htmx:afterOnLoad', function(evt) {
+        if (evt.detail.target.id === "comentarios-lista-inner") {
+            scrollChat();
+        }
+    });
+
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target.id === "comentarios-lista-inner") {
+            scrollChat();
+        }
+    });
+
+    window.onload = () => {
+        scrollChat();
+        updateCharCounter();
+    };
+
+    const textareaSolucion = document.getElementById('solucion_aplicada');
+    const charCounter = document.getElementById('char-counter');
+
+    function updateCharCounter() {
+        if (!textareaSolucion || !charCounter) return;
+        const len = textareaSolucion.value.length;
+        charCounter.textContent = `${len} / 20 caracteres mínimos`;
+        charCounter.className = len >= 20 ? 'text-success fw-bold' : 'text-danger';
+    }
+
+    if (textareaSolucion) {
+        textareaSolucion.addEventListener('input', updateCharCounter);
+    }
+
+    const commentTextarea = document.getElementById('texto_comentario');
+    if (commentTextarea) {
+        commentTextarea.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const form = document.getElementById('comment-form');
+                if (form.checkValidity()) {
+                    htmx.trigger(form, 'submit');
+                }
+            }
+        });
+    }
+
+    function previewImage(input) {
+        const container = document.getElementById('preview-container');
+        container.innerHTML = '';
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'position-relative';
+                wrapper.innerHTML = `
+                    <img src="${e.target.result}" class="rounded-3 border" style="width: 60px; height: 60px; object-fit: cover;">
+                    <button type="button" class="btn btn-danger btn-sm rounded-circle position-absolute" 
+                            style="top: -5px; right: -5px; width: 20px; height: 20px; padding: 0; font-size: 10px;"
+                            onclick="clearImage()">
+                        <i class="bi bi-x"></i>
+                    </button>
+                `;
+                container.appendChild(wrapper);
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function clearImage() {
+        const input = document.getElementById('id_evidencia_adjunta');
+        input.value = '';
+        document.getElementById('preview-container').innerHTML = '';
+    }
+
+    function changeEvidence(url, thumbEl) {
+        const mainImage = document.getElementById('mainEvidenceImage');
+        if (mainImage) {
+            mainImage.src = url;
+        }
+        document.querySelectorAll('.evidencia-thumb').forEach((item) => item.classList.remove('active'));
+        if (thumbEl) {
+            thumbEl.classList.add('active');
+        }
+    }
+
+    function openLightbox(url, thumbEl) {
+        if (thumbEl) {
+            document.querySelectorAll('.evidencia-thumb').forEach((item) => item.classList.remove('active'));
+            thumbEl.classList.add('active');
+        }
+        const lightbox = document.createElement('div');
+        lightbox.className = 'lightbox';
+        lightbox.innerHTML = `
+            <span class="lightbox-close">&times;</span>
+            <img src="${url}" class="lightbox-content">
+        `;
+        document.body.appendChild(lightbox);
+        document.body.style.overflow = 'hidden';
+        lightbox.onclick = (e) => {
+            if (e.target.classList.contains('lightbox') || e.target.classList.contains('lightbox-close')) {
+                document.body.removeChild(lightbox);
+                document.body.style.overflow = 'auto';
+            }
+        };
+    }
+
+    document.body.addEventListener('htmx:afterOnLoad', function(evt) {
+        if (evt.detail.target.id === 'ticketAdminModalContent') {
+            const tecnicoSelect = evt.detail.target.querySelector('#id_tecnico_asignado');
+            if (window.TomSelect && tecnicoSelect && !tecnicoSelect.tomselect) {
+                new TomSelect(tecnicoSelect, {
+                    create: false,
+                    sortField: { field: 'text', direction: 'asc' }
+                });
+            }
+        }
+    });
+</script>
+{% endblock %}

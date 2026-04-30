@@ -1,0 +1,371 @@
+{% extends 'tickets/base.html' %}
+{% load static %}
+
+{% block title %}Gestión de Incidencias - UGEL Morropón{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/tickets/incidencias_refactor.css' %}">
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet" crossorigin="anonymous">
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="container-fluid">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div class="d-flex align-items-center gap-4">
+            <div>
+                <h1 class="h3 mb-1 fw-bold text-dark">Centro de Incidencias</h1>
+                <p class="text-muted small mb-0">Listado unificado de reportes y soporte técnico.</p>
+            </div>
+
+            <div class="ticket-tab-switcher">
+                {% if user.role != 'usuario' %}
+                <button type="button" class="ticket-tab-btn {% if request.GET.tab == 'asignadas' or active_tab == 'asignadas' %}is-active{% endif %}" data-tab-value="asignadas">
+                    <i class="fas fa-tasks me-2"></i> {% if user.role == 'administrador' %}Todas{% else %}Asignaciones{% endif %}
+                </button>
+                {% endif %}
+                <button type="button" class="ticket-tab-btn {% if request.GET.tab == 'reportadas' or active_tab == 'reportadas' %}is-active{% endif %}" data-tab-value="reportadas">
+                    <i class="fas fa-bullhorn me-2"></i> Reportadas
+                </button>
+            </div>
+        </div>
+
+        <button
+            type="button"
+            class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center gap-2"
+            data-bs-toggle="modal"
+            data-bs-target="#genericModal"
+            hx-get="{% url 'crear_incidencia_modal' %}"
+            hx-target="#modalContent">
+            <i class="fas fa-plus-circle"></i>
+            <span>Nueva Incidencia</span>
+        </button>
+    </div>
+
+    <!-- Toolbar Premium -->
+    <div class="toolbar-premium">
+        <form id="filterForm" class="d-flex align-items-center gap-3 w-100"
+            hx-get="{% url 'incidencias_list' %}"
+            hx-target="#incidenciasTableContainer"
+            hx-trigger="change, keyup delay:300ms from:input[name='q']">
+            <input type="hidden" name="tab" id="currentTabInput" value="{{ active_tab }}">
+
+            <div class="search-wrap-modern flex-grow-1" style="max-width: 400px;">
+                <i class="bi bi-search me-2 text-muted"></i>
+                <input type="text" name="q" placeholder="Buscar por código, creador o descripción..." value="{{ query }}">
+            </div>
+
+            <select name="area" class="form-select" style="max-width: 220px;">
+                <option value="">Todas las áreas</option>
+                {% for area in areas %}
+                <option value="{{ area.id }}" {% if area_selected == area.id|stringformat:"s" %}selected{% endif %}>{{ area.name }}</option>
+                {% endfor %}
+            </select>
+
+            <div class="filter-select-wrap" id="prioridadFilterWrap" style="min-width: 180px;">
+                <i class="bi bi-flag"></i>
+                <span class="filter-state-dot is-hidden" id="prioridadFilterDot" aria-hidden="true"></span>
+                <input type="hidden" name="prioridad" id="prioridadFilter" value="{{ prioridad_selected|default:'' }}">
+                <button type="button" class="filter-select-button" id="prioridadFilterButton" aria-haspopup="listbox" aria-expanded="false">
+                    <span id="prioridadFilterLabel">Prioridad</span>
+                </button>
+                <div class="filter-select-menu" id="prioridadFilterMenu" role="listbox" aria-label="Filtrar por prioridad">
+                    <button type="button" class="filter-select-option" data-value="" data-label="Prioridad" data-state-name="">
+                        <span class="filter-option-dot is-hidden"></span>
+                        <span>Prioridad</span>
+                    </button>
+                    {% for value, label in prioridades %}
+                    <button
+                        type="button"
+                        class="filter-select-option"
+                        data-value="{{ value }}"
+                        data-label="{{ label }}"
+                        data-state-name="{{ value|lower }}"
+                    >
+                        <span class="filter-option-dot state-{{ value|lower }}"></span>
+                        <span>{{ label }}</span>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="filter-select-wrap" id="estadoFilterWrap">
+                <i class="bi bi-sliders2"></i>
+                <span class="filter-state-dot is-hidden" id="estadoFilterDot" aria-hidden="true"></span>
+                <input type="hidden" name="estado" id="estadoFilter" value="{{ estado_selected|default:'' }}">
+                <button type="button" class="filter-select-button" id="estadoFilterButton" aria-haspopup="listbox" aria-expanded="false">
+                    <span id="estadoFilterLabel">Todos los estados</span>
+                </button>
+                <div class="filter-select-menu" id="estadoFilterMenu" role="listbox" aria-label="Filtrar por estado">
+                    <button type="button" class="filter-select-option" data-value="" data-label="Todos los estados" data-state-name="">
+                        <span class="filter-option-dot is-hidden"></span>
+                        <span>Todos los estados</span>
+                    </button>
+                    {% for e in estados %}
+                    <button
+                        type="button"
+                        class="filter-select-option"
+                        data-value="{{ e.id }}"
+                        data-label="{{ e.name }}"
+                        data-state-name="{{ e.name|lower }}"
+                    >
+                        <span class="filter-option-dot state-{{ e.name|lower|slugify }}"></span>
+                        <span>{{ e.name }}</span>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <button
+                type="button"
+                class="filter-dropdown-btn {% if query or estado_selected or area_selected or prioridad_selected or active_tab == 'reportadas' %}active{% endif %}"
+                onclick="clearFilters()"
+                title="Limpiar filtros">
+                <i class="bi bi-arrow-counterclockwise"></i>
+                Limpiar filtros
+            </button>
+        </form>
+    </div>
+
+    <!-- Contenedor de la Tabla -->
+    <div id="incidenciasTableContainer" class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        {% include 'tickets/partials/incidencias_table.html' %}
+    </div>
+</div>
+
+<!-- Modal Genérico para Incidencias -->
+<div class="modal fade" id="genericModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered app-modal-wide">
+        <div class="modal-content border-0 shadow-lg rounded-4" id="modalContent">
+            <div class="modal-body text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js" crossorigin="anonymous"></script>
+<script>
+    function toggleEquipoSection(select) {
+        const section = document.getElementById('sectionEquipo');
+        if (!section) return;
+        if (select.value === 'hardware') {
+            section.style.display = 'block';
+            section.classList.add('animate__animated', 'animate__fadeIn');
+        } else {
+            section.style.display = 'none';
+        }
+    }
+
+    function toggleEquipoOtro(select) {
+        const section = document.getElementById('sectionOtroEquipo');
+        if (!section) return;
+        if (select.value === 'otro') {
+            section.style.display = 'block';
+            section.classList.add('animate__animated', 'animate__fadeIn');
+        } else {
+            section.style.display = 'none';
+        }
+    }
+
+    // Manejo de errores de imagen y refresh
+    document.body.addEventListener('htmx:beforeOnLoad', function (evt) {
+        if (evt.detail.xhr.status === 400) {
+            evt.detail.shouldSwap = true;
+            evt.detail.isError = false;
+        }
+    });
+
+    // Limpiar modal al cerrar para evitar flashes de contenido viejo
+    const genericModal = document.getElementById('genericModal');
+    if (genericModal) {
+        genericModal.addEventListener('hidden.bs.modal', function () {
+            document.getElementById('modalContent').innerHTML = `
+                <div class="modal-body text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                </div>`;
+        });
+    }
+
+    // Re-inicializar TomSelect y experiencia del modal cuando HTMX ya insertó el contenido
+    document.body.addEventListener('htmx:afterSwap', function (evt) {
+        if (evt.detail.target.id === 'incidenciasTableContainer') {
+            syncEstadoLabel();
+        }
+        if (evt.detail.target.id === 'modalContent') {
+            const selects = evt.detail.target.querySelectorAll('.live-search');
+            selects.forEach(el => {
+                if (window.TomSelect && !el.tomselect) {
+                    new TomSelect(el, {
+                        create: false,
+                        sortField: { field: "text", direction: "asc" }
+                    });
+                }
+            });
+            if (window.initIncidenciaExperience) {
+                window.initIncidenciaExperience(evt.detail.target);
+            }
+        }
+    });
+
+    function syncTicketTabs(nextValue) {
+        const currentTabInput = document.getElementById('currentTabInput');
+        const activeValue = nextValue || currentTabInput?.value || 'asignadas';
+
+        if (currentTabInput) {
+            currentTabInput.value = activeValue;
+        }
+
+        document.querySelectorAll('.ticket-tab-switcher .ticket-tab-btn').forEach(label => {
+            label.classList.toggle('is-active', label.dataset.tabValue === activeValue);
+        });
+    }
+
+    function syncFilterLabel(filterId, wrapId, dotId, labelId, defaultLabel) {
+        const filter = document.getElementById(filterId);
+        const wrap = document.getElementById(wrapId);
+        const dot = document.getElementById(dotId);
+        const labelEl = document.getElementById(labelId);
+        const options = Array.from(wrap?.querySelectorAll('.filter-select-option') || []);
+        if (!filter || !wrap) return;
+
+        const selectedOption = options.find(option => option.dataset.value === filter.value) || options[0];
+        const selectedLabel = selectedOption?.dataset.label || defaultLabel;
+        const stateName = selectedOption?.dataset.stateName || '';
+        
+        wrap.classList.toggle('is-active', Boolean(filter.value));
+        if (labelEl) {
+            labelEl.textContent = selectedLabel;
+        }
+        options.forEach(option => {
+            option.classList.toggle('is-active', option === selectedOption);
+        });
+        if (dot) {
+            const normalizedState = stateName.replace(/\s+/g, '-').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            dot.className = `filter-state-dot${stateName ? ` state-${normalizedState}` : ' is-hidden'}`;
+        }
+    }
+
+    function syncAllFilters() {
+        syncFilterLabel('estadoFilter', 'estadoFilterWrap', 'estadoFilterDot', 'estadoFilterLabel', 'Todos los estados');
+        syncFilterLabel('prioridadFilter', 'prioridadFilterWrap', 'prioridadFilterDot', 'prioridadFilterLabel', 'Prioridad');
+    }
+
+    syncTicketTabs();
+    syncAllFilters();
+
+    document.querySelectorAll('.ticket-tab-switcher .ticket-tab-btn').forEach(label => {
+        label.addEventListener('click', function () {
+            const form = document.getElementById('filterForm');
+            syncTicketTabs(this.dataset.tabValue);
+            if (form) {
+                window.setTimeout(() => form.dispatchEvent(new Event('change')), 0);
+            }
+        });
+    });
+
+    document.addEventListener('click', function (event) {
+        const option = event.target.closest('.filter-select-option');
+        if (option) {
+            const wrap = option.closest('.filter-select-wrap');
+            const input = wrap?.querySelector('input[type="hidden"]');
+            const form = document.getElementById('filterForm');
+            if (input && form) {
+                input.value = option.dataset.value || '';
+                syncAllFilters();
+                wrap.classList.remove('is-open');
+                wrap.querySelector('.filter-select-button')?.setAttribute('aria-expanded', 'false');
+                form.dispatchEvent(new Event('change'));
+            }
+        }
+        
+        const btn = event.target.closest('.filter-select-button');
+        if (btn) {
+            event.stopPropagation();
+            const wrap = btn.closest('.filter-select-wrap');
+            const willOpen = !wrap?.classList.contains('is-open');
+            document.querySelectorAll('.filter-select-wrap.is-open').forEach(el => {
+                if (el !== wrap) el.classList.remove('is-open');
+            });
+            if (wrap) {
+                wrap.classList.toggle('is-open', willOpen);
+            }
+            btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        } else {
+            document.querySelectorAll('.filter-select-wrap.is-open').forEach(wrap => {
+                wrap.classList.remove('is-open');
+                wrap.querySelector('.filter-select-button')?.setAttribute('aria-expanded', 'false');
+            });
+        }
+    });
+
+    // Lógica de Gestión de Tickets (Trabajador)
+    function confirmarReabertura(url) {
+        Swal.fire({
+            title: '¿El problema continúa?',
+            text: "El ticket volverá al técnico para una nueva revisión.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Sí, reabrir',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true,
+            customClass: { popup: 'rounded-4' }
+        }).then((result) => {
+            if (result.isConfirmed) window.location.href = url;
+        });
+    }
+
+    function confirmarCierre(url, buttonElement) {
+        Swal.fire({
+            title: '¿Confirmar solución?',
+            text: "¿Estás conforme con la atención recibida?",
+            icon: 'success',
+            showCancelButton: true,
+            confirmButtonColor: '#198754',
+            confirmButtonText: 'Sí, conforme',
+            cancelButtonText: 'Aún no',
+            reverseButtons: true,
+            customClass: { popup: 'rounded-4' }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+                htmx.ajax('POST', url, {
+                    target: buttonElement.closest('.col-md-6, .col-lg-4'),
+                    swap: 'delete',
+                    headers: { 'X-CSRFToken': csrftoken }
+                });
+            }
+        });
+    }
+
+    function clearFilters() {
+        const form = document.getElementById('filterForm');
+        form.reset();
+        // Limpiar inputs manualmente
+        form.querySelectorAll('input[type="text"]').forEach(i => i.value = '');
+        const estadoFilter = document.getElementById('estadoFilter');
+        if (estadoFilter) estadoFilter.value = '';
+        const prioridadFilter = document.getElementById('prioridadFilter');
+        if (prioridadFilter) prioridadFilter.value = '';
+        
+        syncAllFilters();
+        {% if user.role == 'usuario' %}
+        syncTicketTabs('reportadas');
+        {% else %}
+        syncTicketTabs('asignadas');
+        {% endif %}
+        form.dispatchEvent(new Event('change'));
+    }
+
+    // Re-inicializar TomSelect tras carga de HTMX si es necesario
+</script>
+{% endblock %}

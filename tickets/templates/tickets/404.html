@@ -1,0 +1,16 @@
+{% extends 'tickets/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="h-100 d-flex flex-column align-items-center justify-content-center pt-5 pb-5">
+    <img src="{% static 'img/logo_ugel.webp' %}" alt="Logo" class="mb-4" style="max-height: 100px;">
+    <h1 class="display-1 fw-bold text-primary">404</h1>
+    <h2 class="h4 text-muted mb-4">¡Página no encontrada!</h2>
+    <p class="text-secondary text-center">
+        Lo sentimos, la ruta a la que intentas acceder no existe o fue movida.
+    </p>
+    <a href="{% url 'index' %}" class="btn btn-primary mt-3 px-4 py-2 rounded-pill">
+        <i class="fas fa-home me-2"></i>Volver al Inicio
+    </a>
+</div>
+{% endblock %}

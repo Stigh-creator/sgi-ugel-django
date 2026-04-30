@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seguridad Obligatoria | UGEL</title>
+    {% load static %}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" crossorigin="anonymous">
+    
+    <link rel="stylesheet" href="{% static 'css/usuarios/mi_perfil.css' %}">
+    
+    <style>
+        /* Solo estilos de posicionamiento para centrar la caja en toda la pantalla */
+        body {
+            background-color: #f4f7f6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="wrapper-forced"> <div class="forced-center"> <div class="card shadow-sm">
+        <div class="card-body p-4 p-md-5">
+            
+            <div class="text-center mb-5">
+                <img src="{% static 'img/logo_ugel.webp' %}" width="85" class="mb-3">
+                <h4 class="fw-bold text-dark">Seguridad Obligatoria</h4>
+                <p class="text-muted small">Por políticas de seguridad, es necesario que actualices tu contraseña temporal para continuar.</p>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show js-auto-dismiss-alert" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="post" id="passwordForm">
+                {% csrf_token %}
+                <div class="row g-4">
+
+                    <div class="col-12">
+                        <label class="form-label fw-bold text-secondary small">Contraseña Actual</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
+                            <input type="password" name="old_password" id="id_old_password" 
+                                   class="form-control" placeholder="Ingresa tu clave actual" required>
+                            <button class="btn btn-link text-muted toggle-password" type="button" data-target="id_old_password">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-secondary small">Nueva Contraseña</label>
+                        <div class="input-group mb-3">
+                            <span class="input-group-text text-primary"><i class="bi bi-key-fill"></i></span>
+                            <input type="password" name="new_password1" id="id_new_password1" 
+                                   class="form-control" placeholder="Mínimo 10 caracteres" required>
+                            <button class="btn btn-link text-muted toggle-password" type="button" data-target="id_new_password1">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+
+                        <div class="requirements-container p-3 border rounded-4 bg-light">
+                            <h6 class="small fw-bold text-primary mb-2">Requisitos de seguridad:</h6>
+                            <div id="password-requirements">
+                                <div class="req-item text-muted small" data-req="length">
+                                    <i class="bi bi-circle me-2"></i> Mínimo 10 caracteres
+                                </div>
+                                <div class="req-item text-muted small" data-req="case">
+                                    <i class="bi bi-circle me-2"></i> Mayúsculas y minúsculas
+                                </div>
+                                <div class="req-item text-muted small" data-req="number">
+                                    <i class="bi bi-circle me-2"></i> Al menos un número (0-9)
+                                </div>
+                                <div class="req-item text-muted small" data-req="special">
+                                    <i class="bi bi-circle me-2"></i> Carácter especial (@#$!)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-secondary small">Confirmar Contraseña</label>
+                        <div class="input-group">
+                            <span class="input-group-text text-primary"><i class="bi bi-check-all"></i></span>
+                            <input type="password" name="new_password2" id="id_new_password2" 
+                                   class="form-control" placeholder="Repite la contraseña" required>
+                            <button class="btn btn-link text-muted toggle-password" type="button" data-target="id_new_password2">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <div id="match-message" class="small mt-2 px-2"></div>
+                    </div>
+
+                    <div class="col-12 d-flex flex-column flex-md-row justify-content-between align-items-center mt-5 gap-3">
+                        <a href="{% url 'logout' %}" class="logout-link fw-bold text-decoration-none">
+                            <i class="bi bi-box-arrow-left me-1"></i> Cerrar Sesión
+                        </a>
+                        <button type="submit" name="change_password" id="submitBtn"
+                                class="btn btn-pill btn-primary-custom px-5 shadow-sm" disabled>
+                            Actualizar y Continuar
+                        </button>
+                    </div>
+
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Tu lógica de validación JS (la misma de antes)
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.js-auto-dismiss-alert').forEach(function (alertEl) {
+            window.setTimeout(function () {
+                if (alertEl && alertEl.parentNode) {
+                    const bsAlert = bootstrap.Alert.getOrCreateInstance(alertEl);
+                    bsAlert.close();
+                }
+            }, 4000);
+        });
+
+        const newPass = document.getElementById('id_new_password1');
+        const confPass = document.getElementById('id_new_password2');
+        const submitBtn = document.getElementById('submitBtn');
+        const matchMsg = document.getElementById('match-message');
+
+        const reqs = {
+            length: { regex: /.{10,}/, el: document.querySelector('[data-req="length"]') },
+            case: { regex: /^(?=.*[a-z])(?=.*[A-Z]).+$/, el: document.querySelector('[data-req="case"]') },
+            number: { regex: /[0-9]/, el: document.querySelector('[data-req="number"]') },
+            special: { regex: /[@#$!%*?&]/, el: document.querySelector('[data-req="special"]') }
+        };
+
+        function validate() {
+            const val = newPass.value;
+            const confVal = confPass.value;
+            let metCount = 0;
+
+            Object.keys(reqs).forEach(key => {
+                const isMet = reqs[key].regex.test(val);
+                const icon = reqs[key].el.querySelector('i');
+                if (isMet) {
+                    reqs[key].el.classList.replace('text-muted', 'text-success');
+                    icon.classList.replace('bi-circle', 'bi-check-circle-fill');
+                    metCount++;
+                } else {
+                    reqs[key].el.classList.replace('text-success', 'text-muted');
+                    icon.classList.replace('bi-check-circle-fill', 'bi-circle');
+                }
+            });
+
+            const match = val === confVal && val.length > 0;
+            if (confVal.length > 0) {
+                matchMsg.innerHTML = match ? "✓ Coinciden" : "✕ No coinciden";
+                matchMsg.className = "small mt-2 px-2 " + (match ? "text-success fw-bold" : "text-danger");
+            } else { matchMsg.innerHTML = ""; }
+
+            submitBtn.disabled = !(metCount === 4 && match);
+        }
+
+        newPass.addEventListener('input', validate);
+        confPass.addEventListener('input', validate);
+
+        document.querySelectorAll('.toggle-password').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const input = document.getElementById(this.dataset.target);
+                const icon = this.querySelector('i');
+                input.type = input.type === 'password' ? 'text' : 'password';
+                icon.classList.toggle('bi-eye');
+                icon.classList.toggle('bi-eye-slash');
+            });
+        });
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,184 @@
+<div class="row g-4 p-4">
+    <!-- Columna Izquierda: Información -->
+    <div class="col-lg-7">
+        <div class="card border-0 bg-light rounded-4 mb-4">
+            <div class="card-body p-4">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <label class="form-label-custom">Creado por</label>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="bg-white rounded-circle p-1 shadow-sm">
+                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                                    {{ incidencia.creador.first_name|slice:":1"|upper }}
+                                </div>
+                            </div>
+                            <span class="small fw-bold">{{ incidencia.creador.get_full_name }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label-custom">Área / Oficina</label>
+                        <span class="small text-dark d-block">{{ incidencia.area.name }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label-custom">Prioridad</label>
+                        <div>
+                            <span class="priority-dot bg-{{ incidencia.prioridad }}"></span>
+                            <span class="small fw-bold">{{ incidencia.get_prioridad_display }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label-custom">Categoría</label>
+                        <span class="small badge bg-white text-dark border shadow-sm">{{ incidencia.get_categoria_display }}</span>
+                    </div>
+
+                    <div class="col-12"><hr class="my-0 opacity-10"></div>
+
+                    <div class="col-12">
+                        <label class="form-label-custom">Equipo Asociado</label>
+                        {% if incidencia.equipo %}
+                            <div class="p-3 bg-white border rounded-4 d-flex align-items-center gap-3 shadow-sm">
+                                <i class="bi bi-pc-display fs-4 text-primary"></i>
+                                <div>
+                                    <p class="small fw-bold mb-0">{{ incidencia.equipo.nombre_equipo }}</p>
+                                    <p class="tiny-text text-muted mb-0">S/N: {{ incidencia.equipo.numero_serie|default:"No registrado" }}</p>
+                                </div>
+                            </div>
+                        {% elif incidencia.otro_tipo %}
+                            <div class="p-3 bg-white border rounded-4 shadow-sm">
+                                <div class="row g-2">
+                                    <div class="col-6"><small class="tiny-text text-muted">TIPO:</small> <span class="small fw-bold d-block">{{ incidencia.otro_tipo }}</span></div>
+                                    <div class="col-6"><small class="tiny-text text-muted">MARCA:</small> <span class="small fw-bold d-block">{{ incidencia.otro_marca }}</span></div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <span class="italic-soft small">No se especificó equipo físico.</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label-custom">Evidencias del Ticket</label>
+                        <div class="row g-2">
+                            {% if incidencia.imagen_adjunta %}
+                            <div class="col-4">
+                                <a href="{{ incidencia.imagen_adjunta.url }}" target="_blank" class="d-block overflow-hidden rounded-3 border shadow-sm">
+                                    <img src="{{ incidencia.imagen_adjunta.url }}" class="img-fluid w-100 hover-zoom" alt="Principal" style="height: 120px; object-fit: cover;">
+                                </a>
+                                <small class="tiny-text text-center d-block mt-1">Principal</small>
+                            </div>
+                            {% endif %}
+                            
+                            {% if incidencia.imagen_2 %}
+                            <div class="col-4">
+                                <a href="{{ incidencia.imagen_2.url }}" target="_blank" class="d-block overflow-hidden rounded-3 border shadow-sm">
+                                    <img src="{{ incidencia.imagen_2.url }}" class="img-fluid w-100 hover-zoom" alt="Adicional" style="height: 120px; object-fit: cover;">
+                                </a>
+                                <small class="tiny-text text-center d-block mt-1">Evidencia 2</small>
+                            </div>
+                            {% endif %}
+
+                            {% if incidencia.imagen_3 %}
+                            <div class="col-4">
+                                <a href="{{ incidencia.imagen_3.url }}" target="_blank" class="d-block overflow-hidden rounded-3 border shadow-sm">
+                                    <img src="{{ incidencia.imagen_3.url }}" class="img-fluid w-100 hover-zoom" alt="Adicional" style="height: 120px; object-fit: cover;">
+                                </a>
+                                <small class="tiny-text text-center d-block mt-1">Evidencia 3</small>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de Gestión (Admin) -->
+        {% if user.role == 'administrador' and incidencia.estado.name == 'Pendiente' %}
+        <div class="card border-0 bg-primary bg-opacity-10 rounded-4 border-start border-primary border-4">
+            <div class="card-body p-4">
+                <h6 class="fw-bold text-primary mb-3"><i class="bi bi-gear-fill me-2"></i>GESTIÓN DE ASIGNACIÓN</h6>
+                <form action="{% url 'asignar_tecnico' incidencia.id %}" method="POST" id="assignForm">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label-custom text-primary opacity-75">Técnico Responsable</label>
+                            <select name="tecnico_id" class="form-select input-custom" required>
+                                <option value="">-- Seleccione Técnico --</option>
+                                <option value="{{ user.id }}">Asignarme a mí mismo</option>
+                                {% for t in tecnicos %}<option value="{{ t.id }}">{{ t.get_full_name }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-custom text-primary opacity-75">Fecha Programada</label>
+                            <input type="date" name="fecha_programada" class="form-control input-custom" min="{{ now|date:'Y-m-d' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-custom text-primary opacity-75">Hora</label>
+                            <input type="time" name="hora_programada" class="form-control input-custom">
+                        </div>
+                        <div class="col-12 mt-4">
+                            <button type="submit" class="btn btn-primary btn-rounded w-100 fw-bold py-2 shadow-sm">Confirmar y Asignar</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Columna Derecha: Timeline y Chat -->
+    <div class="col-lg-5">
+        <div class="d-flex align-items-center gap-2 mb-4 ps-2">
+            <i class="bi bi-chat-dots text-primary"></i>
+            <h6 class="fw-bold mb-0">Actividad y Evidencias</h6>
+        </div>
+        
+        <!-- Timeline Refactorizada -->
+        <div class="timeline-container-full mb-4" style="max-height: 500px; overflow-y: auto;">
+            {% for item in timeline %}
+            <div class="timeline-entry mb-3 border-start border-2 ps-3 position-relative">
+                <div class="timeline-marker position-absolute start-0 translate-middle-x bg-primary rounded-circle" style="width: 10px; height: 10px; margin-left: -1px; top: 10px;"></div>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="badge {% if item.tipo == 'log' %}bg-light text-primary border{% else %}bg-success bg-opacity-10 text-success border border-success border-opacity-25{% endif %} tiny-text fw-bold">
+                        {{ item.tipo|upper }}
+                    </span>
+                    <span class="tiny-text text-muted">{{ item.fecha|date:"d M, H:i" }}</span>
+                </div>
+                <div class="p-2 {% if item.tipo == 'log' %}bg-light{% else %}bg-white border shadow-sm{% endif %} rounded-3">
+                    {% if item.tipo == 'log' %}
+                        <p class="small mb-0"><strong>{{ item.data.usuario.username }}</strong>: {{ item.data.descripcion }}</p>
+                    {% else %}
+                        <p class="small mb-1"><strong>{{ item.data.autor.first_name }}</strong>: {{ item.data.mensaje }}</p>
+                        {% if item.data.imagen %}
+                        <a href="{{ item.data.imagen.url }}" target="_blank" class="d-block mt-2">
+                            <img src="{{ item.data.imagen.url }}" class="img-fluid rounded-2 border" style="max-height: 150px;">
+                        </a>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-5 opacity-50">
+                <i class="bi bi-journal-x fs-1 d-block mb-2"></i>
+                <p class="small mb-0">Sin actividad registrada.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Chat Input Full Page -->
+        <div class="p-3 bg-white border rounded-4 shadow-sm">
+            <form action="{% url 'agregar_comentario' incidencia.id %}" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="mb-2">
+                    <textarea name="mensaje" class="form-control input-custom" rows="2" placeholder="Escribe un mensaje o añade evidencias..."></textarea>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="flex-grow-1 me-2">
+                        <input type="file" name="imagen" class="form-control form-control-sm input-custom" accept="image/*">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold">
+                        <i class="bi bi-send-fill"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,178 @@
+{% extends "tickets/base.html" %}
+{% load static %}
+
+{% block title %}Iniciar Sesión - UGEL Morropón{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/login/login.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="login-wrapper row g-0 min-vh-100 animate__animated animate__fadeIn">
+    <!-- LADO IZQUIERDO: Branding e Información -->
+    <div class="col-lg-6 branding-side d-flex flex-column align-items-center justify-content-center p-5 text-center">
+        <div class="animate__animated animate__zoomIn animate__delay-1s">
+            <img src="{% static 'img/logo_ugel.webp' %}" alt="Logo UGEL Morropón" class="branding-logo mb-4">
+        </div>
+        <h1 class="display-5 fw-bold text-white mb-3 animate__animated animate__fadeInUp animate__delay-1s">
+            Sistema de Gestión de Incidencias
+        </h1>
+        <p class="fs-5 text-white-50 px-md-5 animate__animated animate__fadeInUp animate__delay-1s">
+            Tu tranquilidad es nuestra prioridad. Reporta, gestiona y soluciona tus requerimientos en un solo lugar.
+        </p>
+    </div>
+
+    <!-- LADO DERECHO: Formulario de Login -->
+    <div class="col-lg-6 login-side d-flex flex-column align-items-center justify-content-center p-4 p-md-5 bg-white">
+        <div class="login-form-container">
+            <div class="text-center mb-5 animate__animated animate__fadeInRight">
+                <h2 class="fw-bold text-dark">¡Hola de nuevo!</h2>
+                <p class="text-muted">Identifícate para gestionar tus reportes</p>
+            </div>
+
+            <form method="post" class="animate__animated animate__fadeInUp animate__delay-1s">
+                {% csrf_token %}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold text-dark mb-2">Usuario</label>
+                    <div class="input-group">
+                        <span class="input-group-text input-group-text-modern">
+                            <i class="bi bi-person fs-5"></i>
+                        </span>
+                        <input type="text" name="username" class="form-control input-modern input-modern-with-icon"
+                            required placeholder="Ingresa tu usuario" tabindex="1" autofocus autocomplete="username">
+                    </div>
+                </div>
+
+                <div class="mb-5">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label fw-semibold text-dark mb-0">Contraseña</label>
+                    </div>
+                    <div class="input-group position-relative">
+                        <span class="input-group-text input-group-text-modern">
+                            <i class="bi bi-lock fs-5"></i>
+                        </span>
+                        <input type="password" id="password" name="password" class="form-control input-modern input-modern-with-icon"
+                            required placeholder="**********" tabindex="2" autocomplete="current-password" style="padding-right: 45px !important;">
+                        <span id="togglePassword" class="eye-icon">
+                            <i class="bi bi-eye" id="toggleIcon"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-new w-100 py-3 mb-4 d-flex justify-content-center" tabindex="3">
+                    Ingresar al Sistema <i class="bi bi-arrow-right-short fs-4 ms-1"></i>
+                </button>
+
+                <div class="text-center">
+                    <a href="#" class="text-decoration-none small text-primary fw-bold" data-bs-toggle="modal"
+                        data-bs-target="#modalOlvido" tabindex="4">
+                        ¿Olvidaste tu contraseña?
+                    </a>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Footer movido al final de la sección blanca pero fuera del container del form para mejor control -->
+        <div class="login-footer text-center text-muted small animate__animated animate__fadeInUp animate__delay-1s">
+            © 2026 UGEL Morropón • <span class="text-primary">Oficina de Informática</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const togglePassword = document.querySelector('#togglePassword');
+        const password = document.querySelector('#password');
+        const toggleIcon = document.querySelector('#toggleIcon');
+
+        if (togglePassword && password) {
+            togglePassword.addEventListener('click', function() {
+                // Alternar el tipo de input
+                const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+                password.setAttribute('type', type);
+                
+                // Alternar el icono
+                if (type === 'password') {
+                    toggleIcon.classList.remove('bi-eye-slash');
+                    toggleIcon.classList.add('bi-eye');
+                } else {
+                    toggleIcon.classList.remove('bi-eye');
+                    toggleIcon.classList.add('bi-eye-slash');
+                }
+                
+                // Efecto visual de clic
+                this.style.transform = 'translateY(-50%) scale(0.9)';
+                setTimeout(() => {
+                    this.style.transform = 'translateY(-50%) scale(1)';
+                }, 100);
+            });
+        }
+    });
+</script>
+
+<!-- Modal Olvidé mi Contraseña -->
+<div class="modal fade" id="modalOlvido" tabindex="-1" aria-labelledby="modalOlvidoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.5rem;">
+            <div class="modal-header border-0 pb-0 px-4 pt-4">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center p-4 p-md-5">
+                <div class="mb-4">
+                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm"
+                        style="width: 80px; height: 80px;">
+                        <i class="bi bi-shield-lock-fill fs-1"></i>
+                    </div>
+                </div>
+                <h3 class="fw-bold mb-3" id="modalOlvidoLabel">Restablecer Contraseña</h3>
+                <p class="text-muted mb-4">
+                    Por seguridad, el restablecimiento de claves es gestionado por la <strong>Oficina de
+                        Informática</strong>.
+                </p>
+
+                <div class="alert alert-light border border-info border-start-4 border-opacity-25 text-start mb-4">
+                    <p class="small mb-2">Para recuperar tu acceso, por favor contacta a soporte:</p>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <i class="bi bi-envelope text-primary"></i>
+                        <span class="small fw-bold">soporte@ugelmorropon.gob.pe</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-clock text-primary"></i>
+                        <span class="small">Lun - Vie • 8:00 AM - 5:00 PM</span>
+                    </div>
+                </div>
+
+                <a href="https://wa.me/51926401723?text=Hola,%20olvidé%20mi%20clave%20del%20Sistema%20de%20Incidencias."
+                    target="_blank"
+                    class="btn-whatsapp w-100 justify-content-center py-3 mb-2 animate__animated animate__pulse animate__infinite">
+                    <i class="bi bi-whatsapp"></i> Hablar con Soporte Técnico
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" crossorigin="anonymous"></script>
+
+{% if messages %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        {% for message in messages %}
+        const msgText = "{{ message|escapejs }}";
+        const msgTag = "{{ message.tags }}";
+
+        Swal.fire({
+            icon: msgTag === 'error' ? 'error' : 'success',
+            title: msgTag === 'error' ? 'Acceso Denegado' : '¡Éxito!',
+            text: msgText,
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 4000,
+            timerProgressBar: true
+        });
+        {% endfor %}
+    });
+</script>
+{% endif %}
+{% endblock %}

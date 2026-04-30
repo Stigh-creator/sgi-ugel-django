@@ -1,0 +1,220 @@
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib import messages
+from django.db.models import Q, Count
+from django.core.paginator import Paginator
+from django.urls import reverse
+from django.views.decorators.http import require_POST
+from .models import Equipo, Marca, TipoEquipo, EstadoEquipo
+from .forms import EquipoEstadoUpdateForm, EquipoForm
+from .services import registrar_cambio_manual_estado_equipo
+from tickets.models import Area
+from tickets.services import normalize_expression, normalize_text
+from auditoria.utils import registrar_auditoria
+
+def is_admin(user):
+    return user.is_authenticated and (user.is_staff or user.role == "administrador")
+
+def get_inventario_context(request, form=None):
+    vista = request.GET.get('vista', 'activos')
+    equipos_list = Equipo.objects.select_related('area', 'marca', 'tipo_equipo').order_by('-fecha_register')
+    if vista == 'bajas':
+        equipos_list = equipos_list.filter(activo=False)
+    else:
+        equipos_list = equipos_list.filter(activo=True)
+    areas = Area.objects.all()
+    
+    q = request.GET.get('q')
+    area_id = request.GET.get('area')
+    estado = request.GET.get('estado')
+    marca_id = request.GET.get('marca')
+    tipo_id = request.GET.get('tipo')
+    
+    if q:
+        normalized_q = normalize_text(q)
+        equipos_list = equipos_list.annotate(
+            nombre_normalizado=normalize_expression('nombre_equipo'),
+            marca_normalizada=normalize_expression('marca__nombre'),
+            modelo_normalizado=normalize_expression('modelo'),
+            serie_normalizada=normalize_expression('numero_serie'),
+            area_normalizada=normalize_expression('area__name'),
+        ).filter(
+            Q(codigo_equipo__icontains=q)
+            | Q(nombre_normalizado__contains=normalized_q)
+            | Q(marca_normalizada__contains=normalized_q)
+            | Q(modelo_normalizado__contains=normalized_q)
+            | Q(serie_normalizada__contains=normalized_q)
+            | Q(area_normalizada__contains=normalized_q)
+        )
+    if area_id:
+        equipos_list = equipos_list.filter(area_id=area_id)
+    if estado:
+        equipos_list = equipos_list.filter(estado__nombre=estado)
+    if marca_id:
+        equipos_list = equipos_list.filter(marca_id=marca_id)
+    if tipo_id:
+        equipos_list = equipos_list.filter(tipo_equipo_id=tipo_id)
+        
+    stats = Equipo.objects.filter(activo=True).aggregate(
+        total=Count('id'),
+        operativos=Count('id', filter=Q(estado__nombre='Operativo')),
+        en_revision=Count('id', filter=Q(estado__nombre='En revisión')),
+        reparacion=Count('id', filter=Q(estado__nombre='En reparación')),
+        inoperativos=Count('id', filter=Q(estado__nombre='Inoperativo')),
+        baja=Count('id', filter=Q(estado__nombre='Dado de baja')),
+    )
+
+    paginator = Paginator(equipos_list, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return {
+        'equipos': page_obj,
+        'page_obj': page_obj,
+        'areas': areas,
+        'marcas': Marca.objects.all(),
+        'tipos': TipoEquipo.objects.all(),
+        'estados': EstadoEquipo.objects.all(),
+        'stats': stats,
+        'query': q,
+        'area_selected': area_id,
+        'estado_selected': estado,
+        'marca_selected': marca_id,
+        'tipo_selected': tipo_id,
+        'vista_selected': vista,
+        'total_bajas': Equipo.objects.filter(activo=False).count(),
+        'form': form or EquipoForm(),
+    }
+
+@login_required
+@user_passes_test(is_admin)
+def inventario_list(request):
+    return render(request, 'inventario/inventario_list.html', get_inventario_context(request))
+
+@login_required
+@user_passes_test(is_admin)
+@require_POST
+def equipo_crear(request):
+    form = EquipoForm(request.POST, request.FILES)
+    if form.is_valid():
+        equipo = form.save()
+        registrar_auditoria(
+            request, "Inventario", "creó equipo",
+            f"Se registró el nuevo equipo {equipo.codigo_equipo} ({equipo.nombre_equipo}) en el área {equipo.area}.",
+            equipo.id
+        )
+        messages.success(request, f"Equipo {equipo.codigo_equipo} registrado exitosamente.")
+        return redirect('inventario_list')
+    
+    messages.error(request, "Corrija los errores en el formulario.")
+    context = get_inventario_context(request, form=form)
+    context['show_modal_nuevo'] = True
+    return render(request, 'inventario/inventario_list.html', context)
+
+@login_required
+@user_passes_test(is_admin)
+@require_POST
+def equipo_editar(request, pk):
+    equipo = get_object_or_404(Equipo, pk=pk, activo=True)
+    form = EquipoForm(request.POST, request.FILES, instance=equipo)
+    if form.is_valid():
+        area_ant = equipo.area
+        nombre_ant = equipo.nombre_equipo
+        form.save()
+        
+        cambios = []
+        if area_ant != equipo.area:
+            cambios.append(f"Área: {area_ant} -> {equipo.area}")
+        if nombre_ant != equipo.nombre_equipo:
+            cambios.append(f"Nombre: {nombre_ant} -> {equipo.nombre_equipo}")
+            
+        desc = f"Se actualizó el equipo {equipo.codigo_equipo}."
+        if cambios:
+            desc += " Cambios: " + ", ".join(cambios)
+            
+        registrar_auditoria(request, "Inventario", "editó equipo", desc, equipo.id)
+        messages.success(request, f"Equipo {equipo.codigo_equipo} actualizado.")
+        return redirect('inventario_list')
+    
+    messages.error(request, "Corrija los errores en el formulario.")
+    context = get_inventario_context(request, form=form)
+    context['show_modal_editar'] = True
+    context['equipo_id_error'] = pk
+    return render(request, 'inventario/inventario_list.html', context)
+
+@login_required
+@user_passes_test(is_admin)
+def equipo_detalle(request, pk):
+    equipo = get_object_or_404(
+        Equipo.objects.select_related('area', 'marca', 'tipo_equipo').prefetch_related('historial_estado__usuario_que_cambio'),
+        pk=pk,
+    )
+    incidencias_relacionadas = (
+        equipo.incidencia_set.select_related('creador', 'tecnico_asignado', 'estado')
+        .order_by('-fecha_creacion')
+    )
+    historial_estado_form = EquipoEstadoUpdateForm(current_estado=equipo.estado)
+    return render(
+        request,
+        'inventario/equipo_detalle.html',
+        {
+            'equipo': equipo,
+            'incidencias_relacionadas': incidencias_relacionadas,
+            'historial_estado_form': historial_estado_form,
+        },
+    )
+
+
+@login_required
+@user_passes_test(is_admin)
+@require_POST
+def equipo_actualizar_estado(request, pk):
+    equipo = get_object_or_404(Equipo, pk=pk)
+    form = EquipoEstadoUpdateForm(request.POST, current_estado=equipo.estado)
+    if form.is_valid():
+        historial = registrar_cambio_manual_estado_equipo(
+            equipo=equipo,
+            nuevo_estado=form.cleaned_data["estado"],
+            usuario=request.user,
+            observacion=form.cleaned_data["observacion"],
+        )
+        if historial:
+            messages.success(request, f"Estado de {equipo.codigo_equipo} actualizado a {historial.estado_nuevo}.")
+        else:
+            messages.info(request, "No hubo cambios porque el equipo ya tenía ese estado.")
+        return redirect('equipo_detalle', pk=pk)
+
+    messages.error(request, "Debe registrar una observación válida para cambiar el estado del equipo.")
+    incidencias_relacionadas = (
+        equipo.incidencia_set.select_related('creador', 'tecnico_asignado', 'estado')
+        .order_by('-fecha_creacion')
+    )
+    return render(
+        request,
+        'inventario/equipo_detalle.html',
+        {
+            'equipo': equipo,
+            'incidencias_relacionadas': incidencias_relacionadas,
+            'historial_estado_form': form,
+        },
+    )
+
+@login_required
+@user_passes_test(is_admin)
+@require_POST
+def equipo_eliminar_logico(request, pk):
+    equipo = get_object_or_404(Equipo, pk=pk)
+    motivo = request.POST.get("motivo", "Dado de baja administrativamente.")
+    
+    estado_baja = EstadoEquipo.objects.filter(nombre="Dado de baja").first()
+    if estado_baja:
+        registrar_cambio_manual_estado_equipo(
+            equipo=equipo,
+            nuevo_estado=estado_baja,
+            usuario=request.user,
+            observacion=motivo
+        )
+    
+    messages.warning(request, f"Equipo {equipo.codigo_equipo} dado de baja del sistema (lógico).")
+    from django.urls import reverse
+    return redirect(f"{reverse('inventario_list')}?vista=bajas")

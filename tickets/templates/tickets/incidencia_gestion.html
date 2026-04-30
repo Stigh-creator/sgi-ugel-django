@@ -1,0 +1,102 @@
+{% extends 'tickets/base.html' %}
+{% load static %}
+
+{% block title %}Configurar Ticket #{{ incidencia.id|stringformat:"04d" }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/tickets/incidencias_refactor.css' %}">
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet" crossorigin="anonymous">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card card-modern shadow-sm border-0 rounded-4">
+                <div class="card-header bg-white py-3 border-0">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="header-icon-bg bg-warning bg-opacity-10">
+                            <i class="fas fa-shield-alt text-warning"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0 fw-bold text-dark">Panel de Configuración Administrativa</h5>
+                            <p class="text-muted small mb-0">Ticket #{{ incidencia.id|stringformat:"04d" }} - {{ incidencia.creador.get_full_name }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body p-4">
+                    <form action="{% url 'gestionar_incidencia' incidencia.id %}" method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label class="form-label-custom">Especialista Asignado</label>
+                                {{ form.tecnico_asignado }}
+                                {% if form.tecnico_asignado.errors %}<div class="text-danger tiny-text">{{ form.tecnico_asignado.errors.0 }}</div>{% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label-custom">Nivel de Prioridad</label>
+                                {{ form.prioridad }}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label-custom">Fecha de Atención</label>
+                                {{ form.fecha_programada_atencion }}
+                                {% if form.fecha_programada_atencion.errors %}<div class="text-danger tiny-text">{{ form.fecha_programada_atencion.errors.0 }}</div>{% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label-custom">Hora de Atención</label>
+                                {{ form.hora_programada_atencion }}
+                                {% if form.hora_programada_atencion.errors %}<div class="text-danger tiny-text">{{ form.hora_programada_atencion.errors.0 }}</div>{% endif %}
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label-custom">Estado Actual</label>
+                                <div class="d-flex align-items-center gap-2 pt-1">
+                                    <span class="status-badge {{ incidencia.estado_badge_class }}">
+                                        <span class="status-dot-indicator"></span>
+                                        {{ incidencia.estado_visual }}
+                                    </span>
+                                    <p class="text-muted small mt-1 mb-0"><i class="fas fa-info-circle me-1"></i>El sistema actualiza este estado automáticamente.</p>
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label-custom">Observaciones Internas (Privado)</label>
+                                {{ form.observaciones_internas }}
+                                <p class="text-muted tiny-text">Estas notas no son visibles para el trabajador solicitante.</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 pt-4 border-top d-flex justify-content-end gap-2">
+                            <a href="{% url 'detalle_incidencia' incidencia.id %}" class="btn btn-light rounded-pill px-4 fw-bold border">Volver</a>
+                            <button type="submit" class="btn btn-primary rounded-pill px-5 fw-bold shadow-sm">
+                                Guardar Cambios <i class="fas fa-save ms-2"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js" crossorigin="anonymous"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Inicializar TomSelect para el técnico
+        const tecnicoSelect = document.querySelector('#id_tecnico_asignado');
+        if (tecnicoSelect) {
+            new TomSelect(tecnicoSelect, {
+                create: false,
+                sortField: { field: "text", direction: "asc" }
+            });
+        }
+    });
+</script>
+{% endblock %}

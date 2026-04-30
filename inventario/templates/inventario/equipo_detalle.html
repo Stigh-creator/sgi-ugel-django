@@ -1,0 +1,221 @@
+{% extends 'tickets/base.html' %}
+{% load static %}
+
+{% block title %}Detalle de Equipo - {{ equipo.codigo_equipo }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/inventario/inventario.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="{% url 'inventario_list' %}" class="btn btn-outline-secondary rounded-circle p-2 back-btn">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+            <h2 class="h4 mb-0 fw-bold">Detalle del Equipo: {{ equipo.codigo_equipo }}</h2>
+            <p class="text-muted mb-0">Ficha integral del activo, historial de soporte y bitácora administrativa.</p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm p-4 text-center mb-4">
+                <div class="mb-3 mx-auto">
+                    {% if equipo.foto_estado %}
+                    <div class="position-relative">
+                        <img src="{{ equipo.foto_estado.url }}"
+                             alt="Foto del equipo"
+                             class="img-fluid rounded-4 shadow-sm border"
+                             style="max-height: 250px; width: 100%; object-fit: cover;">
+                        <a href="{{ equipo.foto_estado.url }}" target="_blank" class="btn btn-sm btn-light position-absolute bottom-0 end-0 m-2 rounded-circle shadow">
+                            <i class="bi bi-arrows-fullscreen"></i>
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="bg-primary bg-opacity-10 text-primary d-inline-block p-4 rounded-circle detail-icon-container">
+                        <i class="bi {% if equipo.tipo_equipo.nombre == 'Laptop' %}bi-laptop{% elif 'Impresora' in equipo.tipo_equipo.nombre %}bi-printer{% else %}bi-device-hdd{% endif %}" style="font-size: 4rem;"></i>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-muted"><i class="bi bi-camera-slash me-1"></i>Sin registro fotográfico</small>
+                    </div>
+                    {% endif %}
+                </div>
+                <h3 class="h5 fw-bold mb-1">{{ equipo.nombre_equipo }}</h3>
+                <span class="badge bg-light text-dark border mb-3 text-uppercase">{{ equipo.tipo_equipo.nombre }}</span>
+
+                <div class="d-grid">
+                    <div class="badge-estado fs-6 p-2 justify-content-center badge-{{ equipo.estado|slugify }}">
+                        <span class="dot dot-{{ equipo.estado|slugify }}"></span>
+                        {{ equipo.estado }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm p-4 mb-4">
+                <h5 class="fw-bold mb-3">Actualización manual de estado</h5>
+                <p class="text-muted small">Usa esta acción solo para mantenimientos, reparaciones externas o movimientos administrativos.</p>
+                <form action="{% url 'equipo_actualizar_estado' equipo.pk %}" method="POST" class="js-disable-on-submit">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">{{ historial_estado_form.estado.label }}</label>
+                        {{ historial_estado_form.estado }}
+                        {% if historial_estado_form.estado.errors %}
+                        <div class="text-danger small mt-1">{{ historial_estado_form.estado.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">{{ historial_estado_form.observacion.label }}</label>
+                        {{ historial_estado_form.observacion }}
+                        <div class="form-text">La observación es obligatoria y quedará en la bitácora del equipo.</div>
+                        {% if historial_estado_form.observacion.errors %}
+                        <div class="text-danger small mt-1">{{ historial_estado_form.observacion.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 w-100 d-inline-flex align-items-center justify-content-center gap-2" data-loading-disable data-default-label="Guardar cambio" data-loading-label="Guardando...">
+                        <span class="spinner-border spinner-border-sm d-none submit-spinner" role="status" aria-hidden="true"></span>
+                        <span class="submit-label">Guardar cambio</span>
+                    </button>
+                </form>
+            </div>
+
+            <div class="card border-0 shadow-sm p-4">
+                <h5 class="fw-bold mb-3">Información de Registro</h5>
+                <div class="small">
+                    <p class="mb-1 text-muted">Fecha de Registro:</p>
+                    <p class="fw-bold">{{ equipo.fecha_register|date:"d/m/Y H:i" }}</p>
+
+                    <p class="mb-1 text-muted">Última Actualización:</p>
+                    <p class="fw-bold">{{ equipo.actualizado_en|date:"d/m/Y H:i" }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+                    <h5 class="fw-bold mb-0">Especificaciones Técnicas</h5>
+                    <span class="small text-muted">La descripción física no reemplaza el historial de fallas.</span>
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <label class="small text-muted d-block">Marca</label>
+                        <span class="fw-bold fs-5">{{ equipo.marca }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="small text-muted d-block">Modelo</label>
+                        <span class="fw-bold fs-5">{{ equipo.modelo }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="small text-muted d-block">Número de Serie</label>
+                        <span class="fw-bold fs-5 text-uppercase">{{ equipo.numero_serie|default:"N/A" }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="small text-muted d-block">Área de Asignación</label>
+                        <span class="fw-bold fs-5">{{ equipo.area.name|default:"Sin área asignada" }}</span>
+                    </div>
+                    <div class="col-12">
+                        <label class="small text-muted d-block">Descripción física / estado estético</label>
+                        <div class="p-3 bg-light rounded-3 mt-2 border">
+                            {{ equipo.descripcion_fisica|linebreaks|default:"Sin descripción física registrada." }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <h5 class="fw-bold mb-0">Historial de Incidencias</h5>
+                    <span class="small text-muted">{{ incidencias_relacionadas|length }} registro(s) vinculados al equipo</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Ticket</th>
+                                <th>Técnico asignado</th>
+                                <th>Estado</th>
+                                <th>Solución</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for incidencia in incidencias_relacionadas %}
+                            <tr>
+                                <td>{{ incidencia.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                                <td>
+                                    <a href="{% url 'detalle_incidencia' incidencia.pk %}" class="text-decoration-none fw-bold">#{{ incidencia.id|stringformat:"04d" }}</a>
+                                    <div class="small text-muted">{{ incidencia.descripcion|truncatechars:70 }}</div>
+                                </td>
+                                <td>{{ incidencia.tecnico_asignado.get_full_name|default:"Sin asignar" }}</td>
+                                <td>
+                                    <span class="badge-estado badge-{{ incidencia.estado_visual|slugify }}">
+                                        <span class="dot dot-{{ incidencia.estado_visual|slugify }}"></span>
+                                        {{ incidencia.estado_visual }}
+                                    </span>
+                                </td>
+                                <td class="small text-muted">
+                                    {% if incidencia.solucion_aplicada %}
+                                    {{ incidencia.solucion_aplicada|truncatechars:90 }}
+                                    {% else %}
+                                    Sin solución registrada
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">No hay incidencias asociadas a este equipo.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm p-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <h5 class="fw-bold mb-0">Bitácora de Estado</h5>
+                    <span class="small text-muted">Movimientos administrativos y cambios manuales del activo</span>
+                </div>
+                <div class="timeline-audit">
+                    {% for item in equipo.historial_estado.all %}
+                    <div class="timeline-audit-item">
+                        <div class="timeline-audit-dot"></div>
+                        <div class="timeline-audit-body">
+                            <div class="d-flex justify-content-between flex-wrap gap-2">
+                                <strong>{{ item.estado_anterior }} -> {{ item.estado_nuevo }}</strong>
+                                <small class="text-muted">{{ item.fecha_registro|date:"d/m/Y H:i" }}</small>
+                            </div>
+                            <div class="small text-muted mb-2">Registrado por {{ item.usuario_que_cambio.get_full_name|default:item.usuario_que_cambio.username }}</div>
+                            <p class="mb-0 small">{{ item.observacion }}</p>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-muted small">Aún no hay movimientos manuales registrados para este equipo.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.js-disable-on-submit').forEach(form => {
+            form.addEventListener('submit', function() {
+                const button = form.querySelector('[data-loading-disable]');
+                if (!button) return;
+                button.disabled = true;
+                button.querySelector('.submit-spinner')?.classList.remove('d-none');
+                const label = button.querySelector('.submit-label');
+                if (label) {
+                    label.textContent = button.dataset.loadingLabel || 'Guardando...';
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

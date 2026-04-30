@@ -1,0 +1,133 @@
+<div class="modal fade" id="modalEditarEquipo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white py-3">
+                <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i>Editar Equipo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="" method="POST" enctype="multipart/form-data" novalidate class="js-disable-on-submit">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Código de Equipo</label>
+                            <input type="text" name="{{ form.codigo_equipo.name }}" 
+                                   value="{{ form.codigo_equipo.value|default:'' }}"
+                                   class="form-control {% if form.codigo_equipo.errors %}is-invalid{% endif %}"
+                                   placeholder="Ej: PC-001">
+                            {% for error in form.codigo_equipo.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Nombre del Equipo</label>
+                            <input type="text" name="{{ form.nombre_equipo.name }}" 
+                                   value="{{ form.nombre_equipo.value|default:'' }}"
+                                   class="form-control {% if form.nombre_equipo.errors %}is-invalid{% endif %}"
+                                   placeholder="Nombre descriptivo">
+                            {% for error in form.nombre_equipo.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">Tipo</label>
+                            <select name="{{ form.tipo_equipo.name }}" class="form-select {% if form.tipo_equipo.errors %}is-invalid{% endif %}">
+                                {% for val, label in form.fields.tipo_equipo.choices %}
+                                {% with actual=form.tipo_equipo.value|stringformat:"s" opcion=val|stringformat:"s" %}
+                                <option value="{{ val|default:'' }}" {% if not form.tipo_equipo.value and not val %}selected{% elif actual == opcion %}selected{% endif %}>{{ label }}</option>
+                                {% endwith %}
+                                {% endfor %}
+                            </select>
+                            {% for error in form.tipo_equipo.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">Marca</label>
+                            <select name="{{ form.marca.name }}" class="form-select {% if form.marca.errors %}is-invalid{% endif %}">
+                                {% for val, label in form.fields.marca.choices %}
+                                {% with actual=form.marca.value|stringformat:"s" opcion=val|stringformat:"s" %}
+                                <option value="{{ val|default:'' }}" {% if not form.marca.value and not val %}selected{% elif actual == opcion %}selected{% endif %}>{{ label }}</option>
+                                {% endwith %}
+                                {% endfor %}
+                            </select>
+                            {% for error in form.marca.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">Modelo</label>
+                            <input type="text" name="{{ form.modelo.name }}" 
+                                   value="{{ form.modelo.value|default:'' }}"
+                                   class="form-control {% if form.modelo.errors %}is-invalid{% endif %}">
+                            {% for error in form.modelo.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Número de Serie</label>
+                            <input type="text" name="{{ form.numero_serie.name }}" 
+                                   value="{{ form.numero_serie.value|default:'' }}"
+                                   class="form-control {% if form.numero_serie.errors %}is-invalid{% endif %}"
+                                   placeholder="S/N">
+                            {% for error in form.numero_serie.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Área Asignada</label>
+                            <select name="{{ form.area.name }}" class="form-select {% if form.area.errors %}is-invalid{% endif %}">
+                                {% for val, label in form.fields.area.choices %}
+                                {% with actual=form.area.value|stringformat:"s" opcion=val|stringformat:"s" %}
+                                <option value="{{ val|default:'' }}" {% if not form.area.value and not val %}selected{% elif actual == opcion %}selected{% endif %}>{{ label }}</option>
+                                {% endwith %}
+                                {% endfor %}
+                            </select>
+                            {% for error in form.area.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Nueva Foto del Estado</label>
+                            <input type="file" name="{{ form.foto_estado.name }}" 
+                                   id="id_foto_estado_editar"
+                                   accept="image/*" capture="camera"
+                                   class="form-control {% if form.foto_estado.errors %}is-invalid{% endif %}"
+                                   onchange="previewImage(this, 'preview_editar')">
+                            {% for error in form.foto_estado.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-12 mt-2">
+                            <div id="preview_editar" class="image-preview-container d-none text-center">
+                                <img src="" alt="Previsualización" class="img-thumbnail" style="max-height: 200px;">
+                                <p class="small text-muted mt-1">Nueva imagen seleccionada</p>
+                            </div>
+                        </div>
+                        <div id="container_foto_actual" class="col-12 mt-2 d-none text-center">
+                            <label class="form-label small fw-bold text-muted d-block">Foto Actual</label>
+                            <img id="img_foto_actual" src="" alt="Foto Actual" class="img-thumbnail" style="max-height: 200px;">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-bold text-muted">{{ form.observaciones.label }}</label>
+                            <textarea name="{{ form.observaciones.name }}" class="form-control {% if form.observaciones.errors %}is-invalid{% endif %}" rows="3" placeholder="{{ form.observaciones.field.widget.attrs.placeholder }}">{{ form.observaciones.value|default:'' }}</textarea>
+                            {% if form.observaciones.help_text %}
+                            <div class="form-text">{{ form.observaciones.help_text }}</div>
+                            {% endif %}
+                            {% for error in form.observaciones.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary px-4 rounded-pill d-inline-flex align-items-center gap-2" data-loading-disable data-loading-label="Actualizando...">
+                        <span class="spinner-border spinner-border-sm d-none submit-spinner" role="status" aria-hidden="true"></span>
+                        <span class="submit-label">Actualizar Cambios</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

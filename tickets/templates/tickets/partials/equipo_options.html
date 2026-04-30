@@ -1,0 +1,5 @@
+<option value="">-- Seleccione Equipo --</option>
+{% for eq in equipos %}
+    <option value="{{ eq.id }}">{{ eq.nombre_equipo }} ({{ eq.codigo_equipo }})</option>
+{% endfor %}
+<option value="otro">--- OTRO (No está en la lista) ---</option>

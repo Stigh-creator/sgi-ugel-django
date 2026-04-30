@@ -1,0 +1,110 @@
+{% load static %}
+<div class="modal fade" id="modalEditarUsuario" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-pencil-square me-2"></i>Actualizar Usuario
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formEditarUsuario" action="" method="POST" novalidate class="js-ajax-user-form">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="js-form-alert d-none alert alert-danger py-2 px-3 mb-3" role="alert"></div>
+                    <div class="row g-3">
+                        <!-- Sección Datos Personales -->
+                        <div class="col-12 mb-2">
+                            <h6 class="text-primary fw-bold border-bottom pb-2 mb-0">
+                                <i class="bi bi-person-vcard me-2"></i>Información Personal
+                            </h6>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Nombres</label>
+                            <input type="text" name="first_name" placeholder="Nombres" required
+                                   value="{{ update_form.first_name.value|default:'' }}"
+                                   class="form-control {% if update_form.first_name.errors %}is-invalid{% endif %}"
+                                   autocomplete="given-name"
+                                   pattern="[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+"
+                                   oninput="this.value=this.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ ]/g,'')">
+                            {% for error in update_form.first_name.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Apellidos</label>
+                            <input type="text" name="last_name" placeholder="Apellidos" required
+                                   value="{{ update_form.last_name.value|default:'' }}"
+                                   class="form-control {% if update_form.last_name.errors %}is-invalid{% endif %}"
+                                   autocomplete="family-name"
+                                   pattern="[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+"
+                                   oninput="this.value=this.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ ]/g,'')">
+                            {% for error in update_form.last_name.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-bold text-muted">Correo Electrónico</label>
+                            <input type="email" name="email" placeholder="correo@ugel.gob.pe"
+                                   value="{{ update_form.email.value|default:'' }}"
+                                   class="form-control {% if update_form.email.errors %}is-invalid{% endif %}">
+                            {% for error in update_form.email.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-bold text-muted">Teléfono</label>
+                            <input type="text" name="telefono" placeholder="+51987654321"
+                                   value="{{ update_form.telefono.value|default:'' }}"
+                                   class="form-control {% if update_form.telefono.errors %}is-invalid{% endif %}"
+                                   inputmode="tel" maxlength="9" pattern="\d{9}"
+                                   oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                            {% for error in update_form.telefono.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Sección Asignación -->
+                        <div class="col-12 mt-4 mb-2">
+                            <h6 class="text-primary fw-bold border-bottom pb-2 mb-0">
+                                <i class="bi bi-briefcase me-2"></i>Asignación de Rol y Área
+                            </h6>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Rol en el Sistema</label>
+                            <select name="role" class="form-select {% if update_form.role.errors %}is-invalid{% endif %}" required>
+                                {% for val, label in update_form.fields.role.choices %}
+                                {% with actual=update_form.role.value|stringformat:"s" opcion=val|stringformat:"s" %}
+                                <option value="{{ val|default:'' }}" {% if not update_form.role.value and not val %}selected{% elif actual == opcion %}selected{% endif %}>{{ label }}</option>
+                                {% endwith %}
+                                {% endfor %}
+                            </select>
+                            {% for error in update_form.role.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Área Perteneciente</label>
+                            <select name="area" class="form-select {% if update_form.area.errors %}is-invalid{% endif %}" required>
+                                {% for val, label in update_form.fields.area.choices %}
+                                {% with actual=update_form.area.value|stringformat:"s" opcion=val|stringformat:"s" %}
+                                <option value="{{ val|default:'' }}" {% if not update_form.area.value and not val %}selected{% elif actual == opcion %}selected{% endif %}>{{ label }}</option>
+                                {% endwith %}
+                                {% endfor %}
+                            </select>
+                            {% for error in update_form.area.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary px-4 rounded-pill">Actualizar Usuario</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

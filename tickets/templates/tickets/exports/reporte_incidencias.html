@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: a4 landscape;
+            margin: 1cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 9pt;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: #0D6EFD;
+            margin: 0;
+            font-size: 16pt;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background-color: #0D6EFD;
+            color: white;
+            padding: 8px;
+            text-align: left;
+        }
+        td {
+            border-bottom: 1px solid #eee;
+            padding: 8px;
+        }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 7pt;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>REPORTE DE INCIDENCIAS</h1>
+        <p>Periodo: {{ fecha_inicio|date:"d/m/Y" }} al {{ fecha_fin|date:"d/m/Y" }}</p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Fecha</th>
+                <th>Usuario</th>
+                <th>Área</th>
+                <th>Categoría</th>
+                <th>Prioridad</th>
+                <th>Estado</th>
+                <th>Técnico</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for inc in incidencias %}
+            <tr>
+                <td>{{ inc.codigo }}</td>
+                <td>{{ inc.fecha_creacion|date:"d/m/y" }}</td>
+                <td>{{ inc.creador.get_full_name|truncatechars:20 }}</td>
+                <td>{{ inc.area.name|truncatechars:20 }}</td>
+                <td>{{ inc.get_categoria_display }}</td>
+                <td>{{ inc.get_prioridad_display }}</td>
+                <td>{{ inc.estado.name }}</td>
+                <td>{{ inc.tecnico_asignado.first_name|default:"-" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" style="text-align: center;">No se encontraron incidencias en este rango de fechas.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="footer">
+        Generado el: {{ hoy|date:"d/m/Y H:i" }} | UGEL Morropón
+    </div>
+</body>
+</html>

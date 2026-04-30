@@ -1,0 +1,99 @@
+{% extends 'tickets/base.html' %}
+{% load static %}
+
+{% block title %}Nueva Incidencia - UGEL Morropón{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/tickets/incidencias_refactor.css' %}">
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet" crossorigin="anonymous">
+<style>
+    .sticky-sidebar {
+        position: sticky;
+        top: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row g-4">
+        <!-- Columna Formulario -->
+        <div class="col-lg-8">
+            <div class="card card-modern shadow-sm border-0 rounded-4">
+                <div class="card-header bg-white py-3 border-0">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="header-icon-bg bg-primary bg-opacity-10">
+                            <i class="fas fa-plus-circle text-primary"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0 fw-bold">Registrar Nueva Incidencia</h5>
+                            <p class="text-muted small mb-0">Completa la información detallada para una atención rápida.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <form id="incidenciaForm" action="{% url 'crear_incidencia' %}" method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="p-4">
+                            {% include 'tickets/partials/incidencia_form.html' %}
+                        </div>
+                        
+                        <div class="p-4 border-top bg-light bg-opacity-50 d-flex justify-content-end gap-2 rounded-bottom-4">
+                            <a href="{% url 'incidencias_list' %}" class="btn btn-light rounded-pill px-4 fw-bold border">Cancelar</a>
+                            <button type="submit" class="btn btn-primary rounded-pill px-5 fw-bold shadow-sm">
+                                Enviar Reporte <i class="fas fa-paper-plane ms-2"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna Recomendaciones (Side Panel) -->
+        <div class="col-lg-4">
+            <div class="sticky-sidebar">
+                <div class="card border-0 shadow-sm rounded-4 bg-primary bg-opacity-10 border-start border-4 border-primary">
+                    <div class="card-body p-4">
+                        <h6 class="fw-bold text-primary mb-3">
+                            <i class="fas fa-lightbulb me-2"></i>Consejos Rápidos
+                        </h6>
+                        <ul class="list-unstyled mb-0 tiny-text text-primary-emphasis d-flex flex-column gap-3">
+                            <li class="d-flex gap-2">
+                                <i class="fas fa-check-circle fs-5"></i>
+                                <span><strong>Sé descriptivo:</strong> Menciona exactamente qué sucede (ej. "La impresora no jala papel" en lugar de "No funciona").</span>
+                            </li>
+                            <li class="d-flex gap-2">
+                                <i class="fas fa-check-circle fs-5"></i>
+                                <span><strong>Fotos ayudan:</strong> Adjunta capturas de pantalla de los errores o fotos del equipo dañado.</span>
+                            </li>
+                            <li class="d-flex gap-2">
+                                <i class="fas fa-check-circle fs-5"></i>
+                                <span><strong>Ubicación exacta:</strong> Asegúrate de seleccionar el área correcta para que el técnico llegue rápido.</span>
+                            </li>
+                            <li class="d-flex gap-2">
+                                <i class="fas fa-check-circle fs-5"></i>
+                                <span><strong>Prioridad real:</strong> Usa "Crítica" solo si el problema paraliza tu trabajo completamente.</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js" crossorigin="anonymous"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Inicializar TomSelect para selects con live-search
+        document.querySelectorAll('.live-search').forEach(el => {
+            new TomSelect(el, {
+                create: false,
+                sortField: { field: "text", direction: "asc" }
+            });
+        });
+    });
+</script>
+{% endblock %}
