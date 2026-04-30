@@ -74,7 +74,7 @@
                         </div>
                         <div class="col-12">
                             <label class="form-label small fw-bold text-muted">Correo Electrónico</label>
-                            <input type="email" name="email" placeholder="correo@ugel.gob.pe" 
+                            <input type="email" name="email" placeholder="Ej. correo@ugel.gob.pe" 
                                    value="{{ creation_form.email.value|default:'' }}"
                                    class="form-control {% if creation_form.email.errors %}is-invalid{% endif %}"
                                    autocomplete="email">
@@ -84,7 +84,7 @@
                         </div>
                         <div class="col-12">
                             <label class="form-label small fw-bold text-muted">Teléfono</label>
-                            <input type="text" name="telefono" placeholder="987654321"
+                            <input type="text" name="telefono" placeholder="Ej. 987654321"
                                    value="{{ creation_form.telefono.value|default:'' }}"
                                    class="form-control {% if creation_form.telefono.errors %}is-invalid{% endif %}"
                                    inputmode="tel" maxlength="9" pattern="\d{9}"
