@@ -54,3 +54,5 @@ docker-compose.override.yml
 # PostgreSQL (Configuración futura)
 # Si usas archivos de volumen locales para Postgres
 # pgdata/
+
+CONTEXTO_PROYECTO.md
