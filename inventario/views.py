@@ -9,6 +9,7 @@ from .models import Equipo, Marca, TipoEquipo, EstadoEquipo
 from .forms import EquipoEstadoUpdateForm, EquipoForm
 from .services import registrar_cambio_manual_estado_equipo
 from tickets.models import Area
+from tickets.views.views_utils import page_querystring
 from tickets.services import normalize_expression, normalize_text
 from auditoria.utils import registrar_auditoria
 
@@ -82,6 +83,7 @@ def get_inventario_context(request, form=None):
         'marca_selected': marca_id,
         'tipo_selected': tipo_id,
         'vista_selected': vista,
+        'page_querystring': page_querystring(request),
         'total_bajas': Equipo.objects.filter(activo=False).count(),
         'form': form or EquipoForm(),
     }

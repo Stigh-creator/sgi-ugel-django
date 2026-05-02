@@ -11,7 +11,7 @@ from django.views.decorators.http import require_POST
 
 from auditoria.utils import registrar_auditoria
 from .views_utils import (
-    is_admin, is_fetch_request, add_form_errors_to_messages, HttpResponseClientRefresh
+    is_admin, is_fetch_request, add_form_errors_to_messages, HttpResponseClientRefresh, page_querystring
 )
 from ..models import Area, Comentario, CustomUser, Incidencia, IncidenciaImagen, Estado
 from ..forms.forms_incidencias import (
@@ -163,6 +163,7 @@ def incidencias_list(request):
         "now": timezone.localtime(timezone.now()),
         "areas": Area.objects.all().order_by("name"),
         "prioridades": Incidencia.PRIORIDAD_CHOICES,
+        "page_querystring": page_querystring(request),
     }
 
     if request.headers.get("HX-Request"):

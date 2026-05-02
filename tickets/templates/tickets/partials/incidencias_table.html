@@ -172,7 +172,7 @@
             {% if incidencias.has_previous %}
             <li class="page-item">
                 <a class="page-link border-0 rounded-3 shadow-sm" 
-                   hx-get="?page={{ incidencias.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if estado_selected %}&estado={{ estado_selected }}{% endif %}{% if area_selected %}&area={{ area_selected }}{% endif %}{% if prioridad_selected %}&prioridad={{ prioridad_selected }}{% endif %}{% if order_selected %}&order={{ order_selected }}{% endif %}{% if active_tab %}&tab={{ active_tab }}{% endif %}"
+                   hx-get="?page={{ incidencias.previous_page_number }}{{ page_querystring }}"
                    hx-target="#incidenciasTableContainer">
                     <i class="bi bi-chevron-left"></i>
                 </a>
@@ -185,7 +185,7 @@
                 {% elif num > incidencias.number|add:'-3' and num < incidencias.number|add:'3' %}
                 <li class="page-item">
                     <a class="page-link border-0 rounded-3 shadow-sm" 
-                       hx-get="?page={{ num }}{% if query %}&q={{ query }}{% endif %}{% if estado_selected %}&estado={{ estado_selected }}{% endif %}{% if area_selected %}&area={{ area_selected }}{% endif %}{% if prioridad_selected %}&prioridad={{ prioridad_selected }}{% endif %}{% if order_selected %}&order={{ order_selected }}{% endif %}{% if active_tab %}&tab={{ active_tab }}{% endif %}"
+                       hx-get="?page={{ num }}{{ page_querystring }}"
                        hx-target="#incidenciasTableContainer">{{ num }}</a>
                 </li>
                 {% endif %}
@@ -194,7 +194,7 @@
             {% if incidencias.has_next %}
             <li class="page-item">
                 <a class="page-link border-0 rounded-3 shadow-sm" 
-                   hx-get="?page={{ incidencias.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if estado_selected %}&estado={{ estado_selected }}{% endif %}{% if area_selected %}&area={{ area_selected }}{% endif %}{% if prioridad_selected %}&prioridad={{ prioridad_selected }}{% endif %}{% if order_selected %}&order={{ order_selected }}{% endif %}{% if active_tab %}&tab={{ active_tab }}{% endif %}"
+                   hx-get="?page={{ incidencias.next_page_number }}{{ page_querystring }}"
                    hx-target="#incidenciasTableContainer">
                     <i class="bi bi-chevron-right"></i>
                 </a>

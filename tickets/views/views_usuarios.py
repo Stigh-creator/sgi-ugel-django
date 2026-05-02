@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 
 from auditoria.utils import registrar_auditoria
 from .views_utils import (
-    is_admin, is_fetch_request, add_form_errors_to_messages, form_errors_to_dict
+    is_admin, is_fetch_request, add_form_errors_to_messages, form_errors_to_dict, page_querystring
 )
 from ..models import Area, CustomUser
 from ..forms.forms_usuarios import (
@@ -67,6 +67,7 @@ def get_usuarios_context(request, creation_form=None, update_form=None):
         "page_obj": page_obj,
         "areas": Area.objects.all(),
         "query": q,
+        "page_querystring": page_querystring(request),
         "creation_form": creation_form or CustomUserCreationForm(),
         "update_form": update_form or AdminUserUpdateForm(),
     }
@@ -124,10 +125,10 @@ def crear_usuario(request):
 @require_POST
 def editar_usuario(request, pk):
     usuario = get_object_or_404(CustomUser, pk=pk)
-    form = AdminUserUpdateForm(request.POST, instance=usuario)
+    area_ant = usuario.area
+    role_ant = usuario.role
+    form = AdminUserUpdateForm(request.POST, instance=usuario, actor=request.user)
     if form.is_valid():
-        area_ant = usuario.area
-        role_ant = usuario.role
         user = form.save()
         
         cambios = []
@@ -135,6 +136,7 @@ def editar_usuario(request, pk):
             cambios.append(f"Área: {area_ant} -> {user.area}")
         if role_ant != user.role:
             cambios.append(f"Rol: {role_ant} -> {user.role}")
+            delete_user_sessions(user)
             
         desc = f"Se actualizó la información de {user.username}."
         if cambios:

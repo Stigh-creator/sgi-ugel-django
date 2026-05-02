@@ -22,6 +22,12 @@ def form_errors_to_dict(form):
         for field, errors in form.errors.items()
     }
 
+def page_querystring(request):
+    params = request.GET.copy()
+    params.pop("page", None)
+    encoded = params.urlencode()
+    return f"&{encoded}" if encoded else ""
+
 def HttpResponseClientRefresh():
     response = HttpResponse()
     response['HX-Refresh'] = 'true'

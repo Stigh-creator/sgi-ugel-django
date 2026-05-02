@@ -247,8 +247,15 @@
                 }
 
                 btn.dataset.originalText = btn.innerHTML;
-                const spinnerText = btn.tagName === 'A' || btn.classList.contains('btn-sm') || btn.classList.contains('btn-icon') ? '' : ' Cargando...';
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>' + spinnerText;
+                btn.dataset.originalWidth = btn.style.width || '';
+                const hasVisibleText = btn.textContent.trim().length > 0;
+                const isIconButton = btn.classList.contains('btn-icon') || btn.classList.contains('btn-action') || !hasVisibleText;
+                if (isIconButton && btn.offsetWidth) {
+                    btn.style.width = `${btn.offsetWidth}px`;
+                }
+
+                const spinner = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                btn.innerHTML = isIconButton ? spinner : spinner + ' Cargando...';
                 btn.classList.add('disabled');
                 btn.classList.add('loading');
                 btn.disabled = true;
@@ -262,6 +269,8 @@
                 btn.classList.remove('loading');
                 btn.disabled = false;
                 btn.style.pointerEvents = '';
+                btn.style.width = btn.dataset.originalWidth || '';
+                delete btn.dataset.originalWidth;
                 
                 if (btn.form) {
                     const hiddens = btn.form.querySelectorAll('.loading-hidden-input');

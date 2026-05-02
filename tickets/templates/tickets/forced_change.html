@@ -19,6 +19,33 @@
             align-items: center;
             justify-content: center;
         }
+
+        .security-alert {
+            border: 1px solid rgba(220, 53, 69, 0.22);
+            background-color: #f8d7da;
+            color: #842029;
+            border-radius: 1rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.9rem 1rem;
+        }
+
+        .security-alert-icon {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            background: rgba(220, 53, 69, 0.12);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+        }
+
+        .security-alert .btn-close {
+            margin-left: auto;
+            padding: 0.35rem;
+        }
     </style>
 </head>
 <body class="wrapper-forced"> <div class="forced-center"> <div class="card shadow-sm">
@@ -32,8 +59,14 @@
 
             {% if messages %}
                 {% for message in messages %}
-                    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show js-auto-dismiss-alert" role="alert">
-                        {{ message }}
+                    <div class="alert alert-danger security-alert alert-dismissible fade show js-auto-dismiss-alert mb-4" role="alert">
+                        <span class="security-alert-icon">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                        </span>
+                        <div class="small lh-sm pt-1">
+                            <strong>Revisa tu contraseña</strong>
+                            <div>{{ message }}</div>
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 {% endfor %}
@@ -117,6 +150,27 @@
 <script>
     // Tu lógica de validación JS (la misma de antes)
     document.addEventListener('DOMContentLoaded', function () {
+        if (!window.setLoadingState) {
+            window.setLoadingState = function(btn) {
+                if (!btn || btn.classList.contains('loading')) return;
+                btn.dataset.originalText = btn.innerHTML;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Actualizando...';
+                btn.classList.add('loading');
+                btn.disabled = true;
+                btn.style.pointerEvents = 'none';
+            };
+        }
+
+        if (!window.removeLoadingState) {
+            window.removeLoadingState = function(btn) {
+                if (!btn || !btn.dataset.originalText) return;
+                btn.innerHTML = btn.dataset.originalText;
+                btn.classList.remove('loading');
+                btn.disabled = false;
+                btn.style.pointerEvents = '';
+            };
+        }
+
         document.querySelectorAll('.js-auto-dismiss-alert').forEach(function (alertEl) {
             window.setTimeout(function () {
                 if (alertEl && alertEl.parentNode) {
@@ -129,6 +183,7 @@
         const newPass = document.getElementById('id_new_password1');
         const confPass = document.getElementById('id_new_password2');
         const submitBtn = document.getElementById('submitBtn');
+        const form = document.getElementById('passwordForm');
         const matchMsg = document.getElementById('match-message');
 
         const reqs = {
@@ -167,6 +222,20 @@
 
         newPass.addEventListener('input', validate);
         confPass.addEventListener('input', validate);
+
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                if (form.dataset.submitted === 'true') {
+                    e.preventDefault();
+                    return;
+                }
+                if (form.checkValidity && !form.checkValidity()) {
+                    return;
+                }
+                form.dataset.submitted = 'true';
+                window.setLoadingState(submitBtn);
+            });
+        }
 
         document.querySelectorAll('.toggle-password').forEach(btn => {
             btn.addEventListener('click', function() {

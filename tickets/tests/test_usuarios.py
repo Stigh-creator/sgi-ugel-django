@@ -156,6 +156,106 @@ class UsuariosAdminModuleTests(TestCase):
         self.assertEqual(self.usuario.role, "tecnico")
         self.assertEqual(self.usuario.area, self.area_2)
 
+    def test_no_permite_cambiar_rol_o_area_del_superusuario(self):
+        superuser = CustomUser.objects.create_superuser(
+            username="99990000",
+            password="Super1234!",
+            first_name="Super",
+            last_name="Admin",
+            email="super@example.com",
+            role="administrador",
+            area=self.area,
+            telefono="900000000",
+        )
+
+        response = self.client.post(
+            reverse("editar_usuario", args=[superuser.pk]),
+            {
+                "first_name": "Super",
+                "last_name": "Admin",
+                "email": "super@example.com",
+                "telefono": "900000000",
+                "role": "usuario",
+                "area": self.area_2.pk,
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertIn("No se puede cambiar el rol ni el área del superusuario.", payload["errors"]["__all__"])
+        superuser.refresh_from_db()
+        self.assertEqual(superuser.role, "administrador")
+        self.assertEqual(superuser.area, self.area)
+
+    def test_admin_no_puede_cambiar_su_propio_rol(self):
+        response = self.client.post(
+            reverse("editar_usuario", args=[self.admin.pk]),
+            {
+                "first_name": self.admin.first_name,
+                "last_name": self.admin.last_name,
+                "email": "admin@example.com",
+                "telefono": self.admin.telefono,
+                "role": "usuario",
+                "area": self.admin.area.pk,
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertIn(
+            "No puedes cambiar tu propio rol por motivos de seguridad. Solicita este cambio a otro administrador o al superusuario",
+            payload["errors"]["role"],
+        )
+        self.admin.refresh_from_db()
+        self.assertEqual(self.admin.role, "administrador")
+
+    def test_no_permite_cambiar_rol_del_unico_administrador_activo(self):
+        response = self.client.post(
+            reverse("editar_usuario", args=[self.admin.pk]),
+            {
+                "first_name": self.admin.first_name,
+                "last_name": self.admin.last_name,
+                "email": "admin@example.com",
+                "telefono": self.admin.telefono,
+                "role": "usuario",
+                "area": self.admin.area.pk,
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertIn(
+            "No se puede cambiar el rol del único administrador activo. Debe existir al menos un administrador activo.",
+            payload["errors"]["role"],
+        )
+        self.admin.refresh_from_db()
+        self.assertEqual(self.admin.role, "administrador")
+
+    def test_cambiar_rol_de_otro_usuario_invalida_sus_sesiones(self):
+        other_client = self.client_class()
+        other_client.force_login(self.usuario)
+        session_key = other_client.session.session_key
+
+        response = self.client.post(
+            reverse("editar_usuario", args=[self.usuario.pk]),
+            {
+                "first_name": self.usuario.first_name,
+                "last_name": self.usuario.last_name,
+                "email": "pedro@example.com",
+                "telefono": self.usuario.telefono,
+                "role": "tecnico",
+                "area": self.usuario.area.pk,
+            },
+        )
+
+        self.assertRedirects(response, reverse("usuarios"))
+        self.usuario.refresh_from_db()
+        self.assertEqual(self.usuario.role, "tecnico")
+        self.assertFalse(Session.objects.filter(session_key=session_key).exists())
+
     def test_no_permite_crear_usuario_con_telefono_duplicado(self):
         self.usuario.telefono = "999111222"
         self.usuario.save(update_fields=["telefono"])

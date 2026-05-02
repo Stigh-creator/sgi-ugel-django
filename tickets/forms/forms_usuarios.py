@@ -183,11 +183,16 @@ class CustomUserCreationForm(forms.ModelForm):
 
 
 class AdminUserUpdateForm(forms.ModelForm):
+    SELF_ROLE_CHANGE_ERROR = "No puedes cambiar tu propio rol por motivos de seguridad. Solicita este cambio a otro administrador o al superusuario"
+    SUPERUSER_HIERARCHY_ERROR = "No se puede cambiar el rol ni el área del superusuario."
+    LAST_ADMIN_ERROR = "No se puede cambiar el rol del único administrador activo. Debe existir al menos un administrador activo."
+
     class Meta:
         model = CustomUser
         fields = ("first_name", "last_name", "email", "telefono", "role", "area")
 
     def __init__(self, *args, **kwargs):
+        self.actor = kwargs.pop("actor", None)
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs["class"] = "form-control"
@@ -226,6 +231,42 @@ class AdminUserUpdateForm(forms.ModelForm):
         if CustomUser.objects.filter(telefono=telefono).exclude(pk=self.instance.pk).exists():
             raise ValidationError("Este teléfono ya está en uso por otro usuario.")
         return telefono
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if self.instance and self.instance.pk:
+            new_area = cleaned_data.get("area")
+            new_role = cleaned_data.get("role")
+
+            area_changed = new_area is not None and new_area != self.instance.area
+            role_changed = new_role is not None and new_role != self.instance.role
+
+            if self.instance.is_superuser and (area_changed or role_changed):
+                raise ValidationError(self.SUPERUSER_HIERARCHY_ERROR)
+
+            if self.actor and self.actor.pk == self.instance.pk and role_changed:
+                self.add_error("role", self.SELF_ROLE_CHANGE_ERROR)
+
+            if role_changed and self.instance.is_active and self.instance.role == "administrador":
+                active_admins = CustomUser.objects.filter(
+                    is_active=True,
+                    role="administrador",
+                ).exclude(pk=self.instance.pk)
+                if not active_admins.exists():
+                    self.add_error("role", self.LAST_ADMIN_ERROR)
+
+            if self.instance.role in ["tecnico", "administrador"]:
+                if area_changed or role_changed:
+                    from ..models import Incidencia
+                    incidencias_activas = Incidencia.objects.filter(
+                        tecnico_asignado=self.instance
+                    ).exclude(estado__name__in=["Resuelto", "Cerrado"])
+                    
+                    if incidencias_activas.exists():
+                        mensaje = "No se puede cambiar el área/rol del usuario porque tiene incidencias activas asignadas. Por favor, reasigne o cierre los tickets antes de proceder."
+                        # Agregamos error general si cambiaron ambos, o específico
+                        raise ValidationError(mensaje)
+        return cleaned_data
 
 
 class ProfileUpdateForm(forms.ModelForm):
