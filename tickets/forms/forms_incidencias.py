@@ -58,10 +58,12 @@ class IncidenciaForm(forms.ModelForm):
         equipos_operativos = Equipo.objects.filter(activo=True, estado=estado_operativo)
 
         if user:
-            if user.role == "usuario":
+            if user.es_usuario:
                 self.fields["area"].initial = user.area
                 self.fields["area"].disabled = True
                 self.fields["equipo"].queryset = equipos_operativos.filter(area=user.area)
+                if "prioridad" in self.fields:
+                    self.fields.pop("prioridad")
             else:
                 self.fields["area"].queryset = Area.objects.all().order_by('sede_principal', 'name')
                 self.fields["area"].empty_label = "-- Seleccione Área --"
@@ -200,7 +202,10 @@ class IncidenciaAdminForm(forms.ModelForm):
 
         self.fields["area"].empty_label = "-- Seleccione Área --"
         self.fields["tecnico_asignado"].empty_label = "-- Seleccione Técnico --"
-        self.fields["tecnico_asignado"].queryset = CustomUser.objects.filter(role__in=["tecnico", "administrador"])
+        self.fields["tecnico_asignado"].queryset = CustomUser.objects.filter(
+            role__in=[CustomUser.ROL_TECNICO, CustomUser.ROL_ADMIN],
+            is_active=True,
+        )
         self.fields["tecnico_asignado"].required = True
         self.fields["tecnico_asignado"].widget.attrs["class"] = "form-control live-search"
         self.fields["fecha_programada_atencion"].required = False
@@ -215,12 +220,15 @@ class IncidenciaAdminForm(forms.ModelForm):
         self.fields['hora_programada_atencion'].widget.attrs.pop('disabled', None)
 
         if self.instance and self.instance.pk:
+            self.fields["imagen_adjunta"].required = False
             if self.instance.estado and self.instance.estado.name in ["Resuelto", "Cerrado"]:
                 for field_name in ["tecnico_asignado", "fecha_programada_atencion"]:
                     self.fields[field_name].disabled = True
-            for field_name in ["categoria", "prioridad", "area", "descripcion", "imagen_adjunta", "equipo"]:
+            for field_name in ["categoria", "area", "descripcion", "equipo"]:
                 if field_name in self.fields:
                     self.fields[field_name].disabled = True
+            if not self.instance.prioridad_editable and "prioridad" in self.fields:
+                self.fields["prioridad"].disabled = True
 
     def clean(self):
         cleaned_data = super().clean()
@@ -255,6 +263,9 @@ class IncidenciaAdminForm(forms.ModelForm):
 
     def clean_imagen_adjunta(self):
         file = self.cleaned_data.get("imagen_adjunta")
+        if self.instance and self.instance.pk and self.instance.imagen_adjunta:
+            if not file or getattr(file, "name", None) == self.instance.imagen_adjunta.name:
+                return self.instance.imagen_adjunta
         if not file:
             raise ValidationError("La foto de la incidencia es obligatoria.")
         if file.size > 2 * 1024 * 1024:

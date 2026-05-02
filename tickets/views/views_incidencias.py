@@ -24,6 +24,7 @@ from ..forms.forms_incidencias import (
 from ..services import (
     apply_estado_filter,
     apply_incidencias_search,
+    aceptar_incidencia_service,
     available_estado_filters,
     assign_incidencia_service,
     cerrar_incidencia_service,
@@ -31,6 +32,7 @@ from ..services import (
     get_active_ticket_load_for_user,
     get_visible_incidencias_queryset,
     optimized_incidencias_queryset,
+    rechazar_incidencia_service,
     resolve_active_tab_for_user,
     reabrir_incidencia_service,
     resolver_incidencia_service,
@@ -47,11 +49,26 @@ def crear_comentario_estado(*, incidencia, usuario, texto, tipo="confirmacion", 
     )
     return comentario
 
+
+def ticket_label(incidencia):
+    return f"[{incidencia.codigo or f'INC-{incidencia.pk:04d}'}]"
+
+
+def nombre_usuario(usuario):
+    if not usuario:
+        return "Sin usuario registrado"
+    return usuario.get_full_name() or usuario.username
+
+
+def prioridad_label(value):
+    return dict(Incidencia.PRIORIDAD_CHOICES).get(value, value or "Sin prioridad")
+
+
 @login_required
 def index(request):
     if is_admin(request.user):
         return redirect("dashboard_admin")
-    if request.user.role == "tecnico":
+    if request.user.es_tecnico:
         return redirect("dashboard_tecnico")
     return redirect("mis_incidencias")
 
@@ -61,16 +78,20 @@ def dashboard_admin(request):
     hoy = timezone.localdate()
     count_criticas = Incidencia.objects.filter(
         Q(prioridad__icontains='alt') | Q(prioridad__icontains='crit')
-    ).exclude(estado__name__in=['Resuelto', 'Cerrado']).count()
+    ).exclude(estado__name__in=[Incidencia.ESTADO_RESUELTO, Incidencia.ESTADO_CERRADO]).count()
 
     count_pendientes = Incidencia.objects.filter(
-        Q(estado__name__iexact='Pendiente')
-        | Q(estado__name__iexact='Asignado')
-        | Q(estado__name__iexact='Reabierto')
+        estado__name__in=[
+            Incidencia.ESTADO_PENDIENTE,
+            Incidencia.ESTADO_ASIGNADO,
+            Incidencia.ESTADO_EN_PROCESO,
+            Incidencia.ESTADO_RECHAZADO,
+            Incidencia.ESTADO_REABIERTO,
+        ]
     ).count()
 
-    count_resueltas = Incidencia.objects.filter(estado__name__iexact='Resuelto').count()
-    count_cerrados = Incidencia.objects.filter(estado__name__iexact='Cerrado').count()
+    count_resueltas = Incidencia.objects.filter(estado__name__iexact=Incidencia.ESTADO_RESUELTO).count()
+    count_cerrados = Incidencia.objects.filter(estado__name__iexact=Incidencia.ESTADO_CERRADO).count()
 
     lista_hoy = Incidencia.objects.filter(fecha_creacion__date=hoy).select_related('area', 'estado', 'creador').order_by('-fecha_creacion')
     count_hoy = lista_hoy.count()
@@ -85,12 +106,12 @@ def dashboard_admin(request):
         },
         'incidencias_hoy_lista': lista_hoy,
         'estados_lista': Estado.objects.all(),
-        'tecnicos_lista': CustomUser.objects.filter(role='tecnico', is_active=True),
+        'tecnicos_lista': CustomUser.objects.filter(role=CustomUser.ROL_TECNICO, is_active=True),
     })
 
 @login_required
 def dashboard_tecnico(request):
-    if request.user.role != "tecnico":
+    if not request.user.es_tecnico:
         return redirect("index")
         
     tickets_base = Incidencia.objects.filter(tecnico_asignado=request.user)
@@ -98,9 +119,9 @@ def dashboard_tecnico(request):
     
     count_criticas = tickets_base.filter(
         Q(prioridad__icontains='alt') | Q(prioridad__icontains='crit')
-    ).exclude(estado__name__in=['Resuelto', 'Cerrado']).count()
+    ).exclude(estado__name__in=[Incidencia.ESTADO_RESUELTO, Incidencia.ESTADO_CERRADO]).count()
 
-    count_finalizados = tickets_base.filter(estado__name__in=['Resuelto', 'Cerrado']).count()
+    count_finalizados = tickets_base.filter(estado__name__in=[Incidencia.ESTADO_RESUELTO, Incidencia.ESTADO_CERRADO]).count()
     
     ultimas_incidencias = tickets_base.filter(fecha_creacion__date=hoy).select_related('area', 'estado', 'creador').order_by('-fecha_creacion')
 
@@ -187,6 +208,8 @@ def crear_incidencia(request):
             
             if not es_adm:
                 incidencia.area = request.user.area
+                if request.user.es_usuario:
+                    incidencia.prioridad = Incidencia.PRIORIDAD_MEDIA
             try:
                 create_incidencia_service(
                     incidencia=incidencia,
@@ -206,7 +229,7 @@ def crear_incidencia(request):
             
             registrar_auditoria(
                 request, "Incidencias", "creó incidencia",
-                f"Se creó la incidencia {incidencia.codigo} - {incidencia.descripcion[:50]}...",
+                f"{ticket_label(incidencia)} Incidencia creada por {nombre_usuario(request.user)}: {incidencia.descripcion[:50]}...",
                 incidencia.id
             )
             
@@ -220,7 +243,7 @@ def crear_incidencia(request):
         else:
             form = IncidenciaForm(user=request.user)
             
-        if request.user.role != 'usuario':
+        if not request.user.es_usuario:
             form.fields['equipo'].queryset = Equipo.objects.filter(activo=True)
     
     context = {
@@ -237,10 +260,10 @@ def detalle_incidencia(request, pk):
     incidencia = get_object_or_404(optimized_incidencias_queryset(), pk=pk)
     
     if not is_admin(request.user):
-        if request.user.role == 'tecnico' and incidencia.tecnico_asignado != request.user:
+        if request.user.es_tecnico and incidencia.tecnico_asignado != request.user:
             messages.error(request, "No estás asignado a esta incidencia.")
             return redirect('incidencias_list')
-        if request.user.role == 'usuario' and incidencia.creador != request.user:
+        if request.user.es_usuario and incidencia.creador != request.user:
             messages.error(request, "No tienes permiso para ver esta incidencia.")
             return redirect('incidencias_list')
     
@@ -271,7 +294,14 @@ def detalle_incidencia(request, pk):
         'timeline': timeline,
         'comentarios': comentarios,
         'typing_users': typing_users,
-        'tecnicos': CustomUser.objects.filter(role__in=['administrador', 'tecnico'], is_active=True),
+        'puede_aceptar_rechazar': (
+            incidencia.tecnico_asignado_id == request.user.id
+            and incidencia.estado_actual == Incidencia.ESTADO_ASIGNADO
+        ),
+        'tecnicos': CustomUser.objects.filter(
+            role__in=[CustomUser.ROL_ADMIN, CustomUser.ROL_TECNICO],
+            is_active=True,
+        ),
         'comentario_form': ComentarioForm(),
         'reabrir_form': ReabrirIncidenciaForm(),
         'now': timezone.localtime(timezone.now()),
@@ -291,8 +321,8 @@ def marcar_escribiendo(request, pk):
     incidencia = get_object_or_404(Incidencia, pk=pk)
     
     puedo_ver = is_admin(request.user) or \
-                (request.user.role == 'tecnico' and incidencia.tecnico_asignado == request.user) or \
-                (request.user.role == 'usuario' and incidencia.creador == request.user)
+                (request.user.es_tecnico and incidencia.tecnico_asignado == request.user) or \
+                (request.user.es_usuario and incidencia.creador == request.user)
                 
     if not puedo_ver:
         return HttpResponse(status=403)
@@ -332,8 +362,8 @@ def asignar_tecnico(request, pk):
     
     registrar_auditoria(
         request, "Incidencias", "asignó técnico",
-        f"El administrador {request.user.get_full_name() or request.user.username} asignó al técnico "
-        f"{tecnico.get_full_name() or tecnico.username} al ticket {incidencia.codigo}. "
+        f"{ticket_label(incidencia)} Asignación inicial de técnico: {nombre_usuario(tecnico)}. "
+        f"Acción realizada por {nombre_usuario(request.user)}. "
         f"Carga previa: {current_load} tickets activos.",
         pk
     )
@@ -341,13 +371,72 @@ def asignar_tecnico(request, pk):
     messages.success(request, f"Técnico {tecnico.first_name} asignado a la incidencia {incidencia.codigo}")
     return HttpResponseClientRefresh()
 
+
+@login_required
+@require_POST
+def aceptar_incidencia(request, pk):
+    incidencia = get_object_or_404(Incidencia, pk=pk)
+    try:
+        aceptar_incidencia_service(incidencia, request.user)
+    except ValidationError as exc:
+        messages.error(request, exc.message)
+        return redirect("detalle_incidencia", pk=pk)
+
+    crear_comentario_estado(
+        incidencia=incidencia,
+        usuario=request.user,
+        tipo="confirmacion",
+        texto=f"{nombre_usuario(request.user)} aceptó la atención y cambió el estado a En Proceso.",
+    )
+    registrar_auditoria(
+        request,
+        "Incidencias",
+        "aceptó incidencia",
+        f"{ticket_label(incidencia)} El técnico {nombre_usuario(request.user)} aceptó la incidencia. Estado cambiado a 'En Proceso'.",
+        pk,
+    )
+    messages.success(request, f"Incidencia {incidencia.codigo} aceptada. Ya puedes registrar la solución cuando corresponda.")
+    return redirect("detalle_incidencia", pk=pk)
+
+
+@login_required
+@require_POST
+def rechazar_incidencia(request, pk):
+    incidencia = get_object_or_404(Incidencia, pk=pk)
+    especialista_nombre = request.user.get_full_name() or request.user.username
+    try:
+        motivo = rechazar_incidencia_service(incidencia, request.user, request.POST.get("motivo"))
+    except ValidationError as exc:
+        messages.error(request, exc.message)
+        return redirect("detalle_incidencia", pk=pk)
+
+    crear_comentario_estado(
+        incidencia=incidencia,
+        usuario=request.user,
+        tipo="observacion",
+        texto=(
+            f"{especialista_nombre} rechazó la atención asignada y fue desvinculado del ticket.\n"
+            f"Motivo: {motivo}"
+        ),
+    )
+    registrar_auditoria(
+        request,
+        "Incidencias",
+        "rechazó incidencia",
+        f"{ticket_label(incidencia)} El técnico {especialista_nombre} rechazó la incidencia. Motivo: {motivo}. El ticket ha sido desvinculado.",
+        pk,
+    )
+    messages.warning(request, f"Incidencia {incidencia.codigo} rechazada. El motivo quedó registrado en el seguimiento.")
+    return redirect("incidencias_list")
+
+
 @login_required
 def get_equipos_for_area(request):
     area_id = request.GET.get('area')
     user = request.user
     estado_operativo = EstadoEquipo.objects.filter(nombre="Operativo").first()
     
-    if user.role == "usuario":
+    if user.es_usuario:
         if user.area and user.area.sede_principal:
             equipos = Equipo.objects.filter(area__sede_principal=user.area.sede_principal, activo=True, estado=estado_operativo)
         else:
@@ -386,6 +475,8 @@ def crear_incidencia_modal(request):
             incidencia.creador = request.user
             if not is_adm:
                 incidencia.area = request.user.area
+                if request.user.es_usuario:
+                    incidencia.prioridad = Incidencia.PRIORIDAD_MEDIA
             
             equipo_id = request.POST.get("equipo")
             if equipo_id == "otro":
@@ -430,7 +521,13 @@ def crear_incidencia_modal(request):
                 add_form_errors_to_messages(request, form)
                 return render_fullscreen_create(form)
 
-            registrar_auditoria(request, "Incidencias", "creó incidencia", f"El usuario {request.user.username} reportó la incidencia {incidencia.codigo}", incidencia.id)
+            registrar_auditoria(
+                request,
+                "Incidencias",
+                "creó incidencia",
+                f"{ticket_label(incidencia)} Incidencia reportada por {nombre_usuario(request.user)}.",
+                incidencia.id,
+            )
 
             if is_htmx:
                 return HttpResponseClientRefresh()
@@ -459,6 +556,9 @@ def crear_incidencia_modal(request):
 @require_POST
 def agregar_comentario(request, pk):
     incidencia = get_object_or_404(Incidencia, pk=pk)
+    if incidencia.estado_actual in {Incidencia.ESTADO_RECHAZADO, Incidencia.ESTADO_CERRADO}:
+        return JsonResponse({"success": False, "message": "El seguimiento está bloqueado para esta incidencia."}, status=403)
+
     form = ComentarioForm(request.POST, request.FILES)
     if form.is_valid():
         comentario = form.save(commit=False)
@@ -468,7 +568,7 @@ def agregar_comentario(request, pk):
         
         registrar_auditoria(
             request, "Incidencias", "comentó incidencia",
-            f"El usuario {request.user.username} añadió un comentario a la incidencia #{pk}",
+            f"{ticket_label(incidencia)} {nombre_usuario(request.user)} añadió un comentario al seguimiento.",
             pk
         )
         
@@ -484,6 +584,10 @@ def resolver_incidencia(request, pk):
     
     if request.user != incidencia.tecnico_asignado and not is_admin(request.user):
         messages.error(request, "No tienes permiso para resolver esta incidencia.")
+        return redirect('detalle_incidencia', pk=pk)
+
+    if incidencia.estado_actual != Incidencia.ESTADO_EN_PROCESO:
+        messages.error(request, "Primero debes aceptar la incidencia antes de registrar la solución.")
         return redirect('detalle_incidencia', pk=pk)
         
     form = IncidenciaCierreForm(request.POST, request.FILES)
@@ -507,7 +611,7 @@ def resolver_incidencia(request, pk):
             ),
         )
         
-        registrar_auditoria(request, "Incidencias", "resolvió incidencia", f"Incidencia #{pk} marcada como resuelta.", pk)
+        registrar_auditoria(request, "Incidencias", "resolvió incidencia", f"{ticket_label(incidencia)} Incidencia marcada como Resuelta por {nombre_usuario(request.user)}.", pk)
         messages.success(request, f"Incidencia #{pk} marcada como resuelta.")
         return redirect('detalle_incidencia', pk=pk)
     
@@ -562,7 +666,7 @@ def reabrir_incidencia(request, pk):
         if imagen_extra:
             IncidenciaImagen.objects.create(incidencia=incidencia, imagen=imagen_extra)
     
-    registrar_auditoria(request, "Incidencias", "reabrió incidencia", f"Incidencia #{pk} reabierta por el usuario.", pk)
+    registrar_auditoria(request, "Incidencias", "reabrió incidencia", f"{ticket_label(incidencia)} Incidencia reabierta por {nombre_usuario(request.user)}. Motivo: {motivo}.", pk)
     messages.warning(request, f"Incidencia #{pk} ha sido reabierta.")
     return redirect('detalle_incidencia', pk=pk)
 
@@ -582,7 +686,7 @@ def cerrar_incidencia(request, pk):
         texto=f"{request.user.get_full_name() or request.user.username} confirmó la solución y cambió el estado a Cerrado.",
     )
     
-    registrar_auditoria(request, "Incidencias", "cerró incidencia", f"Incidencia #{pk} cerrada definitivamente.", pk)
+    registrar_auditoria(request, "Incidencias", "cerró incidencia", f"{ticket_label(incidencia)} Incidencia cerrada definitivamente por {nombre_usuario(request.user)}.", pk)
     return JsonResponse({"success": True})
 
 @login_required
@@ -618,16 +722,20 @@ def gestionar_incidencia(request, pk):
     if request.method == 'POST':
         form = IncidenciaAdminForm(request.POST, request.FILES, instance=incidencia)
         if form.is_valid():
-            old_tecnico = Incidencia.objects.get(pk=pk).tecnico_asignado
+            old_snapshot = Incidencia.objects.select_related("tecnico_asignado", "estado").get(pk=pk)
+            old_tecnico = old_snapshot.tecnico_asignado
+            old_priority = old_snapshot.prioridad
             incidencia = form.save(commit=False)
             new_tecnico = form.cleaned_data.get("tecnico_asignado")
             
             reassigned = False
             if new_tecnico != old_tecnico:
                 incidencia.fecha_asignacion = timezone.now()
+                incidencia.estado = Estado.objects.get_or_create(name=Incidencia.ESTADO_ASIGNADO)[0]
                 reassigned = True
             
             incidencia.save()
+            final_priority = incidencia.prioridad
             for img_field in ["imagen_2", "imagen_3"]:
                 img = form.cleaned_data.get(img_field)
                 if img:
@@ -635,12 +743,26 @@ def gestionar_incidencia(request, pk):
 
             if reassigned:
                 action = "reasignó técnico" if old_tecnico else "asignó técnico"
-                detail = f"Técnico cambiado de {old_tecnico.get_full_name() if old_tecnico else 'None'} a {new_tecnico.get_full_name() if new_tecnico else 'None'}."
+                new_name = nombre_usuario(new_tecnico)
+                if old_tecnico:
+                    old_name = nombre_usuario(old_tecnico)
+                    detail = f"{ticket_label(incidencia)} Reasignado de {old_name} a {new_name} por {nombre_usuario(request.user)}."
+                else:
+                    detail = f"{ticket_label(incidencia)} Asignación inicial de técnico: {new_name}. Acción realizada por {nombre_usuario(request.user)}."
             else:
                 action = "gestionó ticket"
-                detail = f"Administrador reconfiguró la incidencia #{pk}"
+                detail = f"{ticket_label(incidencia)} Configuración administrativa actualizada por {nombre_usuario(request.user)}."
             
             registrar_auditoria(request, "Incidencias", action, detail, pk)
+
+            if old_priority != final_priority:
+                registrar_auditoria(
+                    request,
+                    "Incidencias",
+                    "actualizó prioridad",
+                    f"{ticket_label(incidencia)} Prioridad actualizada de {prioridad_label(old_priority)} a {prioridad_label(final_priority)}.",
+                    pk,
+                )
             
             if request.headers.get("HX-Request"):
                 return HttpResponseClientRefresh()

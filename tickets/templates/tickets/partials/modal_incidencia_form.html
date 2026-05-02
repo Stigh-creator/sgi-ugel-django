@@ -37,10 +37,12 @@
                             <span class="recommendation-icon"><i class="bi bi-check2"></i></span>
                             <small>Tipo</small>
                         </li>
+                        {% if not request.user.es_usuario %}
                         <li class="recommendation-dot" data-check-target="priority" title="Nivel de importancia definido">
                             <span class="recommendation-icon"><i class="bi bi-check2"></i></span>
                             <small>Prioridad</small>
                         </li>
+                        {% endif %}
                         <li class="recommendation-dot" data-check-target="description" title="Descripción detallada">
                             <span class="recommendation-icon"><i class="bi bi-check2"></i></span>
                             <small>Descripción</small>
@@ -58,6 +60,13 @@
                             <small>Imagen</small>
                         </li>
                     </ul>
+
+                    <div id="guiaCategoriasPanel" class="mt-4 p-3 rounded-3" style="background-color: #f8f9fa; border: 1px solid #e9ecef; font-size: 0.85rem; color: #495057;">
+                        <h6 class="fw-bold mb-2" style="font-size: 0.9rem; color: #343a40;"><i class="bi bi-info-circle me-1"></i>Guía de Categorías</h6>
+                        <div id="guiaCategoriasContent">
+                            Selecciona una categoría de falla para ver más información y ejemplos.
+                        </div>
+                    </div>
                 </aside>
             </div>
         </div>

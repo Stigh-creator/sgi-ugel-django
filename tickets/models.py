@@ -64,10 +64,14 @@ email_valido = EmailValidator(message="Ingrese un correo válido con el formato 
 class CustomUser(AbstractUser):
     ONLINE_THRESHOLD_SECONDS = 300
 
+    ROL_TRABAJADOR = "usuario"
+    ROL_TECNICO = "tecnico"
+    ROL_ADMIN = "administrador"
+
     ROLE_CHOICES = (
-        ("usuario", "Usuario (Trabajador)"),
-        ("tecnico", "Técnico"),
-        ("administrador", "Administrador/Ingeniero TI"),
+        (ROL_TRABAJADOR, "Usuario (Trabajador)"),
+        (ROL_TECNICO, "Técnico"),
+        (ROL_ADMIN, "Administrador/Ingeniero TI"),
     )
     
     first_name = models.CharField("First name", max_length=150, validators=[nombre_valido])
@@ -75,7 +79,7 @@ class CustomUser(AbstractUser):
     username = models.CharField("DNI / Username", max_length=150, unique=True, validators=[dni_valido], help_text="8 dígitos del DNI.")
     email = models.EmailField(blank=True, null=True, validators=[email_valido])
 
-    role = models.CharField(max_length=15, choices=ROLE_CHOICES, default="usuario")
+    role = models.CharField(max_length=15, choices=ROLE_CHOICES, default=ROL_TRABAJADOR)
     telefono = models.CharField(max_length=9, validators=[telefono_valido])
     area = models.ForeignKey("Area", on_delete=models.SET_NULL, null=True, blank=True)
     foto = models.ImageField(upload_to=upload_to_perfiles, null=True, blank=True)
@@ -109,30 +113,34 @@ class CustomUser(AbstractUser):
 
     @property
     def es_tecnico(self):
-        return self.role == "tecnico"
+        return self.role == self.ROL_TECNICO
 
     @property
     def es_admin(self):
-        return self.role == "administrador"
+        return self.role == self.ROL_ADMIN
 
     @property
     def es_usuario(self):
-        return self.role == "usuario"
+        return self.role == self.ROL_TRABAJADOR
+
+    @property
+    def puede_ser_especialista(self):
+        return self.is_active and self.role in {self.ROL_TECNICO, self.ROL_ADMIN}
 
     @property
     def role_short_label(self):
         return {
-            "administrador": "Administrador",
-            "tecnico": "Técnico TI",
-            "usuario": "Trabajador",
+            self.ROL_ADMIN: "Administrador",
+            self.ROL_TECNICO: "Técnico TI",
+            self.ROL_TRABAJADOR: "Trabajador",
         }.get(self.role, "Usuario")
 
     @property
     def role_badge_class(self):
         return {
-            "administrador": "role-admin-soft",
-            "tecnico": "role-tech-soft",
-            "usuario": "role-user-soft",
+            self.ROL_ADMIN: "role-admin-soft",
+            self.ROL_TECNICO: "role-tech-soft",
+            self.ROL_TRABAJADOR: "role-user-soft",
         }.get(self.role, "role-user-soft")
 
     @property
@@ -202,26 +210,31 @@ class Estado(models.Model):
         return self.name
 
 def get_default_estado():
-    # Busca el objeto "Pendiente" por nombre. Si no existe, lo crea.
     estado, _ = Estado.objects.get_or_create(name="Pendiente")
     return estado.id
 
 class Incidencia(models.Model):
     ESTADO_PENDIENTE = "Pendiente"
     ESTADO_ASIGNADO = "Asignado"
+    ESTADO_EN_PROCESO = "En Proceso"
+    ESTADO_RECHAZADO = "Rechazado"
     ESTADO_REABIERTO = "Reabierto"
     ESTADO_RESUELTO = "Resuelto"
     ESTADO_CERRADO = "Cerrado"
     FLUJO_ESTADOS = (
         ESTADO_PENDIENTE,
         ESTADO_ASIGNADO,
+        ESTADO_EN_PROCESO,
+        ESTADO_RECHAZADO,
         ESTADO_REABIERTO,
         ESTADO_RESUELTO,
         ESTADO_CERRADO,
     )
     ALLOWED_TRANSITIONS = {
         ESTADO_PENDIENTE: {ESTADO_ASIGNADO, ESTADO_RESUELTO},
-        ESTADO_ASIGNADO: {ESTADO_RESUELTO},
+        ESTADO_ASIGNADO: {ESTADO_EN_PROCESO, ESTADO_RECHAZADO, ESTADO_RESUELTO},
+        ESTADO_EN_PROCESO: {ESTADO_RESUELTO},
+        ESTADO_RECHAZADO: {ESTADO_ASIGNADO},
         ESTADO_REABIERTO: {ESTADO_ASIGNADO, ESTADO_RESUELTO},
         ESTADO_RESUELTO: {ESTADO_CERRADO, ESTADO_REABIERTO},
         ESTADO_CERRADO: set(),
@@ -234,25 +247,29 @@ class Incidencia(models.Model):
         ("otros", "Otros"),
     )
 
+    PRIORIDAD_BAJA = "baja"
+    PRIORIDAD_MEDIA = "media"
+    PRIORIDAD_ALTA = "alta"
+    PRIORIDAD_CRITICA = "critica"
+
     PRIORIDAD_CHOICES = (
-        ("baja", "Baja"),
-        ("media", "Media"),
-        ("alta", "Alta"),
-        ("critica", "Crítica"),
+        (PRIORIDAD_BAJA, "Baja"),
+        (PRIORIDAD_MEDIA, "Media"),
+        (PRIORIDAD_ALTA, "Alta"),
+        (PRIORIDAD_CRITICA, "Crítica"),
     )
 
     creador = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name="incidencias_creadas")
     area = models.ForeignKey("Area", on_delete=models.CASCADE)
     equipo = models.ForeignKey('inventario.Equipo', on_delete=models.SET_NULL, null=True, blank=True)
     
-    # Para cuando el equipo no está listado (Tarea 1)
     otro_tipo = models.CharField(max_length=100, null=True, blank=True)
     otro_marca = models.CharField(max_length=100, null=True, blank=True)
     otro_modelo = models.CharField(max_length=100, null=True, blank=True)
     otro_serie = models.CharField(max_length=100, null=True, blank=True)
 
     categoria = models.CharField(max_length=20, choices=CATEGORIA_CHOICES)
-    prioridad = models.CharField(max_length=20, choices=PRIORIDAD_CHOICES)
+    prioridad = models.CharField(max_length=20, choices=PRIORIDAD_CHOICES, default=PRIORIDAD_MEDIA)
     descripcion = models.TextField()
     imagen_adjunta = models.ImageField(upload_to=upload_to_incidencias, null=True, blank=True)
     codigo = models.CharField(max_length=20, unique=True, blank=True)
@@ -292,25 +309,52 @@ class Incidencia(models.Model):
 
     @property
     def estado_normalizado(self):
-        current = self.estado_actual
-        if current == "En Proceso":
-            return self.ESTADO_ASIGNADO
-        return current
+        return self.estado_actual
 
     @property
     def estado_visual(self):
         current = self.estado_normalizado
-        if current in {self.ESTADO_RESUELTO, self.ESTADO_REABIERTO, self.ESTADO_CERRADO}:
+        estados_explicitos = {
+            self.ESTADO_ASIGNADO,
+            self.ESTADO_EN_PROCESO,
+            self.ESTADO_RECHAZADO,
+            self.ESTADO_REABIERTO,
+            self.ESTADO_RESUELTO,
+            self.ESTADO_CERRADO,
+        }
+        if current in estados_explicitos:
             return current
         if self.tecnico_asignado:
             return self.ESTADO_ASIGNADO
         return self.ESTADO_PENDIENTE
 
     @property
+    def prioridad_editable(self):
+        return self.estado_actual == self.ESTADO_PENDIENTE
+
+    @property
+    def prioridad_texto_plano(self):
+        return self.estado_actual in {
+            self.ESTADO_EN_PROCESO,
+            self.ESTADO_RESUELTO,
+            self.ESTADO_CERRADO,
+        }
+
+    @property
+    def esta_en_proceso(self):
+        return self.estado_actual == self.ESTADO_EN_PROCESO
+
+    @property
+    def puede_aceptar_o_rechazar(self):
+        return self.estado_actual == self.ESTADO_ASIGNADO
+
+    @property
     def estado_badge_class(self):
         return {
             self.ESTADO_PENDIENTE: "badge-pendiente",
             self.ESTADO_ASIGNADO: "badge-asignado",
+            self.ESTADO_EN_PROCESO: "badge-asignado",
+            self.ESTADO_RECHAZADO: "badge-reabierto",
             self.ESTADO_REABIERTO: "badge-reabierto",
             self.ESTADO_RESUELTO: "badge-resuelto",
             self.ESTADO_CERRADO: "badge-cerrado",
@@ -329,6 +373,15 @@ class Incidencia(models.Model):
         return f"INC-{year}-{self.pk:04d}"
 
     def save(self, *args, **kwargs):
+        previous = None
+        if self.pk:
+            previous = Incidencia.objects.filter(pk=self.pk).values("prioridad", "estado__name").first()
+            if previous and previous["estado__name"] != self.ESTADO_PENDIENTE:
+                self.prioridad = previous["prioridad"]
+
+        if self.creador_id and getattr(self, 'creador', None) and self.creador.es_usuario:
+            self.prioridad = self.PRIORIDAD_MEDIA
+
         super().save(*args, **kwargs)
         if not self.codigo and self.pk:
             self.codigo = self.build_codigo()

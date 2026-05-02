@@ -17,6 +17,7 @@
         {% if form.categoria.errors %}<div class="text-danger tiny-text mt-1">{{ form.categoria.errors.0 }}</div>{% endif %}
     </div>
 
+    {% if not request.user.es_usuario %}
     <div class="col-12">
         <label class="form-label-custom">Nivel de Prioridad</label>
         <div style="display:none;">{{ form.prioridad }}</div>
@@ -34,6 +35,7 @@
         </div>
         {% if form.prioridad.errors %}<div class="text-danger tiny-text mt-1">{{ form.prioridad.errors.0 }}</div>{% endif %}
     </div>
+    {% endif %}
 
     <!-- Área -->
     <div class="col-12">
@@ -242,12 +244,33 @@
             setRecommendationStatus('image', hasImage);
         };
         
+        const guiaCategoriasContent = scope.querySelector('#guiaCategoriasContent');
+        const updateGuiaCategorias = () => {
+            if (!guiaCategoriasContent) return;
+            const value = catSelect?.value || '';
+            let text = 'Selecciona una categoría de falla para ver más información y ejemplos.';
+            if (value === 'hardware') {
+                text = '<strong>Hardware:</strong> Fallas físicas en equipos (Monitor, Teclado, Impresoras).';
+            } else if (value === 'software') {
+                text = '<strong>Software:</strong> Problemas con programas, sistema operativo, virus o lentitud del equipo.';
+            } else if (value === 'red') {
+                text = '<strong>Red y Conectividad:</strong> Problemas de conectividad, Internet o acceso a carpetas compartidas.';
+            } else if (value === 'sistema') {
+                text = '<strong>Sistema:</strong> Problemas de acceso o uso de sistemas internos, ERP, plataformas web.';
+            } else if (value === 'otros') {
+                text = '<strong>Otros:</strong> Requerimientos o incidentes que no encajan en las otras categorías.';
+            }
+            guiaCategoriasContent.innerHTML = text;
+        };
+
         if (catSelect) {
             catSelect.addEventListener('change', () => {
                 toggleEquipoSection(catSelect);
                 updateChecklist();
+                updateGuiaCategorias();
             });
             toggleEquipoSection(catSelect);
+            updateGuiaCategorias();
         }
         if (catSelect) {
             catSelect.setAttribute('required', 'required');
@@ -280,10 +303,13 @@
             let valid = true;
             const requiredFields = [
                 { id: 'id_categoria', group: '#categoryChips' },
-                { id: 'id_prioridad', group: '#priorityCards' },
                 { id: 'id_descripcion' },
                 { id: 'id_imagen_adjunta' }
             ];
+            const prioridadSelect = form.querySelector('#id_prioridad');
+            if (prioridadSelect) {
+                requiredFields.push({ id: 'id_prioridad', group: '#priorityCards' });
+            }
             const tecnicoAsignado = form.querySelector('#id_tecnico_asignado');
             if (tecnicoAsignado && tecnicoAsignado.required) {
                 requiredFields.push({ id: 'id_tecnico_asignado' });

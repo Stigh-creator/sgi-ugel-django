@@ -162,7 +162,7 @@
                         <th>Usuario</th>
                         <th>Módulo</th>
                         <th>Acción</th>
-                        <th style="width: 40%;">Detalle</th>
+                        <th style="width: 48%; min-width: 360px;">Detalle</th>
                         <th class="text-center">IP</th>
                     </tr>
                 </thead>
@@ -192,8 +192,8 @@
                         <td>
                             <span class="fw-bold">{{ log.accion|capfirst }}</span>
                         </td>
-                        <td>
-                            <div class="small text-dark p-2 bg-light rounded-3 border-start border-3 border-{{ log.modulo }}">
+                        <td style="min-width: 360px;">
+                            <div class="small text-dark p-2 bg-light rounded-3 border-start border-3 border-{{ log.modulo }}" style="white-space: normal; line-height: 1.45;">
                                 {{ log.descripcion }}
                             </div>
                         </td>

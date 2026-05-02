@@ -36,7 +36,7 @@ def normalize_expression(expression):
 
 def get_active_ticket_load_for_user(usuario, *, exclude_incidencia_id=None):
     queryset = Incidencia.objects.filter(tecnico_asignado=usuario).exclude(
-        estado__name__in=[Incidencia.ESTADO_RESUELTO, Incidencia.ESTADO_CERRADO]
+        estado__name__in=[Incidencia.ESTADO_RECHAZADO, Incidencia.ESTADO_RESUELTO, Incidencia.ESTADO_CERRADO]
     )
     if exclude_incidencia_id:
         queryset = queryset.exclude(pk=exclude_incidencia_id)
@@ -44,6 +44,9 @@ def get_active_ticket_load_for_user(usuario, *, exclude_incidencia_id=None):
 
 
 def validate_tecnico_capacity(tecnico, *, exclude_incidencia_id=None):
+    if not tecnico or not tecnico.puede_ser_especialista:
+        raise ValidationError("Solo técnicos o administradores activos pueden ser asignados como especialistas.")
+
     current_load = get_active_ticket_load_for_user(tecnico, exclude_incidencia_id=exclude_incidencia_id)
     if current_load >= MAX_ACTIVE_TICKETS_PER_TECH:
         raise ValidationError(
@@ -54,30 +57,24 @@ def validate_tecnico_capacity(tecnico, *, exclude_incidencia_id=None):
 
 
 def resolve_active_tab_for_user(user, requested_tab):
-    """Normaliza la pestaña solicitada respetando el alcance por rol."""
-    default_tab = "asignadas" if user.role != "usuario" else "reportadas"
+    default_tab = "reportadas" if user.es_usuario else "asignadas"
     return requested_tab if requested_tab in {"asignadas", "reportadas"} else default_tab
 
 
 def get_visible_incidencias_queryset(user, active_tab):
     queryset = Incidencia.objects.all()
-    
-    # 1. Trabajador: Solo lo que él reportó
-    if user.role == "usuario":
+
+    if user.es_usuario:
         return queryset.filter(creador_id=user.id), "reportadas"
-    
-    # 2. Técnico: 
-    if user.role == "tecnico":
+
+    if user.es_tecnico:
         if active_tab == "reportadas":
             return queryset.filter(creador_id=user.id), "reportadas"
         return queryset.filter(tecnico_asignado_id=user.id), "asignadas"
 
-    # 3. Administrador: (EL FIX)
-    if user.role == "administrador":
+    if user.es_admin:
         if active_tab == "reportadas":
-            # Filtro estricto: Solo lo que el Admin creó manualmente
             return queryset.filter(creador_id=user.id), "reportadas"
-        # "Todas" las incidencias del sistema
         return queryset, "asignadas"
     
     return queryset.filter(creador_id=user.id), "reportadas"
@@ -114,8 +111,9 @@ def apply_estado_filter(queryset, estado_id):
 
     estado_nombre = Estado.objects.filter(id=estado_id).values_list("name", flat=True).first()
     if estado_nombre == Incidencia.ESTADO_ASIGNADO:
-        return queryset.filter(tecnico_asignado__isnull=False).exclude(
-            estado__name__in=[Incidencia.ESTADO_RESUELTO, Incidencia.ESTADO_CERRADO]
+        return queryset.filter(tecnico_asignado__isnull=False).filter(
+            Q(estado__name=Incidencia.ESTADO_ASIGNADO)
+            | Q(estado__name=Incidencia.ESTADO_PENDIENTE)
         )
     if estado_nombre == Incidencia.ESTADO_RESUELTO:
         return queryset.filter(estado__name=Incidencia.ESTADO_RESUELTO)
@@ -125,7 +123,7 @@ def apply_estado_filter(queryset, estado_id):
 
 
 def available_estado_filters():
-    return Estado.objects.exclude(name__in=["En Proceso", "En Espera"]).order_by("name")
+    return Estado.objects.all().order_by("name")
 
 
 def optimized_incidencias_queryset(queryset=None):
@@ -159,7 +157,14 @@ def transition_incidencia(incidencia, target_state, *, save_fields=None):
 def sync_incidencia_estado(incidencia):
     current_state = incidencia.estado_normalizado
 
-    if current_state in {Incidencia.ESTADO_RESUELTO, Incidencia.ESTADO_REABIERTO, Incidencia.ESTADO_CERRADO}:
+    estados_con_flujo_manual = {
+        Incidencia.ESTADO_EN_PROCESO,
+        Incidencia.ESTADO_RECHAZADO,
+        Incidencia.ESTADO_REABIERTO,
+        Incidencia.ESTADO_RESUELTO,
+        Incidencia.ESTADO_CERRADO,
+    }
+    if current_state in estados_con_flujo_manual:
         incidencia.estado = get_estado(current_state)
         return incidencia
 
@@ -199,6 +204,31 @@ def create_incidencia_service(*, incidencia, extra_images=None):
         )
 
     return incidencia
+
+
+def aceptar_incidencia_service(incidencia, tecnico):
+    if incidencia.tecnico_asignado_id != tecnico.id:
+        raise ValidationError("Solo el especialista asignado puede aceptar esta incidencia.")
+    if not tecnico.puede_ser_especialista:
+        raise ValidationError("Tu usuario no tiene permisos activos para aceptar incidencias.")
+    return transition_incidencia(incidencia, Incidencia.ESTADO_EN_PROCESO)
+
+
+def rechazar_incidencia_service(incidencia, tecnico, motivo):
+    motivo = (motivo or "").strip()
+    if incidencia.tecnico_asignado_id != tecnico.id:
+        raise ValidationError("Solo el especialista asignado puede rechazar esta incidencia.")
+    if not tecnico.puede_ser_especialista:
+        raise ValidationError("Tu usuario no tiene permisos activos para rechazar incidencias.")
+    if not motivo:
+        raise ValidationError("El motivo de rechazo es obligatorio.")
+    incidencia.tecnico_asignado = None
+    transition_incidencia(
+        incidencia,
+        Incidencia.ESTADO_RECHAZADO,
+        save_fields=["tecnico_asignado"],
+    )
+    return motivo
 
 
 def assign_incidencia_service(

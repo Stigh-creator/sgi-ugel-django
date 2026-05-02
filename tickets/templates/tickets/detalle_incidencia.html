@@ -28,7 +28,7 @@
         </div>
     </div>
     <div class="d-flex gap-2">
-        <a href="{% if request.user.role == 'administrador' %}{% url 'dashboard_admin' %}{% else %}{% url 'incidencias_list' %}{% endif %}" class="btn btn-light border rounded-pill px-4 fw-bold">
+        <a href="{% if request.user.es_admin %}{% url 'dashboard_admin' %}{% else %}{% url 'incidencias_list' %}{% endif %}" class="btn btn-light border rounded-pill px-4 fw-bold">
             <i class="fas fa-arrow-left me-2"></i>
             Volver
         </a>
@@ -91,7 +91,7 @@
                     </div>
                 </div>
 
-                {% if incidencia.tecnico_asignado and request.user.role != 'trabajador' %}
+                {% if incidencia.tecnico_asignado and not request.user.es_usuario %}
                 <div class="detail-subsection">
                     <div class="detail-subsection-head">
                         <h5 class="fw-bold mb-0">Asignación y programación</h5>
@@ -201,7 +201,31 @@
                 </div>
                 {% endif %}
 
-                {% if incidencia.tecnico_asignado == request.user and incidencia.estado_visual != 'Cerrado' and incidencia.estado_visual != 'Resuelto' %}
+                {% if puede_aceptar_rechazar %}
+                <div class="detail-subsection">
+                    <div class="detail-subsection-head">
+                        <h5 class="fw-bold mb-0">Confirmar atención asignada</h5>
+                    </div>
+                    <p class="text-muted mb-4">Acepta el ticket para iniciar la atención o recházalo indicando el motivo para que administración pueda reasignarlo.</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <form method="post" action="{% url 'aceptar_incidencia' incidencia.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success px-4 rounded-pill fw-bold">
+                                <i class="bi bi-check-circle-fill me-2"></i> Aceptar atención
+                            </button>
+                        </form>
+                        <button type="button" class="btn btn-outline-danger px-4 rounded-pill fw-bold" onclick="confirmarRechazo()">
+                            <i class="bi bi-x-circle-fill me-2"></i> Rechazar
+                        </button>
+                    </div>
+                    <form id="rejectTicketForm" method="post" action="{% url 'rechazar_incidencia' incidencia.id %}" class="d-none">
+                        {% csrf_token %}
+                        <input type="hidden" name="motivo" id="rejectReasonInput">
+                    </form>
+                </div>
+                {% endif %}
+
+                {% if incidencia.tecnico_asignado == request.user and incidencia.esta_en_proceso %}
                 <div class="detail-subsection">
                     <div class="detail-subsection-head">
                         <h5 class="fw-bold mb-0">{% if incidencia.solucion_aplicada %}Actualizar resolución{% else %}Completar atención{% endif %}</h5>
@@ -264,7 +288,11 @@
 
                     <div class="comments-composer">
                         <div id="typing-indicator" class="text-muted small mb-2" style="height: 20px; font-style: italic;"></div>
-                        {% if incidencia.estado.name != 'Cerrado' %}
+                        {% if incidencia.estado_visual == 'Rechazado' %}
+                            <div class="chat-bloqueado p-3 text-center">
+                                <i class="bi bi-archive-fill me-2"></i> Seguimiento en <strong>modo histórico</strong>. El motivo del rechazo queda visible, pero no admite nuevos mensajes hasta que administración reasigne el ticket.
+                            </div>
+                        {% elif incidencia.estado.name != 'Cerrado' %}
                             {% if incidencia.tecnico_asignado %}
                                 <form id="comment-form" hx-post="{% url 'agregar_comentario' incidencia.id %}" hx-target="#comentarios-lista-inner" hx-encoding="multipart/form-data" hx-on::after-request="if(event.detail.successful && event.detail.elt === this) { this.reset(); document.getElementById('preview-container').innerHTML = ''; scrollChat(); }">
                                     {% csrf_token %}
@@ -297,7 +325,7 @@
 
         <div class="col-lg-4 col-xl-3">
             <aside class="detail-aside">
-                {% if user.role == 'administrador' and incidencia.estado_visual != 'Resuelto' and incidencia.estado_visual != 'Cerrado' %}
+                {% if user.es_admin and incidencia.estado_visual != 'Resuelto' and incidencia.estado_visual != 'Cerrado' %}
                 <div class="aside-group">
                     <div class="aside-title-row">
                         <h6 class="mb-0 fw-bold">Gestión</h6>
@@ -307,7 +335,7 @@
                         Configurar ticket
                     </button>
                 </div>
-                {% elif user.role == 'administrador' %}
+                {% elif user.es_admin %}
                 <div class="aside-group aside-group-locked">
                     <div class="aside-title-row">
                         <h6 class="mb-0 fw-bold">Gestión</h6>
@@ -493,6 +521,35 @@
                 });
             }
         })
+    }
+
+    function confirmarRechazo() {
+        Swal.fire({
+            title: 'Motivo de rechazo',
+            input: 'textarea',
+            inputPlaceholder: 'Explica por qué no puedes atender este ticket...',
+            inputAttributes: {
+                'aria-label': 'Motivo de rechazo'
+            },
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Rechazar ticket',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true,
+            inputValidator: (value) => {
+                if (!value || !value.trim()) {
+                    return 'El motivo de rechazo es obligatorio.';
+                }
+                return null;
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('rejectReasonInput').value = result.value.trim();
+                document.getElementById('rejectTicketForm').submit();
+            }
+        });
     }
 
     const scrollChat = () => {

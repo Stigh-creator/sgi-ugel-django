@@ -38,7 +38,15 @@
                             
                             <div class="col-md-6">
                                 <label class="form-label-custom">Nivel de Prioridad</label>
+                                {% if incidencia.prioridad_texto_plano %}
+                                <div class="form-control bg-light text-muted">{{ incidencia.get_prioridad_display }}</div>
+                                <p class="text-muted tiny-text mt-2 mb-0">La prioridad solo puede modificarse mientras la incidencia está Pendiente.</p>
+                                {% else %}
                                 {{ form.prioridad }}
+                                {% if form.prioridad.field.disabled %}
+                                <p class="text-muted tiny-text mt-2 mb-0">La prioridad está bloqueada mientras la incidencia está Asignada.</p>
+                                {% endif %}
+                                {% endif %}
                             </div>
 
                             <div class="col-md-6">

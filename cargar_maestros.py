@@ -6,18 +6,10 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "gestion_incidencias.settings")
 django.setup()
 
 from inventario.models import Marca, TipoEquipo, EstadoEquipo
-from tickets.models import Area, Estado
+from tickets.models import Area, Estado, Incidencia
 
 
-ESTADOS_BASE = [
-    "Pendiente",
-    "Asignado",
-    "En Proceso",
-    "En Espera",
-    "Reabierto",
-    "Resuelto",
-    "Cerrado",
-]
+ESTADOS_BASE = list(Incidencia.FLUJO_ESTADOS)
 
 AREAS_BASE = [
     {"sede_principal": "DIRECCIÓN", "name": "Secretaría"},

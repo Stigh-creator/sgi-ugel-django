@@ -5,6 +5,7 @@ from .views.views_incidencias import (
     index, dashboard_admin, dashboard_tecnico, mis_incidencias, incidencias_list,
     get_equipos_for_area, crear_incidencia, crear_incidencia_modal,
     detalle_incidencia, agregar_comentario, asignar_tecnico,
+    aceptar_incidencia, rechazar_incidencia,
     resolver_incidencia, reabrir_incidencia, cerrar_incidencia,
     gestionar_incidencia, marcar_escribiendo
 )
@@ -47,6 +48,8 @@ urlpatterns = [
     path('incidencias/<int:pk>/', detalle_incidencia, name='detalle_incidencia'),
     path('incidencias/<int:pk>/comentar/', agregar_comentario, name='agregar_comentario'),
     path('incidencias/<int:pk>/asignar/', asignar_tecnico, name='asignar_tecnico'),
+    path('incidencias/<int:pk>/aceptar/', aceptar_incidencia, name='aceptar_incidencia'),
+    path('incidencias/<int:pk>/rechazar/', rechazar_incidencia, name='rechazar_incidencia'),
     path('incidencias/<int:pk>/resolver/', resolver_incidencia, name='resolver_incidencia'),
     path('incidencias/<int:pk>/reabrir/', reabrir_incidencia, name='reabrir_incidencia'),
     path('incidencias/<int:pk>/cerrar/', cerrar_incidencia, name='cerrar_incidencia'),
