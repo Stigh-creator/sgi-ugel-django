@@ -72,6 +72,20 @@
                 <p class="text-muted small mb-0">Inoperativos</p>
             </div>
         </div>
+        <div class="col-md">
+            <div class="stat-card">
+                <div class="stat-icon icon-operativo"><i class="bi bi-box-seam"></i></div>
+                <h3 class="h2 fw-bold mb-0 text-primary">{{ stats.libres }}</h3>
+                <p class="text-muted small mb-0">Libres</p>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="stat-card">
+                <div class="stat-icon icon-reparacion"><i class="bi bi-person-check"></i></div>
+                <h3 class="h2 fw-bold mb-0 text-secondary">{{ stats.en_uso }}</h3>
+                <p class="text-muted small mb-0">En uso</p>
+            </div>
+        </div>
     </div>
 
     <!-- Filters -->
@@ -130,6 +144,14 @@
                 </div>
             </div>
             <div class="col-md-2">
+                <label class="form-label small fw-bold text-muted">Disponibilidad</label>
+                <select name="disponibilidad" class="form-select bg-light">
+                    <option value="">Todas</option>
+                    <option value="LIBRE" {% if disponibilidad_selected == 'LIBRE' %}selected{% endif %}>Libre</option>
+                    <option value="EN_USO" {% if disponibilidad_selected == 'EN_USO' %}selected{% endif %}>En uso</option>
+                </select>
+            </div>
+            <div class="col-md-2">
                 <label class="form-label small fw-bold text-muted">Tipo</label>
                 <select name="tipo" class="form-select bg-light">
                     <option value="">Todos</option>
@@ -167,6 +189,7 @@
                         <th class="py-3 text-muted small fw-bold text-uppercase sortable">Marca / Modelo <i class="sort-icon"></i></th>
                         <th class="py-3 text-muted small fw-bold text-uppercase sortable">Área <i class="sort-icon"></i></th>
                         <th class="py-3 text-muted small fw-bold text-uppercase sortable">Estado <i class="sort-icon"></i></th>
+                        <th class="py-3 text-muted small fw-bold text-uppercase sortable">Disponibilidad <i class="sort-icon"></i></th>
                         <th class="text-center py-3 text-muted small fw-bold text-uppercase">Acciones</th>
                     </tr>
                 </thead>
@@ -210,6 +233,11 @@
                                 {{ equipo.estado }}
                             </span>
                         </td>
+                        <td>
+                            <span class="badge {% if equipo.disponibilidad == 'LIBRE' %}bg-primary{% else %}bg-secondary{% endif %}">
+                                {{ equipo.get_disponibilidad_display }}
+                            </span>
+                        </td>
                         <td class="text-center">
                             <div class="d-flex justify-content-center gap-2">
                                 <a href="{% url 'equipo_detalle' equipo.pk %}" class="btn btn-sm btn-outline-info rounded-pill px-3" title="Ver detalle">
@@ -226,6 +254,7 @@
                                     data-modelo="{{ equipo.modelo }}"
                                     data-serie="{{ equipo.numero_serie|default:'' }}"
                                     data-area="{{ equipo.area.id|default:'' }}"
+                                    data-disponibilidad="{{ equipo.disponibilidad }}"
                                     data-foto="{% if equipo.foto_estado %}{{ equipo.foto_estado.url }}{% endif %}"
                                     data-obs="{{ equipo.observaciones|default:'' }}">
                                     <i class="bi bi-pencil"></i>
@@ -242,7 +271,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center py-5 text-muted">
+                        <td colspan="7" class="text-center py-5 text-muted">
                             <i class="bi bi-inbox fs-1 d-block mb-2"></i>
                             No se encontraron equipos en el inventario.
                         </td>
@@ -398,6 +427,7 @@
                 modalEditar.querySelector('[name="modelo"]').value = button.getAttribute('data-modelo');
                 modalEditar.querySelector('[name="numero_serie"]').value = button.getAttribute('data-serie');
                 modalEditar.querySelector('[name="area"]').value = button.getAttribute('data-area');
+                modalEditar.querySelector('[name="disponibilidad"]').value = button.getAttribute('data-disponibilidad');
                 modalEditar.querySelector('[name="observaciones"]').value = button.getAttribute('data-obs');
 
                 const fotoUrl = button.getAttribute('data-foto');

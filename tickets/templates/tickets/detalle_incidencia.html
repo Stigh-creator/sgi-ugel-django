@@ -123,7 +123,9 @@
                     {% if incidencia.imagen_adjunta or incidencia.imagenes.all or incidencia.evidencia_solucion %}
                     <div class="evidencia-viewer">
                         <div class="evidencia-main-frame" onclick="openLightbox(document.getElementById('mainEvidenceImage').src)">
-                            {% if incidencia.imagen_adjunta %}
+                            {% if incidencia.evidencia_solucion and incidencia.estado_visual != 'Reabierto' %}
+                            <img id="mainEvidenceImage" src="{{ incidencia.evidencia_solucion.url }}" class="evidencia-main-image" alt="Vista principal de evidencia">
+                            {% elif incidencia.imagen_adjunta %}
                             <img id="mainEvidenceImage" src="{{ incidencia.imagen_adjunta.url }}" class="evidencia-main-image" alt="Vista principal de evidencia">
                             {% elif incidencia.imagenes.all %}
                             {% for img_obj in incidencia.imagenes.all %}
@@ -131,13 +133,11 @@
                             <img id="mainEvidenceImage" src="{{ img_obj.imagen.url }}" class="evidencia-main-image" alt="Vista principal de evidencia">
                             {% endif %}
                             {% endfor %}
-                            {% elif incidencia.evidencia_solucion %}
-                            <img id="mainEvidenceImage" src="{{ incidencia.evidencia_solucion.url }}" class="evidencia-main-image" alt="Vista principal de evidencia">
                             {% endif %}
                         </div>
                         <div class="evidencia-grid">
                             {% if incidencia.imagen_adjunta %}
-                            <button type="button" class="evidencia-thumb active" onclick="changeEvidence('{{ incidencia.imagen_adjunta.url }}', this)">
+                            <button type="button" class="evidencia-thumb {% if not incidencia.evidencia_solucion or incidencia.estado_visual == 'Reabierto' %}active{% endif %}" onclick="changeEvidence('{{ incidencia.imagen_adjunta.url }}', this)">
                                 <img src="{{ incidencia.imagen_adjunta.url }}" class="evidencia-item" alt="Evidencia principal">
                                 <span class="evidencia-caption">Principal</span>
                             </button>
@@ -149,7 +149,7 @@
                             </button>
                             {% endfor %}
                             {% if incidencia.evidencia_solucion %}
-                            <button type="button" class="evidencia-thumb evidencia-thumb-success" onclick="changeEvidence('{{ incidencia.evidencia_solucion.url }}', this)">
+                            <button type="button" class="evidencia-thumb evidencia-thumb-success {% if incidencia.estado_visual != 'Reabierto' %}active{% endif %}" onclick="changeEvidence('{{ incidencia.evidencia_solucion.url }}', this)">
                                 <img src="{{ incidencia.evidencia_solucion.url }}" class="evidencia-item" alt="Evidencia de solución">
                                 <span class="evidencia-caption">Solución 1</span>
                             </button>
@@ -185,6 +185,12 @@
                         <span class="solution-badge"><i class="bi bi-check-circle-fill"></i> Solución registrada</span>
                     </div>
                     <p class="solution-copy mb-0">{{ incidencia.solucion_aplicada }}</p>
+                    {% if incidencia.tipo_resolucion %}
+                    <p class="small text-muted mt-2 mb-0">
+                        Tipo de resolución: <strong>{{ incidencia.get_tipo_resolucion_display }}</strong>
+                        {% if incidencia.equipo_reemplazo %} · Reemplazo: {{ incidencia.equipo_reemplazo.codigo_equipo }}{% endif %}
+                    </p>
+                    {% endif %}
                     {% if incidencia.creador == request.user and incidencia.estado_visual == 'Resuelto' %}
                     <div class="solicitante-actions">
                         <p class="small text-muted mb-3 fw-bold text-uppercase">¿Se solucionó su problema?</p>
@@ -225,22 +231,50 @@
                 </div>
                 {% endif %}
 
-                {% if incidencia.tecnico_asignado == request.user and incidencia.esta_en_proceso %}
+                {% if incidencia.tecnico_asignado == request.user and incidencia.puede_registrar_solucion %}
                 <div class="detail-subsection">
                     <div class="detail-subsection-head">
                         <h5 class="fw-bold mb-0">{% if incidencia.solucion_aplicada %}Actualizar resolución{% else %}Completar atención{% endif %}</h5>
                     </div>
                     <form method="post" action="{% url 'resolver_incidencia' incidencia.id %}" enctype="multipart/form-data" class="resolution-form">
                         {% csrf_token %}
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label for="tipo_resolucion" class="form-label-custom">Tipo de resolución</label>
+                                <select id="tipo_resolucion" name="tipo_resolucion" class="form-select" required onchange="toggleEquipoReemplazo(this)">
+                                    <option value="">-- Seleccione tipo de resolución --</option>
+                                    {% for value, label in incidencia.TIPO_RESOLUCION_CHOICES %}
+                                    <option value="{{ value }}" {% if incidencia.tipo_resolucion == value and incidencia.estado_visual != 'Reabierto' %}selected{% endif %}
+                                        data-description="{% if value == 'reparado' %}El equipo original fue reparado. Queda en reparación hasta que el solicitante cierre el ticket; al cerrar pasa a Operativo.{% elif value == 'reemplazado' %}Se entrega un equipo temporal del mismo tipo. El equipo original queda Inoperativo y el reemplazo queda trazado en Inventario.{% elif value == 'baja' %}El equipo original queda Dado de baja y sale del flujo automático de incidencias. Solo administración puede gestionarlo después.{% else %}Usa esta opción para equipos externos o casos derivados a proveedor. No cambia automáticamente el inventario institucional.{% endif %}">
+                                        {{ label }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div id="tipoResolucionHelp" class="alert alert-info py-2 px-3 small mt-2 mb-0 d-none"></div>
+                            </div>
+                            <div class="col-md-6" id="equipoReemplazoGroup" style="display: none;">
+                                <label for="equipo_reemplazo" class="form-label-custom">Equipo de reemplazo temporal</label>
+                                <select id="equipo_reemplazo" name="equipo_reemplazo" class="form-select">
+                                    <option value="">-- Seleccione equipo de reemplazo --</option>
+                                    {% for equipo_reemplazo in equipos_reemplazo %}
+                                    <option value="{{ equipo_reemplazo.id }}" {% if incidencia.equipo_reemplazo_id == equipo_reemplazo.id %}selected{% endif %}>
+                                        {{ equipo_reemplazo.codigo_equipo }} - {{ equipo_reemplazo.nombre_equipo }} ({{ equipo_reemplazo.estado.nombre }})
+                                    </option>
+                                    {% empty %}
+                                    <option value="" disabled>No hay equipos operativos disponibles</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
                         <div class="mb-4">
                             <label for="solucion_aplicada" class="form-label-custom">Detalle de la solución</label>
-                            <textarea id="solucion_aplicada" name="solucion_aplicada" class="form-control resolution-textarea" rows="4" placeholder="Describe detalladamente las acciones realizadas..." required minlength="20">{{ incidencia.solucion_aplicada|default:'' }}</textarea>
+                            <textarea id="solucion_aplicada" name="solucion_aplicada" class="form-control resolution-textarea" rows="4" placeholder="Describe detalladamente las acciones realizadas..." required minlength="20">{% if incidencia.estado_visual != 'Reabierto' %}{{ incidencia.solucion_aplicada|default:'' }}{% endif %}</textarea>
                             <div class="mt-2 text-end">
                                 <small id="char-counter" class="text-muted">0 / 20 caracteres mínimos</small>
                             </div>
                         </div>
                         <div class="mb-4">
-                            <label class="form-label-custom">Fotos de evidencia (Mínimo 1, Máximo 3)</label>
+                            <label class="form-label-custom">{% if incidencia.estado_visual == 'Reabierto' %}Nuevas fotos de solución{% else %}Fotos de evidencia{% endif %} (Mínimo 1, Máximo 3)</label>
                             <div class="row g-3">
                                 <div class="col-md-4">
                                     <div class="evidence-input-wrapper">
@@ -552,6 +586,25 @@
         });
     }
 
+    function toggleEquipoReemplazo(selectEl) {
+        const group = document.getElementById('equipoReemplazoGroup');
+        const replacement = document.getElementById('equipo_reemplazo');
+        const help = document.getElementById('tipoResolucionHelp');
+        if (!group || !replacement) return;
+        const needsReplacement = selectEl.value === 'reemplazado';
+        group.style.display = needsReplacement ? '' : 'none';
+        replacement.required = needsReplacement;
+        if (!needsReplacement) {
+            replacement.value = '';
+        }
+        if (help) {
+            const selected = selectEl.options[selectEl.selectedIndex];
+            const description = selected ? selected.dataset.description : '';
+            help.textContent = description || '';
+            help.classList.toggle('d-none', !description);
+        }
+    }
+
     const scrollChat = () => {
         const area = document.getElementById('comentarios-scroll-area');
         if (area) area.scrollTop = area.scrollHeight;
@@ -572,6 +625,10 @@
     window.onload = () => {
         scrollChat();
         updateCharCounter();
+        const tipoResolucion = document.getElementById('tipo_resolucion');
+        if (tipoResolucion) {
+            toggleEquipoReemplazo(tipoResolucion);
+        }
     };
 
     const textareaSolucion = document.getElementById('solucion_aplicada');

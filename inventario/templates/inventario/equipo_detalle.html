@@ -50,6 +50,11 @@
                         <span class="dot dot-{{ equipo.estado|slugify }}"></span>
                         {{ equipo.estado }}
                     </div>
+                    <div class="mt-2">
+                        <span class="badge {% if equipo.disponibilidad == 'LIBRE' %}bg-primary{% else %}bg-secondary{% endif %} fs-6 p-2">
+                            {{ equipo.get_disponibilidad_display }}
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -114,6 +119,10 @@
                     <div class="col-md-6">
                         <label class="small text-muted d-block">Área de Asignación</label>
                         <span class="fw-bold fs-5">{{ equipo.area.name|default:"Sin área asignada" }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="small text-muted d-block">Disponibilidad</label>
+                        <span class="fw-bold fs-5">{{ equipo.get_disponibilidad_display }}</span>
                     </div>
                     <div class="col-12">
                         <label class="small text-muted d-block">Descripción física / estado estético</label>

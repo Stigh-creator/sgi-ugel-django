@@ -56,6 +56,53 @@ def validate_tecnico_capacity(tecnico, *, exclude_incidencia_id=None):
     return current_load
 
 
+def normalize_equipo_tipo(nombre):
+    return normalize_text(nombre).replace(" ", "")
+
+
+def is_compute_equipment_type(tipo_equipo):
+    tipo_normalizado = normalize_equipo_tipo(getattr(tipo_equipo, "nombre", ""))
+    return any(
+        token in tipo_normalizado
+        for token in ("pc", "computadora", "desktop", "laptop", "notebook", "portatil")
+    )
+
+
+def compatible_replacement_type_ids(tipo_equipo):
+    if not tipo_equipo:
+        return []
+    from inventario.models import TipoEquipo
+
+    if is_compute_equipment_type(tipo_equipo):
+        return [tipo.id for tipo in TipoEquipo.objects.all() if is_compute_equipment_type(tipo)]
+    return [tipo_equipo.id]
+
+
+def equipo_reemplazo_es_compatible(equipo, equipo_reemplazo):
+    if not equipo or not equipo_reemplazo:
+        return True
+    return equipo_reemplazo.tipo_equipo_id in compatible_replacement_type_ids(equipo.tipo_equipo)
+
+
+def replacement_blocking_states():
+    return [
+        Incidencia.ESTADO_PENDIENTE,
+        Incidencia.ESTADO_ASIGNADO,
+        Incidencia.ESTADO_EN_PROCESO,
+        Incidencia.ESTADO_REABIERTO,
+        Incidencia.ESTADO_RESUELTO,
+    ]
+
+
+def equipos_ocupados_por_incidencias(*, exclude_incidencia_id=None):
+    queryset = Incidencia.objects.filter(estado__name__in=replacement_blocking_states())
+    if exclude_incidencia_id:
+        queryset = queryset.exclude(pk=exclude_incidencia_id)
+    equipo_ids = set(queryset.exclude(equipo_id__isnull=True).values_list("equipo_id", flat=True))
+    reemplazo_ids = set(queryset.exclude(equipo_reemplazo_id__isnull=True).values_list("equipo_reemplazo_id", flat=True))
+    return equipo_ids | reemplazo_ids
+
+
 def resolve_active_tab_for_user(user, requested_tab):
     default_tab = "reportadas" if user.es_usuario else "asignadas"
     return requested_tab if requested_tab in {"asignadas", "reportadas"} else default_tab
@@ -195,6 +242,8 @@ def create_incidencia_service(*, incidencia, extra_images=None):
             IncidenciaImagen.objects.create(incidencia=incidencia, imagen=image)
 
     if equipo:
+        equipo.disponibilidad = equipo.DISPONIBILIDAD_EN_USO
+        equipo.save(update_fields=["disponibilidad", "actualizado_en"])
         from inventario.services import actualizar_estado_equipo_por_incidencia
 
         actualizar_estado_equipo_por_incidencia(
@@ -240,6 +289,8 @@ def assign_incidencia_service(
     observaciones=None,
 ):
     validate_tecnico_capacity(tecnico, exclude_incidencia_id=incidencia.pk)
+    from inventario.services import marcar_equipo_en_reparacion_por_asignacion
+
     tecnico_anterior_id = incidencia.tecnico_asignado_id
     incidencia.tecnico_asignado = tecnico
     if tecnico_anterior_id != tecnico.id or not incidencia.fecha_asignacion:
@@ -258,23 +309,78 @@ def assign_incidencia_service(
             "estado",
         ]
     )
+    marcar_equipo_en_reparacion_por_asignacion(
+        equipo=incidencia.equipo,
+        usuario=tecnico,
+        incidencia_codigo=incidencia.codigo,
+    )
     return incidencia
 
 
-def resolver_incidencia_service(incidencia, tecnico, solucion_aplicada, evidencia=None, evidencia_2=None, evidencia_3=None):
+def resolver_incidencia_service(
+    incidencia,
+    tecnico,
+    solucion_aplicada,
+    tipo_resolucion,
+    equipo_reemplazo=None,
+    evidencia=None,
+    evidencia_2=None,
+    evidencia_3=None,
+):
+    from inventario.services import aplicar_inventario_al_resolver_incidencia
+
+    validate_resolution_inventory_rules(
+        incidencia=incidencia,
+        tipo_resolucion=tipo_resolucion,
+        equipo_reemplazo=equipo_reemplazo,
+    )
+    reemplaza_solucion_previa = incidencia.estado_actual == Incidencia.ESTADO_REABIERTO or bool(incidencia.solucion_aplicada)
     incidencia.tecnico_asignado = tecnico
     if not incidencia.fecha_asignacion:
         incidencia.fecha_asignacion = timezone.now()
     incidencia.solucion_aplicada = solucion_aplicada
+    incidencia.tipo_resolucion = tipo_resolucion
+    incidencia.equipo_reemplazo = equipo_reemplazo
     if evidencia:
         incidencia.evidencia_solucion = evidencia
     if evidencia_2:
         incidencia.evidencia_solucion_2 = evidencia_2
+    elif reemplaza_solucion_previa:
+        incidencia.evidencia_solucion_2 = None
     if evidencia_3:
         incidencia.evidencia_solucion_3 = evidencia_3
+    elif reemplaza_solucion_previa:
+        incidencia.evidencia_solucion_3 = None
     incidencia.estado = get_estado(Incidencia.ESTADO_RESUELTO)
     incidencia.save()
+    aplicar_inventario_al_resolver_incidencia(incidencia=incidencia, usuario=tecnico)
     return incidencia
+
+
+def validate_resolution_inventory_rules(*, incidencia, tipo_resolucion, equipo_reemplazo=None):
+    if tipo_resolucion not in dict(Incidencia.TIPO_RESOLUCION_CHOICES):
+        raise ValidationError("Debe seleccionar un tipo de resolución válido.")
+
+    equipo = incidencia.equipo
+    if not equipo:
+        return
+
+    if tipo_resolucion == Incidencia.RESOLUCION_REEMPLAZADO:
+        if not equipo_reemplazo:
+            raise ValidationError("Debe seleccionar un equipo de reemplazo")
+        if equipo_reemplazo.id == equipo.id:
+            raise ValidationError("El equipo de reemplazo no puede ser el mismo")
+        if not equipo_reemplazo_es_compatible(equipo, equipo_reemplazo):
+            raise ValidationError("El equipo de reemplazo debe ser del mismo tipo o compatible con el equipo afectado")
+        if not equipo_reemplazo.activo or equipo_reemplazo.estado.nombre != "Operativo":
+            raise ValidationError("El equipo de reemplazo no está disponible")
+        if equipo_reemplazo.disponibilidad != equipo_reemplazo.DISPONIBILIDAD_LIBRE:
+            raise ValidationError("El equipo de reemplazo no está libre")
+        if Incidencia.objects.filter(
+            Q(equipo=equipo_reemplazo) | Q(equipo_reemplazo=equipo_reemplazo),
+            estado__name__in=replacement_blocking_states(),
+        ).exclude(pk=incidencia.pk).exists():
+            raise ValidationError("El equipo de reemplazo ya está en otra incidencia activa")
 
 
 def reabrir_incidencia_service(incidencia):
@@ -285,6 +391,8 @@ def reabrir_incidencia_service(incidencia):
 
 
 def cerrar_incidencia_service(incidencia, usuario):
+    from inventario.services import aplicar_inventario_al_cerrar_incidencia
+
     transition_incidencia(
         incidencia,
         Incidencia.ESTADO_CERRADO,
@@ -292,4 +400,5 @@ def cerrar_incidencia_service(incidencia, usuario):
     )
     incidencia.fecha_cierre = timezone.now()
     incidencia.save(update_fields=["fecha_cierre"])
+    aplicar_inventario_al_cerrar_incidencia(incidencia=incidencia, usuario=usuario)
     return incidencia

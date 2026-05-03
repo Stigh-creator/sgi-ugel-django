@@ -28,6 +28,7 @@ def get_inventario_context(request, form=None):
     q = request.GET.get('q')
     area_id = request.GET.get('area')
     estado = request.GET.get('estado')
+    disponibilidad = request.GET.get('disponibilidad')
     marca_id = request.GET.get('marca')
     tipo_id = request.GET.get('tipo')
     
@@ -51,6 +52,8 @@ def get_inventario_context(request, form=None):
         equipos_list = equipos_list.filter(area_id=area_id)
     if estado:
         equipos_list = equipos_list.filter(estado__nombre=estado)
+    if disponibilidad:
+        equipos_list = equipos_list.filter(disponibilidad=disponibilidad)
     if marca_id:
         equipos_list = equipos_list.filter(marca_id=marca_id)
     if tipo_id:
@@ -63,6 +66,8 @@ def get_inventario_context(request, form=None):
         reparacion=Count('id', filter=Q(estado__nombre='En reparación')),
         inoperativos=Count('id', filter=Q(estado__nombre='Inoperativo')),
         baja=Count('id', filter=Q(estado__nombre='Dado de baja')),
+        libres=Count('id', filter=Q(disponibilidad=Equipo.DISPONIBILIDAD_LIBRE)),
+        en_uso=Count('id', filter=Q(disponibilidad=Equipo.DISPONIBILIDAD_EN_USO)),
     )
 
     paginator = Paginator(equipos_list, 10)
@@ -80,6 +85,7 @@ def get_inventario_context(request, form=None):
         'query': q,
         'area_selected': area_id,
         'estado_selected': estado,
+        'disponibilidad_selected': disponibilidad,
         'marca_selected': marca_id,
         'tipo_selected': tipo_id,
         'vista_selected': vista,
@@ -122,6 +128,7 @@ def equipo_editar(request, pk):
     if form.is_valid():
         area_ant = equipo.area
         nombre_ant = equipo.nombre_equipo
+        disponibilidad_ant = equipo.get_disponibilidad_display()
         form.save()
         
         cambios = []
@@ -129,6 +136,8 @@ def equipo_editar(request, pk):
             cambios.append(f"Área: {area_ant} -> {equipo.area}")
         if nombre_ant != equipo.nombre_equipo:
             cambios.append(f"Nombre: {nombre_ant} -> {equipo.nombre_equipo}")
+        if disponibilidad_ant != equipo.get_disponibilidad_display():
+            cambios.append(f"Disponibilidad: {disponibilidad_ant} -> {equipo.get_disponibilidad_display()}")
             
         desc = f"Se actualizó el equipo {equipo.codigo_equipo}."
         if cambios:

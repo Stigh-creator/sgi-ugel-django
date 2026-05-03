@@ -41,6 +41,12 @@ class EstadoEquipo(models.Model):
         return self.nombre
 
 class Equipo(models.Model):
+    DISPONIBILIDAD_LIBRE = "LIBRE"
+    DISPONIBILIDAD_EN_USO = "EN_USO"
+    DISPONIBILIDAD_CHOICES = (
+        (DISPONIBILIDAD_LIBRE, "Libre"),
+        (DISPONIBILIDAD_EN_USO, "En uso"),
+    )
 
     codigo_equipo = models.CharField(max_length=50, unique=True)
     nombre_equipo = models.CharField(max_length=100)
@@ -57,6 +63,12 @@ class Equipo(models.Model):
     fecha_register = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
     activo = models.BooleanField(default=True)
+    disponibilidad = models.CharField(
+        max_length=10,
+        choices=DISPONIBILIDAD_CHOICES,
+        default=DISPONIBILIDAD_LIBRE,
+        verbose_name="Disponibilidad",
+    )
     foto_estado = models.ImageField(upload_to='equipos/estado/', null=True, blank=True, verbose_name="Foto del Estado")
     ficha_tecnica = models.FileField(upload_to=upload_to_fichas, null=True, blank=True, verbose_name="Ficha Técnica (PDF)")
 
@@ -70,9 +82,11 @@ class Equipo(models.Model):
             estado_baja = EstadoEquipo.objects.filter(nombre='Dado de baja').first()
             if estado_baja:
                 self.estado = estado_baja
+            self.disponibilidad = self.DISPONIBILIDAD_EN_USO
         elif self.estado and self.estado.nombre == 'Dado de baja':
             self.activo = False
-        elif self.estado and self.estado.nombre in {'Operativo', 'En revisión', 'En reparación', 'Inoperativo'} and self.activo is False:
+            self.disponibilidad = self.DISPONIBILIDAD_EN_USO
+        elif self.estado and self.estado.nombre in {'Operativo', 'Observación', 'En revisión', 'En reparación', 'Inoperativo'} and self.activo is False:
             self.activo = True
         super().save(*args, **kwargs)
         if self.foto_estado:

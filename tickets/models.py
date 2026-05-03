@@ -259,6 +259,18 @@ class Incidencia(models.Model):
         (PRIORIDAD_CRITICA, "Crítica"),
     )
 
+    RESOLUCION_REPARADO = "reparado"
+    RESOLUCION_REEMPLAZADO = "reemplazado"
+    RESOLUCION_BAJA = "baja"
+    RESOLUCION_DERIVADO = "derivado"
+
+    TIPO_RESOLUCION_CHOICES = (
+        (RESOLUCION_REPARADO, "Reparado"),
+        (RESOLUCION_REEMPLAZADO, "Reemplazado (temporal)"),
+        (RESOLUCION_BAJA, "Dado de baja"),
+        (RESOLUCION_DERIVADO, "Derivado / externo"),
+    )
+
     creador = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name="incidencias_creadas")
     area = models.ForeignKey("Area", on_delete=models.CASCADE)
     equipo = models.ForeignKey('inventario.Equipo', on_delete=models.SET_NULL, null=True, blank=True)
@@ -284,6 +296,14 @@ class Incidencia(models.Model):
     observaciones_internas = models.TextField(null=True, blank=True)
     
     solucion_aplicada = models.TextField(null=True, blank=True)
+    tipo_resolucion = models.CharField(max_length=20, choices=TIPO_RESOLUCION_CHOICES, null=True, blank=True)
+    equipo_reemplazo = models.ForeignKey(
+        'inventario.Equipo',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="incidencias_como_reemplazo",
+    )
     evidencia_solucion = models.ImageField(upload_to=upload_to_soluciones, null=True, blank=True)
     evidencia_solucion_2 = models.ImageField(upload_to=upload_to_soluciones, null=True, blank=True)
     evidencia_solucion_3 = models.ImageField(upload_to=upload_to_soluciones, null=True, blank=True)
@@ -343,6 +363,13 @@ class Incidencia(models.Model):
     @property
     def esta_en_proceso(self):
         return self.estado_actual == self.ESTADO_EN_PROCESO
+
+    @property
+    def puede_registrar_solucion(self):
+        return self.estado_actual in {
+            self.ESTADO_EN_PROCESO,
+            self.ESTADO_REABIERTO,
+        }
 
     @property
     def puede_aceptar_o_rechazar(self):

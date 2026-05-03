@@ -67,6 +67,7 @@ TIPOS_EQUIPO_BASE = [
 
 ESTADOS_EQUIPO_BASE = [
     'Operativo',
+    'Observación',
     'En revisión',
     'En reparación',
     'Inoperativo',

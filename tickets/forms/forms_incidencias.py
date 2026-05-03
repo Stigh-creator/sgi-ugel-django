@@ -3,7 +3,13 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from ..models import CustomUser, Incidencia, Comentario, Area
-from ..services import validate_tecnico_capacity
+from ..services import (
+    compatible_replacement_type_ids,
+    equipo_reemplazo_es_compatible,
+    equipos_ocupados_por_incidencias,
+    replacement_blocking_states,
+    validate_tecnico_capacity,
+)
 
 class IncidenciaForm(forms.ModelForm):
     equipo = forms.ModelChoiceField(
@@ -50,6 +56,7 @@ class IncidenciaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop("user", None)
+        self.user = user
         super().__init__(*args, **kwargs)
         
         from inventario.models import Equipo, EstadoEquipo
@@ -61,7 +68,14 @@ class IncidenciaForm(forms.ModelForm):
             if user.es_usuario:
                 self.fields["area"].initial = user.area
                 self.fields["area"].disabled = True
-                self.fields["equipo"].queryset = equipos_operativos.filter(area=user.area)
+                if user.area and user.area.sede_principal:
+                    self.fields["equipo"].queryset = (
+                        equipos_operativos
+                        .filter(area__sede_principal=user.area.sede_principal)
+                        .distinct()
+                    )
+                else:
+                    self.fields["equipo"].queryset = Equipo.objects.none()
                 if "prioridad" in self.fields:
                     self.fields.pop("prioridad")
             else:
@@ -74,9 +88,29 @@ class IncidenciaForm(forms.ModelForm):
                 else:
                     self.fields["equipo"].queryset = equipos_operativos
 
+        posted_equipo_id = self.data.get("equipo") if self.is_bound else None
+        if posted_equipo_id and posted_equipo_id != "otro":
+            equipo_ids = list(self.fields["equipo"].queryset.values_list("pk", flat=True))
+            equipo_ids.append(posted_equipo_id)
+            self.fields["equipo"].queryset = Equipo.objects.filter(pk__in=equipo_ids).distinct()
+
         choices = list(self.fields["equipo"].choices)
         choices.append(('otro', '--- OTRO (No está en la lista) ---'))
         self.fields["equipo"].choices = choices
+
+    def clean_equipo(self):
+        equipo = self.cleaned_data.get("equipo")
+        user = self.user
+
+        if equipo and user and user.es_usuario:
+            if not user.area or not user.area.sede_principal:
+                raise ValidationError("No tiene una sede principal configurada para seleccionar equipos.")
+            if not equipo.area or not equipo.area.sede_principal:
+                raise ValidationError("El equipo no tiene una sede principal configurada")
+            if equipo.area.sede_principal != user.area.sede_principal:
+                raise ValidationError("El equipo no pertenece a su área")
+
+        return equipo
 
     def clean(self):
         cleaned_data = super().clean()
@@ -106,9 +140,11 @@ class IncidenciaForm(forms.ModelForm):
 class IncidenciaCierreForm(forms.ModelForm):
     class Meta:
         model = Incidencia
-        fields = ["solucion_aplicada", "evidencia_solucion"]
+        fields = ["tipo_resolucion", "equipo_reemplazo", "solucion_aplicada", "evidencia_solucion"]
         widgets = {
             "solucion_aplicada": forms.Textarea(attrs={"rows": 4, "placeholder": "Describe detalladamente la solución..."}),
+            "tipo_resolucion": forms.Select(attrs={"class": "form-select"}),
+            "equipo_reemplazo": forms.Select(attrs={"class": "form-select"}),
         }
 
     evidencia_solucion = forms.ImageField(
@@ -128,16 +164,77 @@ class IncidenciaCierreForm(forms.ModelForm):
     )
 
     def __init__(self, *args, **kwargs):
+        incidencia = kwargs.pop("incidencia", None)
+        self.incidencia = incidencia
         super().__init__(*args, **kwargs)
+        from inventario.models import Equipo, EstadoEquipo
+
         self.fields["solucion_aplicada"].widget.attrs["class"] = "form-control"
         self.fields["solucion_aplicada"].required = True
         self.fields["solucion_aplicada"].min_length = 20
+        self.fields["tipo_resolucion"].required = True
+        self.fields["tipo_resolucion"].empty_label = "-- Seleccione tipo de resolución --"
+        estado_operativo = EstadoEquipo.objects.filter(nombre="Operativo").first()
+        reemplazos = Equipo.objects.filter(
+            activo=True,
+            estado=estado_operativo,
+            disponibilidad=Equipo.DISPONIBILIDAD_LIBRE,
+        )
+        if incidencia and incidencia.equipo_id:
+            reemplazos = reemplazos.filter(
+                tipo_equipo_id__in=compatible_replacement_type_ids(incidencia.equipo.tipo_equipo)
+            ).exclude(pk=incidencia.equipo_id)
+        if incidencia and incidencia.pk:
+            reemplazos = reemplazos.exclude(
+                pk__in=equipos_ocupados_por_incidencias(exclude_incidencia_id=incidencia.pk)
+            )
+        posted_reemplazo_id = self.data.get("equipo_reemplazo") if self.is_bound else None
+        if posted_reemplazo_id:
+            reemplazos = (reemplazos | Equipo.objects.filter(pk=posted_reemplazo_id)).distinct()
+        self.fields["equipo_reemplazo"].queryset = reemplazos.select_related("area", "marca", "tipo_equipo")
+        self.fields["equipo_reemplazo"].empty_label = "-- Seleccione equipo de reemplazo --"
+        self.fields["equipo_reemplazo"].required = False
+        self.fields["equipo_reemplazo"].label_from_instance = lambda obj: (
+            f"{obj.codigo_equipo} - {obj.nombre_equipo}"
+        )
 
     def clean_solucion_aplicada(self):
         solucion = self.cleaned_data.get("solucion_aplicada")
         if not solucion or len(solucion) < 20:
             raise ValidationError("La descripción de la solución debe tener al menos 20 caracteres.")
         return solucion
+
+    def clean(self):
+        cleaned_data = super().clean()
+        tipo_resolucion = cleaned_data.get("tipo_resolucion")
+        equipo_reemplazo = cleaned_data.get("equipo_reemplazo")
+        incidencia = self.incidencia
+        equipo = incidencia.equipo if incidencia else None
+
+        if tipo_resolucion == Incidencia.RESOLUCION_REEMPLAZADO and equipo:
+            if not equipo_reemplazo:
+                self.add_error("equipo_reemplazo", "Debe seleccionar un equipo de reemplazo")
+            elif equipo_reemplazo.id == equipo.id:
+                self.add_error("equipo_reemplazo", "El equipo de reemplazo no puede ser el mismo")
+            elif not equipo_reemplazo_es_compatible(equipo, equipo_reemplazo):
+                self.add_error("equipo_reemplazo", "El equipo de reemplazo debe ser del mismo tipo o compatible con el equipo afectado")
+            elif not equipo_reemplazo.activo or equipo_reemplazo.estado.nombre != "Operativo":
+                self.add_error("equipo_reemplazo", "El equipo de reemplazo no está disponible")
+            elif equipo_reemplazo.disponibilidad != equipo_reemplazo.DISPONIBILIDAD_LIBRE:
+                self.add_error("equipo_reemplazo", "El equipo de reemplazo no está libre")
+            elif Incidencia.objects.filter(
+                equipo=equipo_reemplazo,
+                estado__name__in=replacement_blocking_states(),
+            ).exclude(pk=incidencia.pk).exists():
+                self.add_error("equipo_reemplazo", "El equipo de reemplazo ya está en otra incidencia activa")
+            elif Incidencia.objects.filter(
+                equipo_reemplazo=equipo_reemplazo,
+                estado__name__in=replacement_blocking_states(),
+            ).exclude(pk=incidencia.pk).exists():
+                self.add_error("equipo_reemplazo", "El equipo de reemplazo ya está en otra incidencia activa")
+        if tipo_resolucion != Incidencia.RESOLUCION_REEMPLAZADO:
+            cleaned_data["equipo_reemplazo"] = None
+        return cleaned_data
 
 
 class IncidenciaAdminForm(forms.ModelForm):
@@ -190,7 +287,12 @@ class IncidenciaAdminForm(forms.ModelForm):
         from inventario.models import Equipo, EstadoEquipo
 
         estado_operativo = EstadoEquipo.objects.filter(nombre="Operativo").first()
-        self.fields["equipo"].queryset = Equipo.objects.filter(activo=True, estado=estado_operativo)
+        equipo_queryset = Equipo.objects.filter(activo=True, estado=estado_operativo)
+        if self.instance and self.instance.pk and self.instance.equipo_id:
+            equipo_queryset = Equipo.objects.filter(
+                pk__in=list(equipo_queryset.values_list("pk", flat=True)) + [self.instance.equipo_id]
+            ).distinct()
+        self.fields["equipo"].queryset = equipo_queryset
         
         choices = list(self.fields["equipo"].choices)
         choices.append(('otro', '--- OTRO (No está en la lista) ---'))
@@ -266,6 +368,8 @@ class IncidenciaAdminForm(forms.ModelForm):
         if self.instance and self.instance.pk and self.instance.imagen_adjunta:
             if not file or getattr(file, "name", None) == self.instance.imagen_adjunta.name:
                 return self.instance.imagen_adjunta
+        if self.instance and self.instance.pk and not file:
+            return self.instance.imagen_adjunta
         if not file:
             raise ValidationError("La foto de la incidencia es obligatoria.")
         if file.size > 2 * 1024 * 1024:

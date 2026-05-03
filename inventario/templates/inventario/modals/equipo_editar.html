@@ -88,6 +88,19 @@
                             {% endfor %}
                         </div>
                         <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Disponibilidad</label>
+                            <select name="{{ form.disponibilidad.name }}" class="form-select {% if form.disponibilidad.errors %}is-invalid{% endif %}">
+                                {% for val, label in form.fields.disponibilidad.choices %}
+                                {% with actual=form.disponibilidad.value|stringformat:"s" opcion=val|stringformat:"s" %}
+                                <option value="{{ val }}" {% if actual == opcion %}selected{% endif %}>{{ label }}</option>
+                                {% endwith %}
+                                {% endfor %}
+                            </select>
+                            {% for error in form.disponibilidad.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label small fw-bold text-muted">Nueva Foto del Estado</label>
                             <input type="file" name="{{ form.foto_estado.name }}" 
                                    id="id_foto_estado_editar"

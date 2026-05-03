@@ -10,7 +10,7 @@ class EquipoForm(forms.ModelForm):
         fields = [
             'codigo_equipo', 'nombre_equipo', 'tipo_equipo', 
             'marca', 'modelo', 'numero_serie', 'area', 'estado',
-            'observaciones', 'foto_estado'
+            'disponibilidad', 'observaciones', 'foto_estado'
         ]
         widgets = {
             'codigo_equipo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: PC-001'}),
@@ -21,6 +21,7 @@ class EquipoForm(forms.ModelForm):
             'numero_serie': forms.TextInput(attrs={'class': 'form-control'}),
             'area': forms.Select(attrs={'class': 'form-select'}),
             'estado': forms.Select(attrs={'class': 'form-select'}),
+            'disponibilidad': forms.Select(attrs={'class': 'form-select'}),
             'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Ej: Color negro, tapa lateral con rayón leve, base genérica del monitor, etiquetas institucionales visibles.'}),
             'foto_estado': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'capture': 'camera'}),
         }
@@ -31,6 +32,7 @@ class EquipoForm(forms.ModelForm):
         self.fields['marca'].empty_label = "-- Seleccione Marca --"
         self.fields['area'].empty_label = "-- Seleccione Área --"
         self.fields['estado'].empty_label = "-- Seleccione Estado --"
+        self.fields['disponibilidad'].label = "Disponibilidad"
         self.fields['observaciones'].label = "Descripción física / estado estético"
         self.fields['observaciones'].help_text = "Usa este campo solo para rasgos físicos, cosméticos o accesorios del equipo."
 

@@ -36,6 +36,8 @@ from ..services import (
     resolve_active_tab_for_user,
     reabrir_incidencia_service,
     resolver_incidencia_service,
+    compatible_replacement_type_ids,
+    equipos_ocupados_por_incidencias,
 )
 from inventario.models import Marca, TipoEquipo, Equipo, EstadoEquipo
 
@@ -62,6 +64,12 @@ def nombre_usuario(usuario):
 
 def prioridad_label(value):
     return dict(Incidencia.PRIORIDAD_CHOICES).get(value, value or "Sin prioridad")
+
+
+def equipo_label(equipo):
+    if not equipo:
+        return "equipo no institucional"
+    return f"{equipo.codigo_equipo} - {equipo.nombre_equipo}"
 
 
 @login_required
@@ -268,6 +276,7 @@ def detalle_incidencia(request, pk):
             return redirect('incidencias_list')
     
     from auditoria.models import Auditoria
+    from inventario.models import Equipo, EstadoEquipo
     logs = Auditoria.objects.filter(modulo="Incidencias", referencia_id=pk).order_by("-fecha_hora")
     comentarios = incidencia.comentarios.all().order_by("fecha_creacion")
     
@@ -289,6 +298,20 @@ def detalle_incidencia(request, pk):
         elif int(uid) != request.user.id:
             typing_users.append(info['name'])
             
+    estado_operativo = EstadoEquipo.objects.filter(nombre="Operativo").first()
+    equipos_reemplazo = Equipo.objects.filter(
+        activo=True,
+        estado=estado_operativo,
+        disponibilidad=Equipo.DISPONIBILIDAD_LIBRE,
+    )
+    if incidencia.equipo_id:
+        equipos_reemplazo = equipos_reemplazo.filter(
+            tipo_equipo_id__in=compatible_replacement_type_ids(incidencia.equipo.tipo_equipo)
+        ).exclude(pk=incidencia.equipo_id)
+    equipos_reemplazo = equipos_reemplazo.exclude(
+        pk__in=equipos_ocupados_por_incidencias(exclude_incidencia_id=incidencia.pk)
+    )
+
     context = {
         'incidencia': incidencia,
         'timeline': timeline,
@@ -304,6 +327,7 @@ def detalle_incidencia(request, pk):
         ),
         'comentario_form': ComentarioForm(),
         'reabrir_form': ReabrirIncidenciaForm(),
+        'equipos_reemplazo': equipos_reemplazo.select_related("area", "marca", "tipo_equipo"),
         'now': timezone.localtime(timezone.now()),
     }
 
@@ -438,9 +462,13 @@ def get_equipos_for_area(request):
     
     if user.es_usuario:
         if user.area and user.area.sede_principal:
-            equipos = Equipo.objects.filter(area__sede_principal=user.area.sede_principal, activo=True, estado=estado_operativo)
+            equipos = Equipo.objects.filter(
+                area__sede_principal=user.area.sede_principal,
+                activo=True,
+                estado=estado_operativo,
+            ).distinct()
         else:
-            equipos = Equipo.objects.filter(area=user.area, activo=True, estado=estado_operativo)
+            equipos = Equipo.objects.none()
     else:
         if area_id:
             equipos = Equipo.objects.filter(area_id=area_id, activo=True, estado=estado_operativo)
@@ -586,17 +614,21 @@ def resolver_incidencia(request, pk):
         messages.error(request, "No tienes permiso para resolver esta incidencia.")
         return redirect('detalle_incidencia', pk=pk)
 
-    if incidencia.estado_actual != Incidencia.ESTADO_EN_PROCESO:
-        messages.error(request, "Primero debes aceptar la incidencia antes de registrar la solución.")
+    if not incidencia.puede_registrar_solucion:
+        messages.error(request, "La incidencia debe estar en proceso o reabierta para registrar la solución.")
         return redirect('detalle_incidencia', pk=pk)
         
-    form = IncidenciaCierreForm(request.POST, request.FILES)
+    form = IncidenciaCierreForm(request.POST, request.FILES, incidencia=incidencia)
     if form.is_valid():
         solucion = form.cleaned_data["solucion_aplicada"]
+        tipo_resolucion = form.cleaned_data["tipo_resolucion"]
+        equipo_reemplazo = form.cleaned_data.get("equipo_reemplazo")
         resolver_incidencia_service(
             incidencia=incidencia,
             tecnico=request.user,
             solucion_aplicada=solucion,
+            tipo_resolucion=tipo_resolucion,
+            equipo_reemplazo=equipo_reemplazo,
             evidencia=form.cleaned_data.get("evidencia_solucion"),
             evidencia_2=form.cleaned_data.get("evidencia_solucion_2"),
             evidencia_3=form.cleaned_data.get("evidencia_solucion_3")
@@ -607,11 +639,39 @@ def resolver_incidencia(request, pk):
             tipo="confirmacion",
             texto=(
                 f"{request.user.get_full_name() or request.user.username} cambió el estado a Resuelto.\n"
+                f"Tipo de resolución: {incidencia.get_tipo_resolucion_display()}.\n"
                 f"Solución aplicada: {solucion}"
             ),
         )
         
-        registrar_auditoria(request, "Incidencias", "resolvió incidencia", f"{ticket_label(incidencia)} Incidencia marcada como Resuelta por {nombre_usuario(request.user)}.", pk)
+        tipo_display = incidencia.get_tipo_resolucion_display()
+        if incidencia.tipo_resolucion == Incidencia.RESOLUCION_REEMPLAZADO:
+            detalle_resolucion = (
+                f"Resolución: reemplazo temporal. Equipo afectado: {equipo_label(incidencia.equipo)}. "
+                f"Equipo entregado como reemplazo: {equipo_label(incidencia.equipo_reemplazo)}."
+            )
+        elif incidencia.tipo_resolucion == Incidencia.RESOLUCION_REPARADO:
+            detalle_resolucion = (
+                f"Resolución: reparación. Equipo afectado: {equipo_label(incidencia.equipo)}. "
+                "El equipo permanece en reparación hasta que el solicitante cierre el ticket."
+            )
+        elif incidencia.tipo_resolucion == Incidencia.RESOLUCION_BAJA:
+            detalle_resolucion = (
+                f"Resolución: baja definitiva. Equipo afectado: {equipo_label(incidencia.equipo)}."
+            )
+        else:
+            detalle_resolucion = "Resolución: derivado/externo. No se realizaron cambios automáticos de inventario."
+        registrar_auditoria(
+            request,
+            "Incidencias",
+            "resolvió incidencia",
+            (
+                f"{ticket_label(incidencia)} Incidencia marcada como Resuelta por {nombre_usuario(request.user)}. "
+                f"Tipo de solución: {tipo_display}. {detalle_resolucion} "
+                f"Detalle técnico: {solucion}"
+            ),
+            pk,
+        )
         messages.success(request, f"Incidencia #{pk} marcada como resuelta.")
         return redirect('detalle_incidencia', pk=pk)
     
@@ -735,6 +795,14 @@ def gestionar_incidencia(request, pk):
                 reassigned = True
             
             incidencia.save()
+            if reassigned:
+                from inventario.services import marcar_equipo_en_reparacion_por_asignacion
+
+                marcar_equipo_en_reparacion_por_asignacion(
+                    equipo=incidencia.equipo,
+                    usuario=new_tecnico,
+                    incidencia_codigo=incidencia.codigo,
+                )
             final_priority = incidencia.prioridad
             for img_field in ["imagen_2", "imagen_3"]:
                 img = form.cleaned_data.get(img_field)
