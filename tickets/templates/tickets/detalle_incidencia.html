@@ -322,9 +322,13 @@
                         </div>
                         <div class="row">
                             <div class="col-12">
-                                <button type="submit" class="btn resolution-submit-btn w-100 fw-bold rounded-pill py-3">
+                                <button type="submit" id="btn-resolver" class="btn resolution-submit-btn w-100 fw-bold rounded-pill py-3">
                                     <i class="bi bi-check-circle-fill me-2"></i> Marcar como resuelto
                                 </button>
+                                <div id="resolution-error-msg" class="text-danger small mt-2 text-center" style="display: none;">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                    Para resolver, completa la descripción (mín. 20 caracteres) y adjunta la evidencia obligatoria.
+                                </div>
                             </div>
                         </div>
                     </form>
@@ -693,7 +697,45 @@
         const len = textareaSolucion.value.length;
         charCounter.textContent = `${len} / 20 caracteres mínimos`;
         charCounter.className = len >= 20 ? 'text-success fw-bold' : 'text-danger';
+        validateResolutionForm();
     }
+
+    function validateResolutionForm() {
+        const btn = document.getElementById('btn-resolver');
+        const errorMsg = document.getElementById('resolution-error-msg');
+        const evidenceInput = document.getElementById('id_evidencia_solucion');
+        const typeSelect = document.getElementById('tipo_resolucion');
+        const solutionText = document.getElementById('solucion_aplicada');
+        
+        if (!btn || !evidenceInput || !typeSelect || !solutionText) return;
+
+        const isTextValid = solutionText.value.trim().length >= 20;
+        const isEvidenceValid = evidenceInput.files && evidenceInput.files[0];
+        const isTypeValid = typeSelect.value !== "";
+        
+        const isValid = isTextValid && isEvidenceValid && isTypeValid;
+        
+        btn.disabled = !isValid;
+        btn.style.opacity = isValid ? '1' : '0.6';
+        btn.style.cursor = isValid ? 'pointer' : 'not-allowed';
+        
+        if (errorMsg) {
+            errorMsg.style.display = isValid ? 'none' : 'block';
+        }
+    }
+
+    // Escuchar cambios en los campos de resolución
+    document.addEventListener('DOMContentLoaded', function() {
+        const resolutionFields = ['solucion_aplicada', 'id_evidencia_solucion', 'tipo_resolucion'];
+        resolutionFields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', validateResolutionForm);
+                el.addEventListener('change', validateResolutionForm);
+            }
+        });
+        validateResolutionForm();
+    });
 
     if (textareaSolucion) {
         textareaSolucion.addEventListener('input', updateCharCounter);
@@ -799,6 +841,9 @@
         input.value = "";
         previewContainer.style.display = 'none';
         inputContainer.classList.remove('has-file');
+        
+        // Disparar evento para actualizar la validación del botón
+        input.dispatchEvent(new Event('change'));
     }
 
     function changeEvidence(url, thumbEl) {
