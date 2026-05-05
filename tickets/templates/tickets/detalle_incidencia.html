@@ -271,30 +271,54 @@
                             <textarea id="solucion_aplicada" name="solucion_aplicada" class="form-control resolution-textarea" rows="4" placeholder="Describe detalladamente las acciones realizadas..." required minlength="20">{% if incidencia.estado_visual != 'Reabierto' %}{{ incidencia.solucion_aplicada|default:'' }}{% endif %}</textarea>
                             <div class="mt-2 text-end">
                                 <small id="char-counter" class="text-muted">0 / 20 caracteres mínimos</small>
-                            </div>
-                        </div>
-                        <div class="mb-4">
+                                                 <div class="mb-4">
                             <label class="form-label-custom">{% if incidencia.estado_visual == 'Reabierto' %}Nuevas fotos de solución{% else %}Fotos de evidencia{% endif %} (Mínimo 1, Máximo 3)</label>
                             <div class="row g-3">
                                 <div class="col-md-4">
-                                    <div class="evidence-input-wrapper">
-                                        <input type="file" name="evidencia_solucion" id="evidencia_solucion" class="form-control" accept="image/*" capture="camera" required>
+                                    <div class="evidence-upload-card p-2 border rounded-4 bg-white position-relative">
+                                        <div class="input-file-container">
+                                            <input type="file" name="evidencia_solucion" id="id_evidencia_solucion" class="form-control" accept="image/*" capture="camera" required onchange="previewCardImage(this)">
+                                        </div>
+                                        <div class="preview-container" style="display: none;">
+                                            <img src="" class="img-fluid rounded-3" alt="Vista previa">
+                                            <button type="button" class="btn-remove-image" onclick="removeCardImage('id_evidencia_solucion')">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
                                         <small class="text-muted d-block mt-1"><i class="bi bi-info-circle me-1"></i>Obligatoria</small>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
-                                    <div class="evidence-input-wrapper">
-                                        <input type="file" name="evidencia_solucion_2" id="evidencia_solucion_2" class="form-control" accept="image/*" capture="camera">
+                                    <div class="evidence-upload-card p-2 border rounded-4 bg-white position-relative">
+                                        <div class="input-file-container">
+                                            <input type="file" name="evidencia_solucion_2" id="id_evidencia_solucion_2" class="form-control" accept="image/*" capture="camera" onchange="previewCardImage(this)">
+                                        </div>
+                                        <div class="preview-container" style="display: none;">
+                                            <img src="" class="img-fluid rounded-3" alt="Vista previa">
+                                            <button type="button" class="btn-remove-image" onclick="removeCardImage('id_evidencia_solucion_2')">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
                                         <small class="text-muted d-block mt-1">Opcional 1</small>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
-                                    <div class="evidence-input-wrapper">
-                                        <input type="file" name="evidencia_solucion_3" id="evidencia_solucion_3" class="form-control" accept="image/*" capture="camera">
+                                    <div class="evidence-upload-card p-2 border rounded-4 bg-white position-relative">
+                                        <div class="input-file-container">
+                                            <input type="file" name="evidencia_solucion_3" id="id_evidencia_solucion_3" class="form-control" accept="image/*" capture="camera" onchange="previewCardImage(this)">
+                                        </div>
+                                        <div class="preview-container" style="display: none;">
+                                            <img src="" class="img-fluid rounded-3" alt="Vista previa">
+                                            <button type="button" class="btn-remove-image" onclick="removeCardImage('id_evidencia_solucion_3')">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
                                         <small class="text-muted d-block mt-1">Opcional 2</small>
                                     </div>
                                 </div>
                             </div>
+                        </div>
+      </div>
                         </div>
                         <div class="row">
                             <div class="col-12">
@@ -507,15 +531,45 @@
                     <div class="row g-3">
                         <div class="col-md-4">
                             <label class="form-label-custom" for="id_reabrir_imagen_1">Foto 1 (opcional)</label>
-                            <input type="file" name="imagen_1" id="id_reabrir_imagen_1" class="form-control" accept="image/*" capture="camera">
+                            <div class="evidence-upload-card p-2 border rounded-4 bg-white position-relative">
+                                <div class="input-file-container">
+                                    <input type="file" name="imagen_1" id="id_reabrir_imagen_1" class="form-control" accept="image/*" capture="camera" onchange="previewCardImage(this)">
+                                </div>
+                                <div class="preview-container" style="display: none;">
+                                    <img src="" class="img-fluid rounded-3" alt="Vista previa">
+                                    <button type="button" class="btn-remove-image" onclick="removeCardImage('id_reabrir_imagen_1')">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label-custom" for="id_reabrir_imagen_2">Foto 2 (opcional)</label>
-                            <input type="file" name="imagen_2" id="id_reabrir_imagen_2" class="form-control" accept="image/*" capture="camera">
+                            <div class="evidence-upload-card p-2 border rounded-4 bg-white position-relative">
+                                <div class="input-file-container">
+                                    <input type="file" name="imagen_2" id="id_reabrir_imagen_2" class="form-control" accept="image/*" capture="camera" onchange="previewCardImage(this)">
+                                </div>
+                                <div class="preview-container" style="display: none;">
+                                    <img src="" class="img-fluid rounded-3" alt="Vista previa">
+                                    <button type="button" class="btn-remove-image" onclick="removeCardImage('id_reabrir_imagen_2')">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label-custom" for="id_reabrir_imagen_3">Foto 3 (opcional)</label>
-                            <input type="file" name="imagen_3" id="id_reabrir_imagen_3" class="form-control" accept="image/*" capture="camera">
+                            <div class="evidence-upload-card p-2 border rounded-4 bg-white position-relative">
+                                <div class="input-file-container">
+                                    <input type="file" name="imagen_3" id="id_reabrir_imagen_3" class="form-control" accept="image/*" capture="camera" onchange="previewCardImage(this)">
+                                </div>
+                                <div class="preview-container" style="display: none;">
+                                    <img src="" class="img-fluid rounded-3" alt="Vista previa">
+                                    <button type="button" class="btn-remove-image" onclick="removeCardImage('id_reabrir_imagen_3')">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -662,6 +716,20 @@
         const container = document.getElementById('preview-container');
         container.innerHTML = '';
         if (input.files && input.files[0]) {
+            const file = input.files[0];
+            const maxSize = 2 * 1024 * 1024;
+
+            if (file.size > maxSize) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Imagen muy pesada',
+                    text: 'El archivo supera el límite de 2MB.',
+                    confirmButtonColor: '#2563eb'
+                });
+                input.value = '';
+                return;
+            }
+
             const reader = new FileReader();
             reader.onload = function(e) {
                 const wrapper = document.createElement('div');
@@ -676,7 +744,7 @@
                 `;
                 container.appendChild(wrapper);
             }
-            reader.readAsDataURL(input.files[0]);
+            reader.readAsDataURL(file);
         }
     }
 
@@ -684,6 +752,53 @@
         const input = document.getElementById('id_evidencia_adjunta');
         input.value = '';
         document.getElementById('preview-container').innerHTML = '';
+    }
+
+    function previewCardImage(input) {
+        const card = input.closest('.evidence-upload-card');
+        if (!card) return;
+        const previewContainer = card.querySelector('.preview-container');
+        const inputContainer = card.querySelector('.input-file-container');
+        const img = previewContainer.querySelector('img');
+        
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            const maxSize = 2 * 1024 * 1024;
+
+            if (file.size > maxSize) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Imagen muy pesada',
+                    text: 'El archivo supera el límite de 2MB. Selecciona uno más ligero.',
+                    confirmButtonColor: '#2563eb'
+                });
+                input.value = "";
+                previewContainer.style.display = 'none';
+                inputContainer.classList.remove('has-file');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                img.src = e.target.result;
+                previewContainer.style.display = 'block';
+                inputContainer.classList.add('has-file');
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function removeCardImage(inputId) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        const card = input.closest('.evidence-upload-card');
+        if (!card) return;
+        const previewContainer = card.querySelector('.preview-container');
+        const inputContainer = card.querySelector('.input-file-container');
+        
+        input.value = "";
+        previewContainer.style.display = 'none';
+        inputContainer.classList.remove('has-file');
     }
 
     function changeEvidence(url, thumbEl) {

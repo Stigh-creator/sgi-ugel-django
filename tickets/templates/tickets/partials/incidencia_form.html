@@ -99,26 +99,53 @@
     <div class="col-12">
         <label class="form-label-custom">Evidencias de la Falla (1 a 3 imágenes)</label>
         <div class="row g-3">
+            <!-- Imagen 1 -->
             <div class="col-md-4">
-                <div class="p-3 border rounded-4 bg-white shadow-sm">
+                <div class="evidence-upload-card p-3 border rounded-4 bg-white shadow-sm position-relative">
                     <label class="tiny-text fw-bold text-primary mb-1">IMAGEN 1 (PRINCIPAL) *</label>
-                    {{ form.imagen_adjunta }}
+                    <div class="input-file-container">
+                        {{ form.imagen_adjunta }}
+                    </div>
+                    <div class="preview-container mt-2" style="display: none;">
+                        <img src="" class="img-fluid rounded-3" alt="Vista previa">
+                        <button type="button" class="btn-remove-image" onclick="removeImage('id_imagen_adjunta')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
+            <!-- Imagen 2 -->
             <div class="col-md-4">
-                <div class="p-3 border rounded-4 bg-white shadow-sm">
+                <div class="evidence-upload-card p-3 border rounded-4 bg-white shadow-sm position-relative">
                     <label class="tiny-text fw-bold text-muted mb-1">IMAGEN 2 (OPCIONAL)</label>
-                    {{ form.imagen_2 }}
+                    <div class="input-file-container">
+                        {{ form.imagen_2 }}
+                    </div>
+                    <div class="preview-container mt-2" style="display: none;">
+                        <img src="" class="img-fluid rounded-3" alt="Vista previa">
+                        <button type="button" class="btn-remove-image" onclick="removeImage('id_imagen_2')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
+            <!-- Imagen 3 -->
             <div class="col-md-4">
-                <div class="p-3 border rounded-4 bg-white shadow-sm">
+                <div class="evidence-upload-card p-3 border rounded-4 bg-white shadow-sm position-relative">
                     <label class="tiny-text fw-bold text-muted mb-1">IMAGEN 3 (OPCIONAL)</label>
-                    {{ form.imagen_3 }}
+                    <div class="input-file-container">
+                        {{ form.imagen_3 }}
+                    </div>
+                    <div class="preview-container mt-2" style="display: none;">
+                        <img src="" class="img-fluid rounded-3" alt="Vista previa">
+                        <button type="button" class="btn-remove-image" onclick="removeImage('id_imagen_3')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-        <p class="text-muted tiny-text mt-2 mb-0 ps-1"><i class="bi bi-info-circle me-1"></i>Formatos: JPG, PNG. Máx 2MB por archivo.</p>
+        <p class="text-muted tiny-text mt-2 mb-0 ps-1"><i class="fas fa-info-circle me-1"></i>Formatos: JPG, PNG. Máx 2MB por archivo.</p>
         {% if form.imagen_adjunta.errors %}<div class="text-danger tiny-text mt-1">{{ form.imagen_adjunta.errors.0 }}</div>{% endif %}
         {% if form.imagen_2.errors %}<div class="text-danger tiny-text mt-1">{{ form.imagen_2.errors.0 }}</div>{% endif %}
         {% if form.imagen_3.errors %}<div class="text-danger tiny-text mt-1">{{ form.imagen_3.errors.0 }}</div>{% endif %}
@@ -181,6 +208,56 @@
         } else {
             section.style.display = 'none';
         }
+    }
+
+    function previewImage(input) {
+        const card = input.closest('.evidence-upload-card');
+        if (!card) return;
+        const previewContainer = card.querySelector('.preview-container');
+        const inputContainer = card.querySelector('.input-file-container');
+        const img = previewContainer.querySelector('img');
+        
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            const maxSize = 2 * 1024 * 1024; // 2MB
+
+            if (file.size > maxSize) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Archivo muy pesado',
+                    text: 'La imagen supera el límite de 2MB. Por favor, selecciona una más ligera.',
+                    confirmButtonColor: '#0d6efd'
+                });
+                input.value = "";
+                previewContainer.style.display = 'none';
+                inputContainer.classList.remove('has-file');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                img.src = e.target.result;
+                previewContainer.style.display = 'block';
+                inputContainer.classList.add('has-file');
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function removeImage(inputId) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        const card = input.closest('.evidence-upload-card');
+        if (!card) return;
+        const previewContainer = card.querySelector('.preview-container');
+        const inputContainer = card.querySelector('.input-file-container');
+        
+        input.value = "";
+        previewContainer.style.display = 'none';
+        inputContainer.classList.remove('has-file');
+        
+        // Disparar evento para actualizar el checklist
+        input.dispatchEvent(new Event('change'));
     }
 
     window.initIncidenciaExperience = function(root) {
@@ -287,6 +364,17 @@
             if (el) {
                 el.addEventListener('change', updateChecklist);
                 el.addEventListener('input', updateChecklist);
+            }
+        });
+
+        // Configurar previsualización para todas las imágenes
+        ['id_imagen_adjunta', 'id_imagen_2', 'id_imagen_3'].forEach(id => {
+            const el = form.querySelector(`#${id}`);
+            if (el) {
+                el.addEventListener('change', function() {
+                    previewImage(this);
+                    updateChecklist();
+                });
             }
         });
         ['id_otro_tipo', 'id_otro_marca', 'id_otro_modelo'].forEach(id => {
