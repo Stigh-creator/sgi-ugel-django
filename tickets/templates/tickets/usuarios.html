@@ -299,6 +299,35 @@ document.addEventListener('DOMContentLoaded', function () {
             formEditar.querySelector('[name="telefono"]').value = button.getAttribute('data-telefono') || '';
             formEditar.querySelector('[name="role"]').value = button.getAttribute('data-role') || '';
             formEditar.querySelector('[name="area"]').value = button.getAttribute('data-area') || '';
+
+            const hasIncidents = button.getAttribute('data-has-incidents') === 'true';
+            const targetIsSuperuser = button.getAttribute('data-is-superuser') === 'true';
+            const currentUserIsSuperuser = {{ request.user.is_superuser|yesno:'true,false' }};
+            const lockNote = formEditar.querySelector('.js-incidents-lock-note');
+            if (lockNote) {
+                lockNote.classList.toggle('d-none', !hasIncidents);
+            }
+
+            const fieldsToBlock = ['first_name', 'last_name', 'role', 'area'];
+            fieldsToBlock.forEach(fieldName => {
+                const field = formEditar.querySelector(`[name="${fieldName}"]`);
+                if (!field) return;
+                if (hasIncidents || (targetIsSuperuser && !currentUserIsSuperuser)) {
+                    field.setAttribute('readonly', 'readonly');
+                    if (field.tagName === 'SELECT') {
+                        field.setAttribute('aria-disabled', 'true');
+                        field.style.pointerEvents = 'none';
+                        field.style.backgroundColor = '#e9ecef';
+                    }
+                } else {
+                    field.removeAttribute('readonly');
+                    if (field.tagName === 'SELECT') {
+                        field.removeAttribute('aria-disabled');
+                        field.style.pointerEvents = '';
+                        field.style.backgroundColor = '';
+                    }
+                }
+            });
         });
     }
 
@@ -318,19 +347,33 @@ document.addEventListener('DOMContentLoaded', function () {
             title: `¿${action.charAt(0).toUpperCase() + action.slice(1)} usuario?`,
             html: `¿Deseas <b>${action}</b> el acceso al sistema para <b>${fullname}</b>?<br><br>` +
                 (willActivate ? '<small class="text-muted">Podrá volver a iniciar sesión.</small>' : '<small class="text-danger">Se cerrará su sesión actual y no podrá ingresar.</small>'),
+            input: 'textarea',
+            inputPlaceholder: willActivate ? 'Ej. Retorno autorizado al servicio...' : 'Ej. Inactividad prolongada, fin de contrato, medida preventiva...',
             icon: willActivate ? 'info' : 'warning',
             showCancelButton: true,
             confirmButtonColor: willActivate ? '#22c55e' : '#dc2626',
             cancelButtonColor: '#6c757d',
             confirmButtonText: `Sí, ${action}`,
             cancelButtonText: 'Cancelar',
-            reverseButtons: true
+            reverseButtons: true,
+            inputValidator: (value) => {
+                if (!value || !value.trim()) {
+                    return 'Debe ingresar el motivo para registrar esta acción.';
+                }
+            }
         }).then(async (result) => {
             if (!result.isConfirmed) return;
             
             form.dataset.submitted = 'true';
             const submitter = form.querySelector('button[type="submit"]');
             if (window.setLoadingState) window.setLoadingState(submitter);
+
+            form.querySelectorAll('input[name="motivo"]').forEach((input) => input.remove());
+            const inputMotivo = document.createElement('input');
+            inputMotivo.type = 'hidden';
+            inputMotivo.name = 'motivo';
+            inputMotivo.value = result.value.trim();
+            form.appendChild(inputMotivo);
             
             try {
                 await sendAjaxForm(form);
@@ -364,7 +407,7 @@ document.addEventListener('DOMContentLoaded', function () {
             cancelButtonText: 'Cancelar',
             reverseButtons: true,
             inputValidator: (value) => {
-                if (!value) {
+                if (!value || !value.trim()) {
                     return '¡Debe ingresar un motivo para el reseteo!';
                 }
             }
@@ -375,11 +418,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const submitter = form.querySelector('button[type="submit"]');
             if (window.setLoadingState) window.setLoadingState(submitter);
             
-            // Añadir el motivo al formulario
+            form.querySelectorAll('input[name="motivo"]').forEach((input) => input.remove());
             const inputMotivo = document.createElement('input');
             inputMotivo.type = 'hidden';
             inputMotivo.name = 'motivo';
-            inputMotivo.value = result.value;
+            inputMotivo.value = result.value.trim();
             form.appendChild(inputMotivo);
             
             try {

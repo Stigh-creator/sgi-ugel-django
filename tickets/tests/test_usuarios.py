@@ -2,8 +2,9 @@ from django.contrib.sessions.models import Session
 from django.test import TestCase
 from django.urls import reverse
 
+from auditoria.models import Auditoria
 from tickets.forms.forms_usuarios import build_temporary_password
-from tickets.models import Area, CustomUser
+from tickets.models import Area, CustomUser, Incidencia
 
 
 class UsuariosAdminModuleTests(TestCase):
@@ -117,7 +118,10 @@ class UsuariosAdminModuleTests(TestCase):
         other_client.force_login(self.usuario)
         self.assertTrue(Session.objects.exists())
 
-        response = self.client.post(reverse("toggle_usuario_status", args=[self.usuario.pk]))
+        response = self.client.post(
+            reverse("toggle_usuario_status", args=[self.usuario.pk]),
+            {"motivo": "Fin temporal de acceso"},
+        )
 
         self.assertRedirects(response, reverse("usuarios"))
         self.usuario.refresh_from_db()
@@ -128,7 +132,10 @@ class UsuariosAdminModuleTests(TestCase):
         other_client = self.client_class()
         other_client.force_login(self.usuario)
 
-        response = self.client.post(reverse("reset_password_admin", args=[self.usuario.pk]))
+        response = self.client.post(
+            reverse("reset_password_admin", args=[self.usuario.pk]),
+            {"motivo": "Solicitud del usuario"},
+        )
 
         self.assertRedirects(response, reverse("usuarios"))
         self.usuario.refresh_from_db()
@@ -156,7 +163,7 @@ class UsuariosAdminModuleTests(TestCase):
         self.assertEqual(self.usuario.role, "tecnico")
         self.assertEqual(self.usuario.area, self.area_2)
 
-    def test_no_permite_cambiar_rol_o_area_del_superusuario(self):
+    def test_admin_normal_no_puede_editar_superusuario(self):
         superuser = CustomUser.objects.create_superuser(
             username="99990000",
             password="Super1234!",
@@ -181,10 +188,11 @@ class UsuariosAdminModuleTests(TestCase):
             HTTP_X_REQUESTED_WITH="XMLHttpRequest",
         )
 
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 403)
         payload = response.json()
-        self.assertIn("No se puede cambiar el rol ni el área del superusuario.", payload["errors"]["__all__"])
+        self.assertIn("No tienes permisos", payload["message"])
         superuser.refresh_from_db()
+        self.assertEqual(superuser.first_name, "Super")
         self.assertEqual(superuser.role, "administrador")
         self.assertEqual(superuser.area, self.area)
 
@@ -275,3 +283,191 @@ class UsuariosAdminModuleTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertFalse(CustomUser.objects.filter(username="87651234").exists())
+
+    def test_desactivar_usuario_requiere_motivo_y_audita_detalle(self):
+        response = self.client.post(
+            reverse("toggle_usuario_status", args=[self.usuario.pk]),
+            {},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.is_active)
+
+        response = self.client.post(
+            reverse("toggle_usuario_status", args=[self.usuario.pk]),
+            {"motivo": "Inactividad prolongada"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(response.status_code, 200)
+        audit = Auditoria.objects.filter(modulo="Usuarios", referencia_id=self.usuario.pk).first()
+        self.assertIn("Inactividad prolongada", audit.descripcion)
+        self.assertIn("El administrador", audit.descripcion)
+
+    def test_reset_password_requiere_motivo(self):
+        response = self.client.post(
+            reverse("reset_password_admin", args=[self.usuario.pk]),
+            {},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.usuario.refresh_from_db()
+        self.assertFalse(self.usuario.must_change_password)
+
+    def test_admin_no_puede_resetear_su_propia_contrasena_desde_crud(self):
+        response = self.client.post(
+            reverse("reset_password_admin", args=[self.admin.pk]),
+            {"motivo": "Prueba de autogestión"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("No puedes restablecerte tu propia contraseña", response.json()["message"])
+
+    def test_admin_normal_no_puede_resetear_ni_deshabilitar_superusuario(self):
+        superuser = CustomUser.objects.create_superuser(
+            username="99990000",
+            password="Super1234!",
+            first_name="Super",
+            last_name="Admin",
+            email="super@example.com",
+            role="administrador",
+            area=self.area,
+            telefono="900000000",
+        )
+
+        reset_response = self.client.post(
+            reverse("reset_password_admin", args=[superuser.pk]),
+            {"motivo": "Prueba"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        toggle_response = self.client.post(
+            reverse("toggle_usuario_status", args=[superuser.pk]),
+            {"motivo": "Prueba"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(reset_response.status_code, 403)
+        self.assertEqual(toggle_response.status_code, 403)
+        superuser.refresh_from_db()
+        self.assertTrue(superuser.is_active)
+
+    def test_usuario_con_incidencia_activa_solo_permite_contacto(self):
+        Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="hardware",
+            descripcion="No enciende equipo",
+        )
+
+        blocked_response = self.client.post(
+            reverse("editar_usuario", args=[self.usuario.pk]),
+            {
+                "first_name": "Carlos",
+                "last_name": self.usuario.last_name,
+                "email": "pedro.contacto@example.com",
+                "telefono": "977777777",
+                "role": "tecnico",
+                "area": self.area_2.pk,
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(blocked_response.status_code, 400)
+        self.assertIn("incidencias activas o pendientes", blocked_response.json()["errors"]["__all__"][0])
+
+        allowed_response = self.client.post(
+            reverse("editar_usuario", args=[self.usuario.pk]),
+            {
+                "first_name": self.usuario.first_name,
+                "last_name": self.usuario.last_name,
+                "email": "pedro.contacto@example.com",
+                "telefono": "977777777",
+                "role": self.usuario.role,
+                "area": self.usuario.area.pk,
+            },
+        )
+        self.assertRedirects(allowed_response, reverse("usuarios"))
+        self.usuario.refresh_from_db()
+        self.assertEqual(self.usuario.email, "pedro.contacto@example.com")
+        self.assertEqual(self.usuario.telefono, "977777777")
+        self.assertEqual(self.usuario.first_name, "Pedro")
+        self.assertEqual(self.usuario.role, "usuario")
+
+    def test_superusuario_no_puede_editar_campos_bloqueados_de_tecnico_con_incidencia_activa(self):
+        superuser = CustomUser.objects.create_superuser(
+            username="99990000",
+            password="Super1234!",
+            first_name="Super",
+            last_name="Admin",
+            email="super@example.com",
+            role="administrador",
+            area=self.area,
+            telefono="900000000",
+        )
+        self.usuario.role = "tecnico"
+        self.usuario.save(update_fields=["role"])
+        Incidencia.objects.create(
+            creador=self.admin,
+            tecnico_asignado=self.usuario,
+            area=self.area,
+            categoria="hardware",
+            descripcion="Equipo sin acceso a red",
+        )
+        self.client.force_login(superuser)
+
+        response = self.client.post(
+            reverse("editar_usuario", args=[self.usuario.pk]),
+            {
+                "first_name": "Carlos",
+                "last_name": self.usuario.last_name,
+                "email": "tecnico@example.com",
+                "telefono": self.usuario.telefono,
+                "role": "administrador",
+                "area": self.area_2.pk,
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("incidencias activas o pendientes", response.json()["errors"]["__all__"][0])
+        self.usuario.refresh_from_db()
+        self.assertEqual(self.usuario.first_name, "Pedro")
+        self.assertEqual(self.usuario.role, "tecnico")
+        self.assertEqual(self.usuario.area, self.area)
+
+    def test_usuario_con_incidencia_activa_puede_ser_deshabilitado_con_motivo(self):
+        Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="hardware",
+            descripcion="Ticket activo",
+        )
+
+        response = self.client.post(
+            reverse("toggle_usuario_status", args=[self.usuario.pk]),
+            {"motivo": "Suspensión administrativa con ticket activo reasignable"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.usuario.refresh_from_db()
+        self.assertFalse(self.usuario.is_active)
+
+    def test_auditoria_de_edicion_detalla_actor_campos_y_valores(self):
+        response = self.client.post(
+            reverse("editar_usuario", args=[self.usuario.pk]),
+            {
+                "first_name": "Carlos",
+                "last_name": self.usuario.last_name,
+                "email": "carlos@example.com",
+                "telefono": self.usuario.telefono,
+                "role": self.usuario.role,
+                "area": self.usuario.area.pk,
+            },
+        )
+
+        self.assertRedirects(response, reverse("usuarios"))
+        audit = Auditoria.objects.filter(modulo="Usuarios", referencia_id=self.usuario.pk).first()
+        self.assertIn("El administrador", audit.descripcion)
+        self.assertIn("nombres: 'Pedro' -> 'Carlos'", audit.descripcion)
+        self.assertIn("DNI: 33334444", audit.descripcion)

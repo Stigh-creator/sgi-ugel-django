@@ -94,7 +94,14 @@
                     {% csrf_token %}
                     <div class="alert alert-danger d-none js-form-alert mb-3"></div>
 
-                    {% if user.role != 'administrador' %}
+                    {% if profile_form.names_locked_by_incidents %}
+                    <div class="admin-lock-banner mb-4">
+                        <small class="admin-lock-note">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            Nombres y apellidos no se pueden modificar porque tienes incidencias activas o pendientes relacionadas. Puedes actualizar correo y teléfono.
+                        </small>
+                    </div>
+                    {% elif profile_form.names_locked_by_role %}
                     <div class="admin-lock-banner mb-4">
                         <small class="admin-lock-note">
                             <i class="bi bi-shield-lock-fill"></i>
@@ -106,23 +113,23 @@
                     <div class="row g-4">
                         <div class="col-md-6">
                             <label class="form-label-custom">Nombre</label>
-                            <div class="input-group-custom {% if user.role != 'administrador' %}is-readonly{% endif %}">
+                            <div class="input-group-custom {% if profile_form.identity_fields_locked %}is-readonly{% endif %}">
                                 <span class="icon-box"><i class="bi bi-person"></i></span>
                                 <input type="text" name="first_name" class="form-control-custom"
                                     value="{{ user.first_name }}"
                                     oninput="this.value = this.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ ]/g, '')" 
-                                    {% if user.role != 'administrador' %}readonly{% endif %}>
+                                    {% if profile_form.identity_fields_locked %}readonly{% endif %}>
                             </div>
                         </div>
 
                         <div class="col-md-6">
                             <label class="form-label-custom">Apellido</label>
-                            <div class="input-group-custom {% if user.role != 'administrador' %}is-readonly{% endif %}">
+                            <div class="input-group-custom {% if profile_form.identity_fields_locked %}is-readonly{% endif %}">
                                 <span class="icon-box"><i class="bi bi-person"></i></span>
                                 <input type="text" name="last_name" class="form-control-custom"
                                     value="{{ user.last_name }}"
                                     oninput="this.value = this.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ ]/g, '')" 
-                                    {% if user.role != 'administrador' %}readonly{% endif %}>
+                                    {% if profile_form.identity_fields_locked %}readonly{% endif %}>
                             </div>
                         </div>
 

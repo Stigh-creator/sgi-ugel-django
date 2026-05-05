@@ -6,6 +6,7 @@ from django import forms
 from django.contrib.auth.forms import PasswordChangeForm
 from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from django.utils import timezone
 
 from ..models import CustomUser
@@ -13,6 +14,20 @@ from ..models import CustomUser
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png"}
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
 MAX_PROFILE_PHOTO_SIZE = 2 * 1024 * 1024
+USER_ACTIVE_INCIDENT_STATES = (
+    "Pendiente",
+    "Asignado",
+    "En Proceso",
+    "Rechazado",
+    "Reabierto",
+    "Resuelto",
+)
+USER_INCIDENT_LOCKED_FIELDS = {
+    "first_name": "nombres",
+    "last_name": "apellidos",
+    "role": "rol",
+    "area": "área",
+}
 
 
 def normalize_string(text):
@@ -72,6 +87,27 @@ def validate_profile_photo(file_obj):
 
 def build_temporary_password(dni):
     return f"Ugel@{dni}"
+
+
+def user_has_active_or_pending_incidents(user):
+    if not user or not user.pk:
+        return False
+    from ..models import Incidencia
+
+    return Incidencia.objects.filter(
+        Q(tecnico_asignado=user) | Q(creador=user),
+        estado__name__in=USER_ACTIVE_INCIDENT_STATES,
+    ).exists()
+
+
+def field_value_changed(instance, cleaned_data, field_name):
+    if field_name not in cleaned_data:
+        return False
+    new_value = cleaned_data.get(field_name)
+    current_value = getattr(instance, field_name)
+    if field_name == "area":
+        return getattr(new_value, "pk", None) != getattr(current_value, "pk", None)
+    return new_value != current_value
 
 
 class CustomPasswordChangeForm(PasswordChangeForm):
@@ -185,7 +221,12 @@ class CustomUserCreationForm(forms.ModelForm):
 class AdminUserUpdateForm(forms.ModelForm):
     SELF_ROLE_CHANGE_ERROR = "No puedes cambiar tu propio rol por motivos de seguridad. Solicita este cambio a otro administrador o al superusuario"
     SUPERUSER_HIERARCHY_ERROR = "No se puede cambiar el rol ni el área del superusuario."
+    SUPERUSER_PROTECTED_ERROR = "Solo el superusuario puede modificar, restablecer o deshabilitar a otro superusuario."
     LAST_ADMIN_ERROR = "No se puede cambiar el rol del único administrador activo. Debe existir al menos un administrador activo."
+    ACTIVE_INCIDENTS_ERROR = (
+        "No se pueden modificar {fields} porque el usuario tiene incidencias activas o pendientes "
+        "relacionadas como creador o especialista. Solo se permite actualizar correo y teléfono."
+    )
 
     class Meta:
         model = CustomUser
@@ -214,6 +255,14 @@ class AdminUserUpdateForm(forms.ModelForm):
         self.fields["area"].required = True
         self.fields["area"].empty_label = "-- Seleccione Área --"
 
+        self.has_active_incidents = user_has_active_or_pending_incidents(self.instance)
+
+        if getattr(self, "has_active_incidents", False):
+            for field_name in USER_INCIDENT_LOCKED_FIELDS:
+                self.fields[field_name].widget.attrs["readonly"] = True
+                if field_name in ["role", "area"]:
+                    self.fields[field_name].widget.attrs["style"] = "pointer-events: none; background-color: #e9ecef;"
+
     def clean_first_name(self):
         return validate_person_name(self.cleaned_data.get("first_name"), "nombres")
 
@@ -235,6 +284,18 @@ class AdminUserUpdateForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         if self.instance and self.instance.pk:
+            if self.instance.is_superuser and self.actor and not self.actor.is_superuser:
+                raise ValidationError(self.SUPERUSER_PROTECTED_ERROR)
+
+            if getattr(self, "has_active_incidents", False):
+                changed_fields = [
+                    label
+                    for field_name, label in USER_INCIDENT_LOCKED_FIELDS.items()
+                    if field_value_changed(self.instance, cleaned_data, field_name)
+                ]
+                if changed_fields:
+                    raise ValidationError(self.ACTIVE_INCIDENTS_ERROR.format(fields=", ".join(changed_fields)))
+
             new_area = cleaned_data.get("area")
             new_role = cleaned_data.get("role")
 
@@ -255,21 +316,15 @@ class AdminUserUpdateForm(forms.ModelForm):
                 if not active_admins.exists():
                     self.add_error("role", self.LAST_ADMIN_ERROR)
 
-            if self.instance.role in ["tecnico", "administrador"]:
-                if area_changed or role_changed:
-                    from ..models import Incidencia
-                    incidencias_activas = Incidencia.objects.filter(
-                        tecnico_asignado=self.instance
-                    ).exclude(estado__name__in=["Resuelto", "Cerrado"])
-                    
-                    if incidencias_activas.exists():
-                        mensaje = "No se puede cambiar el área/rol del usuario porque tiene incidencias activas asignadas. Por favor, reasigne o cierre los tickets antes de proceder."
-                        # Agregamos error general si cambiaron ambos, o específico
-                        raise ValidationError(mensaje)
         return cleaned_data
 
 
 class ProfileUpdateForm(forms.ModelForm):
+    PROFILE_INCIDENT_LOCK_ERROR = (
+        "No puedes modificar nombres o apellidos porque tienes incidencias activas o pendientes "
+        "relacionadas como creador o especialista. Actualiza solo correo y teléfono."
+    )
+
     class Meta:
         model = CustomUser
         fields = ("first_name", "last_name", "email", "telefono")
@@ -289,7 +344,11 @@ class ProfileUpdateForm(forms.ModelForm):
                 "pattern": r"[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+",
             })
 
-        if self.instance and self.instance.role != "administrador":
+        self.names_locked_by_role = bool(self.instance and self.instance.role != CustomUser.ROL_ADMIN)
+        self.names_locked_by_incidents = user_has_active_or_pending_incidents(self.instance)
+        self.identity_fields_locked = self.names_locked_by_role or self.names_locked_by_incidents
+
+        if self.identity_fields_locked:
             self.fields["first_name"].widget.attrs["readonly"] = True
             self.fields["last_name"].widget.attrs["readonly"] = True
 
@@ -307,19 +366,23 @@ class ProfileUpdateForm(forms.ModelForm):
 
     def clean_first_name(self):
         value = self.cleaned_data.get("first_name")
-        if self.instance and self.instance.role != "administrador":
+        if self.names_locked_by_incidents and value != self.instance.first_name:
+            raise ValidationError(self.PROFILE_INCIDENT_LOCK_ERROR)
+        if self.names_locked_by_role:
             return self.instance.first_name
         return validate_person_name(value, "nombre")
 
     def clean_last_name(self):
         value = self.cleaned_data.get("last_name")
-        if self.instance and self.instance.role != "administrador":
+        if self.names_locked_by_incidents and value != self.instance.last_name:
+            raise ValidationError(self.PROFILE_INCIDENT_LOCK_ERROR)
+        if self.names_locked_by_role:
             return self.instance.last_name
         return validate_person_name(value, "apellido")
 
     def save(self, commit=True):
         user = super().save(commit=False)
-        if self.instance and self.instance.role != "administrador":
+        if self.identity_fields_locked:
             user.first_name = self.instance.first_name
             user.last_name = self.instance.last_name
         if commit:

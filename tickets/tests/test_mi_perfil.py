@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 from PIL import Image
 
-from tickets.models import Area, CustomUser
+from tickets.models import Area, CustomUser, Incidencia
 
 
 def build_test_image(name="foto.png", size=(50, 50), image_format="PNG", content_type="image/png"):
@@ -88,6 +88,35 @@ class MiPerfilModuleTests(TestCase):
         self.admin.refresh_from_db()
         self.assertEqual(self.admin.first_name, "Andrea")
         self.assertEqual(self.admin.last_name, "Martinez")
+
+    def test_admin_con_incidencia_activa_no_puede_cambiar_nombre_en_mi_perfil(self):
+        Incidencia.objects.create(
+            creador=self.usuario,
+            tecnico_asignado=self.admin,
+            area=self.area,
+            categoria="hardware",
+            descripcion="Equipo sin red",
+        )
+        self.client.force_login(self.admin)
+
+        response = self.client.post(
+            reverse("mi_perfil"),
+            {
+                "update_profile": "1",
+                "first_name": "Andrea",
+                "last_name": "Martinez",
+                "email": "andrea.contacto@example.com",
+                "telefono": "999888777",
+            },
+            follow=True,
+        )
+
+        self.admin.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.admin.first_name, "Ana")
+        self.assertEqual(self.admin.last_name, "Gomez")
+        self.assertEqual(self.admin.email, "ana@example.com")
+        self.assertContains(response, "incidencias activas o pendientes")
 
     def test_validacion_backend_rechaza_nombres_invalidos(self):
         self.client.force_login(self.admin)

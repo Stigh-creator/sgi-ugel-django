@@ -41,7 +41,9 @@
             <div class="sidebar-user-info overflow-hidden">
                 <span class="user-name d-block fw-bold text-dark text-truncate">{{ user.first_name }}</span>
                 <span class="user-lastname d-block text-truncate mb-1">{{ user.last_name|default:"" }}</span>
-                <span class="badge rounded-pill px-2 py-1 badge-role {{ user.role_badge_class }}">{{ user.role_short_label }}</span>
+                <span class="badge rounded-pill px-2 py-1 badge-role {% if user.is_superuser %}bg-dark{% else %}{{ user.role_badge_class }}{% endif %}">
+                    {% if user.is_superuser %}Superusuario{% else %}{{ user.role_short_label|default:user.get_role_display }}{% endif %}
+                </span>
             </div>
         </a>
 
