@@ -69,6 +69,8 @@ Entidad principal para el registro de tickets de soporte.
 | `otro_modelo` | CharField(100) | Null, Blank | Modelo libre cuando el equipo no existe en inventario. |
 | `otro_serie` | CharField(100) | Null, Blank | Serie libre cuando el equipo no existe en inventario. |
 | `solucion_aplicada` | TextField | Null, Blank | Descripción técnica de la solución. |
+| `tipo_resolucion` | CharField(20) | Null, Blank, Choice | Tipo de salida técnica: reparado, reemplazado, baja, derivado. |
+| `equipo_reemplazo` | ForeignKey | FK -> `Equipo` (Set Null) | Equipo que sustituye al afectado (si aplica). |
 | `evidencia_solucion` | ImageField | Null, Blank | Foto de prueba de la resolución. |
 | `evidencia_solucion_2` | ImageField | Null, Blank | Evidencia adicional de solución. |
 | `evidencia_solucion_3` | ImageField | Null, Blank | Evidencia adicional de solución. |
@@ -137,7 +139,23 @@ Catálogo maestro de estados operativos de los equipos.
 | `id` | BigAutoField | PK | Identificador único. |
 | `nombre` | CharField(50) | Unique, Not Null | Estado operativo del equipo. |
 
-*Valores base actuales: `Operativo`, `En revisión`, `En reparación`, `Inoperativo`, `Dado de baja`.*
+*Valores base actuales: `Operativo`, `Observación`, `En revisión`, `En reparación`, `Inoperativo`, `Dado de baja`.*
+
+### Tabla: `Marca` (inventario_marca)
+Catálogo de fabricantes de equipos.
+
+| Campo | Tipo | Restricciones | Descripción |
+| :--- | :--- | :--- | :--- |
+| `id` | BigAutoField | PK | Identificador único. |
+| `nombre` | CharField(100) | Unique, Not Null | Nombre de la marca (ej. HP, Dell). |
+
+### Tabla: `TipoEquipo` (inventario_tipoequipo)
+Categorías de activos tecnológicos.
+
+| Campo | Tipo | Restricciones | Descripción |
+| :--- | :--- | :--- | :--- |
+| `id` | BigAutoField | PK | Identificador único. |
+| `nombre` | CharField(100) | Unique, Not Null | Tipo de hardware (ej. Laptop, Servidor). |
 
 ### Tabla: `Equipo` (inventario_equipo)
 Registro de hardware y activos tecnológicos.
@@ -155,6 +173,7 @@ Registro de hardware y activos tecnológicos.
 | `fecha_register` | DateTimeField | Auto Add | Fecha y hora de registro del activo. |
 | `actualizado_en` | DateTimeField | Auto Now | Fecha y hora de última actualización. |
 | `activo` | BooleanField | Default: True | Control lógico para activos o bajas administrativas. |
+| `disponibilidad` | CharField(10) | Choice | Estado de uso: `LIBRE` o `EN_USO`. |
 | `foto_estado` | ImageField | Null, Blank | Evidencia fotográfica del estado del equipo. |
 | `area` | ForeignKey | FK -> `Area` (Set Null) | Ubicación física actual. |
 | `estado` | ForeignKey | FK -> `EstadoEquipo` | Estado operativo actual del equipo. |

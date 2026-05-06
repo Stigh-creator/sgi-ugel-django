@@ -196,6 +196,28 @@ class UsuariosAdminModuleTests(TestCase):
         self.assertEqual(superuser.role, "administrador")
         self.assertEqual(superuser.area, self.area)
 
+    def test_crear_superusuario_cli_usa_defaults_seguros(self):
+        superuser = CustomUser.objects.create_superuser(
+            username="99991111",
+            password="Super1234!",
+        )
+
+        self.assertTrue(superuser.is_superuser)
+        self.assertTrue(superuser.is_staff)
+        self.assertEqual(superuser.role, CustomUser.ROL_ADMIN)
+        self.assertEqual(superuser.first_name, "Superusuario")
+        self.assertEqual(superuser.last_name, "Sistema")
+        self.assertRegex(superuser.telefono, r"^\d{9}$")
+        self.assertFalse(superuser.must_change_password)
+
+    def test_superusuario_no_puede_crearse_con_rol_no_admin(self):
+        with self.assertRaisesMessage(ValueError, "rol Administrador"):
+            CustomUser.objects.create_superuser(
+                username="99992222",
+                password="Super1234!",
+                role=CustomUser.ROL_TECNICO,
+            )
+
     def test_admin_no_puede_cambiar_su_propio_rol(self):
         response = self.client.post(
             reverse("editar_usuario", args=[self.admin.pk]),

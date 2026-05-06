@@ -1,0 +1,321 @@
+/* ============================================================
+   ESTILOS PARA LA PANTALLA DE LOGIN (SPLIT SCREEN)
+   ============================================================ */
+
+.login-wrapper {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column; /* Apilado vertical por defecto (Móvil) */
+}
+
+.branding-side {
+    background: linear-gradient(135deg, #413c29 0%, #777465 100%);
+    position: relative;
+    overflow: hidden;
+    color: white;
+    z-index: 1;
+    width: 100%;
+    padding: 4rem 1.5rem !important;
+}
+
+.login-side {
+    background-color: white;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    flex-grow: 1;
+    padding: 3rem 1.5rem !important;
+    position: relative;
+}
+
+/* Escritorio (Split Screen) */
+@media (min-width: 992px) {
+    .login-wrapper {
+        flex-direction: row; /* Horizontal en desktop */
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    .branding-side {
+        width: 50%;
+        height: 100%;
+        padding: 5rem !important;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .login-side {
+        width: 50%;
+        height: 100%;
+        padding: 5rem !important;
+        justify-content: center; /* Centrado vertical crítico */
+        align-items: center;    /* Centrado horizontal crítico */
+    }
+
+    .login-footer {
+        position: absolute;
+        bottom: 2rem;
+        width: 100%;
+        left: 0;
+        right: 0;
+        padding: 0 1rem;
+    }
+}
+
+/* Decoración de fondo */
+.branding-side::before {
+    content: '';
+    position: absolute;
+    top: -10%;
+    right: -10%;
+    width: 400px;
+    height: 400px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 50%;
+    z-index: -1;
+}
+
+.branding-side::after {
+    content: '';
+    position: absolute;
+    bottom: -5%;
+    left: -5%;
+    width: 300px;
+    height: 300px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 50%;
+    z-index: -1;
+}
+
+.branding-logo {
+    width: 160px; /* Tamaño móvil */
+    height: 160px;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 15px rgba(0, 0, 0, 0.2));
+}
+
+@media (min-width: 992px) {
+    .branding-logo {
+        width: 260px;
+        height: 260px;
+    }
+}
+
+.login-form-container {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    z-index: 2;
+}
+
+.input-modern {
+    border-radius: 0.75rem !important;
+    padding: 0.75rem 1rem !important;
+    border: 1px solid #e2e8f0 !important;
+    background-color: #f8fafc !important;
+    transition: all 0.2s ease;
+    font-size: 16px; /* Evita zoom automático en iOS */
+}
+
+.input-modern:focus {
+    background-color: white !important;
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1) !important;
+}
+
+.input-group-text-modern {
+    border-radius: 0.75rem 0 0 0.75rem !important;
+    background-color: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-right: none !important;
+    color: #64748b;
+    cursor: pointer;
+    user-select: none;
+}
+
+.input-modern-with-icon {
+    border-radius: 0 0.75rem 0.75rem 0 !important;
+    border-left: none !important;
+}
+
+.btn-whatsapp {
+    background-color: #25d366;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.btn-whatsapp:hover {
+    background-color: #128c7e;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+}
+
+.login-footer {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+/* Ajustes finales de fuente para móviles */
+@media (max-width: 767.98px) {
+    .login-wrapper {
+        min-height: 100svh !important;
+    }
+
+    .branding-side {
+        min-height: auto;
+        padding: 1rem 1.25rem !important;
+    }
+
+    .branding-logo {
+        width: 82px;
+        height: 82px;
+        margin-bottom: 0.5rem !important;
+    }
+
+    .branding-side h1 {
+        font-size: 1.25rem !important;
+        line-height: 1.2;
+        margin-bottom: 0.35rem !important;
+    }
+
+    .branding-side p {
+        font-size: 0.82rem !important;
+        line-height: 1.25;
+        margin-bottom: 0 !important;
+        padding-inline: 0 !important;
+    }
+
+    .login-side {
+        flex-grow: 0;
+        justify-content: flex-start;
+        padding: 1rem 1.25rem 0.75rem !important;
+    }
+
+    .login-form-container > .text-center {
+        margin-bottom: 1rem !important;
+    }
+
+    .login-form-container h2 {
+        font-size: 1.35rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .login-form-container p {
+        font-size: 0.9rem;
+        margin-bottom: 0;
+    }
+
+    #loginForm .mb-4,
+    #loginForm .mb-5 {
+        margin-bottom: 0.9rem !important;
+    }
+
+    #loginForm .form-label {
+        margin-bottom: 0.35rem !important;
+        font-size: 0.92rem;
+    }
+
+    .input-modern {
+        padding-top: 0.62rem !important;
+        padding-bottom: 0.62rem !important;
+    }
+
+    .input-group-text-modern {
+        padding-top: 0.62rem !important;
+        padding-bottom: 0.62rem !important;
+    }
+
+    #btnLoginSubmit {
+        padding-top: 0.72rem !important;
+        padding-bottom: 0.72rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+
+    .login-footer {
+        margin-top: 0.75rem;
+        font-size: 0.72rem;
+    }
+}
+
+@media (max-width: 380px), (max-height: 700px) {
+    .branding-side p {
+        display: none;
+    }
+
+    .branding-logo {
+        width: 68px;
+        height: 68px;
+    }
+
+    .branding-side h1 {
+        font-size: 1.08rem !important;
+    }
+
+    .login-side {
+        padding-top: 0.75rem !important;
+    }
+
+    .login-form-container > .text-center {
+        margin-bottom: 0.75rem !important;
+    }
+}
+
+/* Estilos específicos de Login del template */
+body {
+    overflow-x: hidden;
+}
+
+.content-area > .p-4 {
+    padding: 0 !important;
+}
+
+.app-topbar {
+    display: none !important;
+}
+
+/* Estilos para mostrar/ocultar contraseña */
+.password-field-container {
+    position: relative;
+    display: flex;
+    width: 100%;
+}
+
+.eye-icon {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #94a3b8;
+    transition: all 0.2s ease;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px;
+    border-radius: 50%;
+}
+
+.eye-icon:hover {
+    color: #4f46e5;
+    background-color: rgba(79, 70, 229, 0.05);
+}
+
+.eye-icon i {
+    font-size: 1.2rem;
+}

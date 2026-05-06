@@ -1,6 +1,6 @@
 import os
 import uuid
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager
 from django.core.exceptions import ValidationError
 from django.core.validators import EmailValidator
 from django.core.validators import RegexValidator
@@ -82,6 +82,34 @@ telefono_valido = RegexValidator(
 
 email_valido = EmailValidator(message="Ingrese un correo válido con el formato ejemplo@dominio.com.")
 
+
+class CustomUserManager(UserManager):
+    def _superuser_default_phone(self, username):
+        username_digits = "".join(char for char in str(username or "") if char.isdigit())
+        candidates = []
+        if len(username_digits) >= 8:
+            candidates.append(f"9{username_digits[-8:]}")
+        candidates.extend(str(number) for number in range(900000000, 900000100))
+        for telefono in candidates:
+            if not self.model.objects.filter(telefono=telefono).exists():
+                return telefono
+        return candidates[0]
+
+    def create_superuser(self, username, email=None, password=None, **extra_fields):
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("is_active", True)
+        extra_fields.setdefault("role", self.model.ROL_ADMIN)
+        extra_fields.setdefault("first_name", "Superusuario")
+        extra_fields.setdefault("last_name", "Sistema")
+        extra_fields.setdefault("telefono", self._superuser_default_phone(username))
+        extra_fields.setdefault("must_change_password", False)
+
+        if extra_fields.get("role") != self.model.ROL_ADMIN:
+            raise ValueError("El superusuario debe tener rol Administrador.")
+        return super().create_superuser(username, email=email, password=password, **extra_fields)
+
+
 class CustomUser(AbstractUser):
     ONLINE_THRESHOLD_SECONDS = 300
 
@@ -94,6 +122,8 @@ class CustomUser(AbstractUser):
         (ROL_TECNICO, "Técnico"),
         (ROL_ADMIN, "Administrador/Ingeniero TI"),
     )
+    REQUIRED_FIELDS = ["first_name", "last_name", "telefono"]
+    objects = CustomUserManager()
     
     first_name = models.CharField("First name", max_length=150, validators=[nombre_valido])
     last_name = models.CharField("Last name", max_length=150, validators=[nombre_valido])
