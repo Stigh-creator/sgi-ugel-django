@@ -49,6 +49,12 @@ MARCAS_BASE = [
     "APC",
     "Yealink",
     "Sony",
+    "Hikvision",
+    "Logitech",
+    "HyperX",
+    "Western Digital",
+    "Seagate",
+    "Kingston",
     "Genérico / Otro",
 ]
 
@@ -63,6 +69,10 @@ TIPOS_EQUIPO_BASE = [
     "Teléfono IP",
     "Servidor",
     "UPS / Estabilizador",
+    "Webcam",
+    "Auriculares / Headset",
+    "Cámara de Seguridad",
+    "Disco Duro Externo",
 ]
 
 ESTADOS_EQUIPO_BASE = [

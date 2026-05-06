@@ -16,7 +16,7 @@ def reset_sequences(table_names):
     print(f"OK: Secuencias reiniciadas para {len(table_names)} tablas.")
 
 from django.contrib.admin.models import LogEntry
-from django.contrib.auth.models import Group, Permission
+from django.contrib.sessions.models import Session
 from tickets.models import CustomUser, Area, Estado, Incidencia, IncidenciaImagen, Notificacion, NotificacionUsuario, Comentario
 from inventario.models import Marca, TipoEquipo, EstadoEquipo, Equipo, HistorialEstadoEquipo
 from auditoria.models import Auditoria
@@ -34,6 +34,7 @@ def reset_database():
             # Tablas para resetear secuencias
             tables_to_reset = [
                 LogEntry._meta.db_table,
+                Session._meta.db_table,
                 Auditoria._meta.db_table,
                 IncidenciaImagen._meta.db_table,
                 Comentario._meta.db_table,
@@ -51,8 +52,9 @@ def reset_database():
 
             # Auditoría y Logs
             LogEntry.objects.all().delete()
+            Session.objects.all().delete()
             Auditoria.objects.all().delete()
-            print("OK: LogEntry y Auditoria eliminados.")
+            print("OK: LogEntry, sesiones y Auditoria eliminados.")
             
             # Incidencias (Tickets) y relacionados
             IncidenciaImagen.objects.all().delete()
@@ -100,6 +102,7 @@ def verificar_estado():
         "Equipos": Equipo.objects.count(),
         "Auditoria": Auditoria.objects.count(),
         "LogEntry": LogEntry.objects.count(),
+        "Sesiones": Session.objects.count(),
         "Comentarios": Comentario.objects.count(),
         "Estados": Estado.objects.count(),
         "Areas": Area.objects.count(),
@@ -112,7 +115,7 @@ def verificar_estado():
     error = False
     for label, count in counts.items():
         status = "OK"
-        if label in ["Incidencias", "Equipos", "Auditoria", "LogEntry", "Comentarios"] and count > 0:
+        if label in ["Incidencias", "Equipos", "Auditoria", "LogEntry", "Sesiones", "Comentarios"] and count > 0:
             status = "ERROR (Debe ser 0)"
             error = True
         print(f"   - {label}: {count} [{status}]")

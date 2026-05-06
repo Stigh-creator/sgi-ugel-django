@@ -11,6 +11,16 @@ from ..services import (
     validate_tecnico_capacity,
 )
 
+MAX_INCIDENT_IMAGE_UPLOAD_SIZE = 8 * 1024 * 1024
+MAX_INCIDENT_IMAGE_UPLOAD_LABEL = "8 MB"
+
+
+def validate_incident_image_size(file, message_prefix="La imagen"):
+    if file and file.size > MAX_INCIDENT_IMAGE_UPLOAD_SIZE:
+        raise ValidationError(f"{message_prefix} no debe superar los {MAX_INCIDENT_IMAGE_UPLOAD_LABEL}.")
+    return file
+
+
 class IncidenciaForm(forms.ModelForm):
     equipo = forms.ModelChoiceField(
         queryset=Incidencia.objects.none(), 
@@ -132,9 +142,7 @@ class IncidenciaForm(forms.ModelForm):
         file = self.cleaned_data.get("imagen_adjunta")
         if not file:
             raise ValidationError("La foto de la falla es obligatoria.")
-        if file.size > 2 * 1024 * 1024:
-            raise ValidationError("La imagen no debe superar los 2MB.")
-        return file
+        return validate_incident_image_size(file)
 
 
 class IncidenciaCierreForm(forms.ModelForm):
@@ -372,9 +380,7 @@ class IncidenciaAdminForm(forms.ModelForm):
             return self.instance.imagen_adjunta
         if not file:
             raise ValidationError("La foto de la incidencia es obligatoria.")
-        if file.size > 2 * 1024 * 1024:
-            raise ValidationError("La imagen no debe superar los 2MB.")
-        return file
+        return validate_incident_image_size(file)
 
 
 class ComentarioForm(forms.ModelForm):
@@ -393,9 +399,7 @@ class ComentarioForm(forms.ModelForm):
 
     def clean_evidencia_adjunta(self):
         file = self.cleaned_data.get("evidencia_adjunta")
-        if file and file.size > 2 * 1024 * 1024:
-            raise ValidationError("La evidencia no debe superar los 2MB.")
-        return file
+        return validate_incident_image_size(file, "La evidencia")
 
 
 class ReabrirIncidenciaForm(forms.Form):
@@ -430,6 +434,6 @@ class ReabrirIncidenciaForm(forms.Form):
         cleaned_data = super().clean()
         for field_name in ("imagen_1", "imagen_2", "imagen_3"):
             file = cleaned_data.get(field_name)
-            if file and file.size > 2 * 1024 * 1024:
-                self.add_error(field_name, "Cada imagen debe pesar como máximo 2 MB.")
+            if file and file.size > MAX_INCIDENT_IMAGE_UPLOAD_SIZE:
+                self.add_error(field_name, f"Cada imagen debe pesar como máximo {MAX_INCIDENT_IMAGE_UPLOAD_LABEL}.")
         return cleaned_data

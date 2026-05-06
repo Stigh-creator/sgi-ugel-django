@@ -145,7 +145,7 @@
                 </div>
             </div>
         </div>
-        <p class="text-muted tiny-text mt-2 mb-0 ps-1"><i class="fas fa-info-circle me-1"></i>Formatos: JPG, PNG. Máx 2MB por archivo.</p>
+        <p class="text-muted tiny-text mt-2 mb-0 ps-1"><i class="fas fa-info-circle me-1"></i>Formatos: JPG, PNG. Máx 8 MB por archivo; el sistema optimiza la imagen al guardar.</p>
         {% if form.imagen_adjunta.errors %}<div class="text-danger tiny-text mt-1">{{ form.imagen_adjunta.errors.0 }}</div>{% endif %}
         {% if form.imagen_2.errors %}<div class="text-danger tiny-text mt-1">{{ form.imagen_2.errors.0 }}</div>{% endif %}
         {% if form.imagen_3.errors %}<div class="text-danger tiny-text mt-1">{{ form.imagen_3.errors.0 }}</div>{% endif %}
@@ -219,13 +219,13 @@
         
         if (input.files && input.files[0]) {
             const file = input.files[0];
-            const maxSize = 2 * 1024 * 1024; // 2MB
+            const maxSize = 8 * 1024 * 1024;
 
             if (file.size > maxSize) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Archivo muy pesado',
-                    text: 'La imagen supera el límite de 2MB. Por favor, selecciona una más ligera.',
+                    text: 'La imagen supera el límite de 8 MB. Por favor, selecciona una más ligera.',
                     confirmButtonColor: '#0d6efd'
                 });
                 input.value = "";

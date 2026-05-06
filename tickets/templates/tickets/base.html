@@ -21,84 +21,86 @@
     {% if user.is_authenticated %}
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
     <div class="sidebar" id="appSidebar">
-        <div class="sidebar-header border-bottom mb-2">
-            <img src="{% static 'img/logo_ugel.webp' %}" alt="Logo UGEL Morropón" class="sidebar-logo">
-            <div class="sidebar-brand-copy">
-                <h5 class="sidebar-brand-title">UGEL Morropón</h5>
-                <small class="sidebar-brand-subtitle">Soporte Técnico</small>
+        <div class="sidebar-inner">
+            <div class="sidebar-header border-bottom mb-2">
+                <img src="{% static 'img/logo_ugel.webp' %}" alt="Logo UGEL Morropón" class="sidebar-logo">
+                <div class="sidebar-brand-copy">
+                    <h5 class="sidebar-brand-title">UGEL Morropón</h5>
+                    <small class="sidebar-brand-subtitle">Soporte Técnico</small>
+                </div>
             </div>
-        </div>
 
-        <a href="{% url 'mi_perfil' %}" class="sidebar-user sidebar-user-card px-3 py-3 mx-2">
-            {% if user.foto %}
-            <img src="{{ user.foto.url }}" class="sidebar-user-avatar" alt="Usuario">
-            {% else %}
-            <div class="sidebar-user-avatar-initials">
-                {{ user.first_name|slice:":1"|upper }}{{ user.last_name|slice:":1"|upper }}
-            </div>
-            {% endif %}
+            <a href="{% url 'mi_perfil' %}" class="sidebar-user sidebar-user-card px-3 py-3 mx-2">
+                {% if user.foto %}
+                <img src="{{ user.foto.url }}" class="sidebar-user-avatar" alt="Usuario">
+                {% else %}
+                <div class="sidebar-user-avatar-initials">
+                    {{ user.first_name|slice:":1"|upper }}{{ user.last_name|slice:":1"|upper }}
+                </div>
+                {% endif %}
 
-            <div class="sidebar-user-info overflow-hidden">
-                <span class="user-name d-block fw-bold text-dark text-truncate">{{ user.first_name }}</span>
-                <span class="user-lastname d-block text-truncate mb-1">{{ user.last_name|default:"" }}</span>
-                <span class="badge rounded-pill px-2 py-1 badge-role {% if user.is_superuser %}bg-dark{% else %}{{ user.role_badge_class }}{% endif %}">
-                    {% if user.is_superuser %}Superusuario{% else %}{{ user.role_short_label|default:user.get_role_display }}{% endif %}
-                </span>
-            </div>
-        </a>
-
-        <nav class="nav flex-column mt-3">
-            {% if user.role == 'administrador' or user.is_staff %}
-            <a class="nav-card {% if request.resolver_match.url_name == 'dashboard_admin' %}active{% endif %}"
-                href="{% url 'dashboard_admin' %}">
-                <i class="fas fa-tachometer-alt"></i> Dashboard
-            </a>
-            <a class="nav-card" href="{% url 'incidencias_admin' %}">
-                <i class="fas fa-tasks"></i> Incidencias
-            </a>
-            <a class="nav-card {% if request.resolver_match.url_name == 'usuarios' %}active{% endif %}"
-                href="{% url 'usuarios' %}">
-                <i class="fas fa-users"></i> Usuarios
-            </a>
-            <a class="nav-card {% if 'inventario' in request.path %}active{% endif %}"
-                href="{% url 'inventario_list' %}">
-                <i class="fas fa-boxes"></i> Inventario
-            </a>
-            <a class="nav-card {% if 'auditoria' in request.path %}active{% endif %}"
-                href="{% url 'auditoria_index' %}">
-                <i class="fas fa-shield-alt"></i> Auditoría
+                <div class="sidebar-user-info overflow-hidden">
+                    <span class="user-name d-block fw-bold text-dark text-truncate">{{ user.first_name }}</span>
+                    <span class="user-lastname d-block text-truncate mb-1">{{ user.last_name|default:"" }}</span>
+                    <span class="badge rounded-pill px-2 py-1 badge-role {% if user.is_superuser %}bg-dark{% else %}{{ user.role_badge_class }}{% endif %}">
+                        {% if user.is_superuser %}Superusuario{% else %}{{ user.role_short_label|default:user.get_role_display }}{% endif %}
+                    </span>
+                </div>
             </a>
 
-            {% elif user.role == 'tecnico' %}
-            <a class="nav-card {% if request.resolver_match.url_name == 'dashboard_tecnico' %}active{% endif %}"
-                href="{% url 'dashboard_tecnico' %}">
-                <i class="fas fa-tachometer-alt"></i> Dashboard
-            </a>
-            <a class="nav-card" href="{% url 'incidencias_asignadas' %}">
-                <i class="fas fa-clipboard-list"></i> Mis Tareas
-            </a>
+            <nav class="nav flex-column mt-3">
+                {% if user.role == 'administrador' or user.is_staff %}
+                <a class="nav-card {% if request.resolver_match.url_name == 'dashboard_admin' %}active{% endif %}"
+                    href="{% url 'dashboard_admin' %}">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a class="nav-card" href="{% url 'incidencias_admin' %}">
+                    <i class="fas fa-tasks"></i> Incidencias
+                </a>
+                <a class="nav-card {% if request.resolver_match.url_name == 'usuarios' %}active{% endif %}"
+                    href="{% url 'usuarios' %}">
+                    <i class="fas fa-users"></i> Usuarios
+                </a>
+                <a class="nav-card {% if 'inventario' in request.path %}active{% endif %}"
+                    href="{% url 'inventario_list' %}">
+                    <i class="fas fa-boxes"></i> Inventario
+                </a>
+                <a class="nav-card {% if 'auditoria' in request.path %}active{% endif %}"
+                    href="{% url 'auditoria_index' %}">
+                    <i class="fas fa-shield-alt"></i> Auditoría
+                </a>
 
-            {% else %}
-            <a class="nav-card {% if request.resolver_match.url_name == 'mis_incidencias' %}active{% endif %}"
-                href="{% url 'mis_incidencias' %}">
-                <i class="fas fa-ticket-alt"></i> Mis Reportes
-            </a>
-            {% endif %}
+                {% elif user.role == 'tecnico' %}
+                <a class="nav-card {% if request.resolver_match.url_name == 'dashboard_tecnico' %}active{% endif %}"
+                    href="{% url 'dashboard_tecnico' %}">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a class="nav-card" href="{% url 'incidencias_asignadas' %}">
+                    <i class="fas fa-clipboard-list"></i> Mis Tareas
+                </a>
 
-            <div class="sidebar-divider"></div>
+                {% else %}
+                <a class="nav-card {% if request.resolver_match.url_name == 'mis_incidencias' %}active{% endif %}"
+                    href="{% url 'mis_incidencias' %}">
+                    <i class="fas fa-ticket-alt"></i> Mis Reportes
+                </a>
+                {% endif %}
 
-            <a class="nav-card {% if request.resolver_match.url_name == 'mi_perfil' %}active{% endif %}"
-                href="{% url 'mi_perfil' %}">
-                <i class="fas fa-user-cog"></i> Mi Perfil
-            </a>
-        </nav>
-        <div class="mt-auto px-3 pt-3">
-            <a class="nav-card nav-card-danger mt-auto" href="{% url 'logout' %}" id="logoutTrigger"
-                data-logout-url="{% url 'logout' %}">
-                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
-            </a>
-            <div class="text-start small text-muted">
-                <div>Panel de Gestión v1.0</div>
+                <div class="sidebar-divider"></div>
+
+                <a class="nav-card {% if request.resolver_match.url_name == 'mi_perfil' %}active{% endif %}"
+                    href="{% url 'mi_perfil' %}">
+                    <i class="fas fa-user-cog"></i> Mi Perfil
+                </a>
+            </nav>
+            <div class="mt-auto px-3 pt-3 pb-4">
+                <a class="nav-card nav-card-danger" href="{% url 'logout' %}" id="logoutTrigger"
+                    data-logout-url="{% url 'logout' %}">
+                    <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                </a>
+                <div class="text-start small text-muted">
+                    <div>Panel de Gestión v1.0</div>
+                </div>
             </div>
         </div>
     </div>
@@ -144,17 +146,67 @@
             const sidebar = document.getElementById('appSidebar');
             const overlay = document.getElementById('sidebarOverlay');
             const logoutTrigger = document.getElementById('logoutTrigger');
+            let sidebarLockedScrollY = 0;
+            let sidebarTouchStartY = 0;
+            let removeSidebarScrollGuards = null;
+
+            function installSidebarScrollGuards() {
+                if (removeSidebarScrollGuards) return;
+
+                const preventOutsideScroll = function (event) {
+                    if (!sidebar.classList.contains('active')) return;
+                    if (sidebar.contains(event.target)) return;
+                    event.preventDefault();
+                };
+
+                const rememberSidebarTouch = function (event) {
+                    if (event.touches && event.touches.length) {
+                        sidebarTouchStartY = event.touches[0].clientY;
+                    }
+                };
+
+                const containSidebarScroll = function (event) {
+                    if (!event.touches || !event.touches.length) return;
+                    const currentY = event.touches[0].clientY;
+                    const movingDown = currentY > sidebarTouchStartY;
+                    const atTop = sidebar.scrollTop <= 0;
+                    const atBottom = sidebar.scrollTop + sidebar.clientHeight >= sidebar.scrollHeight - 1;
+
+                    if ((atTop && movingDown) || (atBottom && !movingDown)) {
+                        event.preventDefault();
+                    }
+                };
+
+                document.addEventListener('touchmove', preventOutsideScroll, { passive: false });
+                sidebar.addEventListener('touchstart', rememberSidebarTouch, { passive: true });
+                sidebar.addEventListener('touchmove', containSidebarScroll, { passive: false });
+
+                removeSidebarScrollGuards = function () {
+                    document.removeEventListener('touchmove', preventOutsideScroll);
+                    sidebar.removeEventListener('touchstart', rememberSidebarTouch);
+                    sidebar.removeEventListener('touchmove', containSidebarScroll);
+                    removeSidebarScrollGuards = null;
+                };
+            }
 
             function openSidebar() {
+                sidebarLockedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
                 sidebar.classList.add('active');
                 if (overlay) overlay.classList.add('active');
-                document.body.style.overflow = 'hidden'; // Bloquear scroll
+                document.body.classList.add('sidebar-open');
+                document.documentElement.classList.add('sidebar-open');
+                document.body.style.top = `-${sidebarLockedScrollY}px`;
+                installSidebarScrollGuards();
             }
 
             function closeSidebar() {
                 sidebar.classList.remove('active');
                 if (overlay) overlay.classList.remove('active');
-                document.body.style.overflow = ''; // Restaurar scroll
+                document.body.classList.remove('sidebar-open');
+                document.documentElement.classList.remove('sidebar-open');
+                document.body.style.top = '';
+                if (removeSidebarScrollGuards) removeSidebarScrollGuards();
+                window.scrollTo(0, sidebarLockedScrollY);
             }
 
             if (toggleBtn && sidebar) {
@@ -180,6 +232,12 @@
                         if (!sidebar.contains(e.target) && !toggleBtn.contains(e.target)) {
                             closeSidebar();
                         }
+                    }
+                });
+
+                window.addEventListener('resize', function () {
+                    if (window.innerWidth >= 992 && sidebar.classList.contains('active')) {
+                        closeSidebar();
                     }
                 });
             }

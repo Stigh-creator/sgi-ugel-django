@@ -13,7 +13,8 @@ from ..models import CustomUser
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png"}
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
-MAX_PROFILE_PHOTO_SIZE = 2 * 1024 * 1024
+MAX_PROFILE_PHOTO_SIZE = 8 * 1024 * 1024
+MAX_PROFILE_PHOTO_SIZE_LABEL = "8 MB"
 USER_ACTIVE_INCIDENT_STATES = (
     "Pendiente",
     "Asignado",
@@ -80,7 +81,7 @@ def validate_profile_photo(file_obj):
         raise ValidationError("La foto de perfil solo permite archivos JPG o PNG.")
 
     if file_obj.size > MAX_PROFILE_PHOTO_SIZE:
-        raise ValidationError("La foto de perfil no debe superar los 2 MB.")
+        raise ValidationError(f"La foto de perfil no debe superar los {MAX_PROFILE_PHOTO_SIZE_LABEL}.")
 
     return file_obj
 

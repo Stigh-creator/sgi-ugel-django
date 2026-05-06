@@ -759,13 +759,13 @@
         container.innerHTML = '';
         if (input.files && input.files[0]) {
             const file = input.files[0];
-            const maxSize = 2 * 1024 * 1024;
+            const maxSize = 8 * 1024 * 1024;
 
             if (file.size > maxSize) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Imagen muy pesada',
-                    text: 'El archivo supera el límite de 2MB.',
+                    text: 'El archivo supera el límite de 8 MB.',
                     confirmButtonColor: '#2563eb'
                 });
                 input.value = '';
@@ -805,13 +805,13 @@
         
         if (input.files && input.files[0]) {
             const file = input.files[0];
-            const maxSize = 2 * 1024 * 1024;
+            const maxSize = 8 * 1024 * 1024;
 
             if (file.size > maxSize) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Imagen muy pesada',
-                    text: 'El archivo supera el límite de 2MB. Selecciona uno más ligero.',
+                    text: 'El archivo supera el límite de 8 MB. Selecciona uno más ligero.',
                     confirmButtonColor: '#2563eb'
                 });
                 input.value = "";
