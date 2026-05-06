@@ -1,8 +1,8 @@
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.utils.dateparse import parse_date
 from django.utils import timezone
-from datetime import datetime
 
 from ..models import Incidencia
 from inventario.models import Equipo
@@ -45,13 +45,13 @@ def export_reporte_incidencias_pdf(request):
     incidencias = Incidencia.objects.select_related('creador', 'area', 'estado', 'tecnico_asignado').all()
     
     if start_date_str:
-        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+        start_date = parse_date(start_date_str)
         incidencias = incidencias.filter(fecha_creacion__date__gte=start_date)
     else:
         start_date = incidencias.order_by('fecha_creacion').first().fecha_creacion if incidencias.exists() else timezone.now()
 
     if end_date_str:
-        end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+        end_date = parse_date(end_date_str)
         incidencias = incidencias.filter(fecha_creacion__date__lte=end_date)
     else:
         end_date = timezone.now()

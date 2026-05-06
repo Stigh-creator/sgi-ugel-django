@@ -27,6 +27,9 @@ def capturar_estado_anterior(sender, instance, **kwargs):
 def auditar_equipo(sender, instance, created, **kwargs):
     request = get_current_request()
     usuario = request.user if request and request.user.is_authenticated else None
+    User = get_user_model()
+    if usuario and not User.objects.filter(pk=usuario.pk).exists():
+        usuario = None
     
     ip = None
     if request:
@@ -58,7 +61,11 @@ def auditar_equipo(sender, instance, created, **kwargs):
         modulo='Inventario',
         accion=accion,
         descripcion=descripcion,
+        metadata={
+            "equipo_id": instance.id,
+            "codigo_equipo": instance.codigo_equipo,
+            "origen": "signal",
+        },
         ip=ip,
         referencia_id=instance.id
     )
-

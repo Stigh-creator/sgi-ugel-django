@@ -44,6 +44,27 @@ def upload_to_informes(instance, filename):
 
 from .utils.images import process_image
 
+
+class EstadoIncidencia(models.TextChoices):
+    PENDIENTE = "Pendiente", "Pendiente"
+    ASIGNADO = "Asignado", "Asignado"
+    EN_PROCESO = "En Proceso", "En Proceso"
+    RECHAZADO = "Rechazado", "Rechazado"
+    REABIERTO = "Reabierto", "Reabierto"
+    PENDIENTE_VALIDACION = "Pendiente de validación", "Pendiente de validación"
+    RESUELTO = "Resuelto", "Resuelto"
+    CERRADO = "Cerrado", "Cerrado"
+
+
+class EstadoSLA(models.TextChoices):
+    EN_TIEMPO = "en_tiempo", "En tiempo"
+    POR_VENCER = "por_vencer", "Por vencer"
+    RESPUESTA_VENCIDA = "respuesta_vencida", "Respuesta vencida"
+    RESOLUCION_VENCIDA = "resolucion_vencida", "Resolución vencida"
+    ESCALADO = "escalado", "Escalado"
+    CUMPLIDO = "cumplido", "Cumplido"
+    NO_APLICA = "no_aplica", "No aplica"
+
 nombre_valido = RegexValidator(
     regex=r'^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$',
     message='Solo se permiten letras, espacios, tildes y la letra "ñ".'
@@ -86,6 +107,7 @@ class CustomUser(AbstractUser):
     last_password_change = models.DateTimeField(default=timezone.now)
     must_change_password = models.BooleanField(default=False)
     last_seen = models.DateTimeField(null=True, blank=True)
+    capacidad_base = models.PositiveIntegerField(default=4)
 
     def clean(self):
         super().clean()
@@ -214,28 +236,31 @@ def get_default_estado():
     return estado.id
 
 class Incidencia(models.Model):
-    ESTADO_PENDIENTE = "Pendiente"
-    ESTADO_ASIGNADO = "Asignado"
-    ESTADO_EN_PROCESO = "En Proceso"
-    ESTADO_RECHAZADO = "Rechazado"
-    ESTADO_REABIERTO = "Reabierto"
-    ESTADO_RESUELTO = "Resuelto"
-    ESTADO_CERRADO = "Cerrado"
+    ESTADO_PENDIENTE = EstadoIncidencia.PENDIENTE
+    ESTADO_ASIGNADO = EstadoIncidencia.ASIGNADO
+    ESTADO_EN_PROCESO = EstadoIncidencia.EN_PROCESO
+    ESTADO_RECHAZADO = EstadoIncidencia.RECHAZADO
+    ESTADO_REABIERTO = EstadoIncidencia.REABIERTO
+    ESTADO_PENDIENTE_VALIDACION = EstadoIncidencia.PENDIENTE_VALIDACION
+    ESTADO_RESUELTO = EstadoIncidencia.RESUELTO
+    ESTADO_CERRADO = EstadoIncidencia.CERRADO
     FLUJO_ESTADOS = (
         ESTADO_PENDIENTE,
         ESTADO_ASIGNADO,
         ESTADO_EN_PROCESO,
         ESTADO_RECHAZADO,
         ESTADO_REABIERTO,
+        ESTADO_PENDIENTE_VALIDACION,
         ESTADO_RESUELTO,
         ESTADO_CERRADO,
     )
     ALLOWED_TRANSITIONS = {
         ESTADO_PENDIENTE: {ESTADO_ASIGNADO, ESTADO_RESUELTO},
         ESTADO_ASIGNADO: {ESTADO_EN_PROCESO, ESTADO_RECHAZADO, ESTADO_RESUELTO},
-        ESTADO_EN_PROCESO: {ESTADO_RESUELTO},
+        ESTADO_EN_PROCESO: {ESTADO_PENDIENTE_VALIDACION, ESTADO_RESUELTO},
         ESTADO_RECHAZADO: {ESTADO_ASIGNADO},
-        ESTADO_REABIERTO: {ESTADO_ASIGNADO, ESTADO_RESUELTO},
+        ESTADO_REABIERTO: {ESTADO_ASIGNADO, ESTADO_PENDIENTE_VALIDACION, ESTADO_RESUELTO},
+        ESTADO_PENDIENTE_VALIDACION: {ESTADO_CERRADO, ESTADO_REABIERTO},
         ESTADO_RESUELTO: {ESTADO_CERRADO, ESTADO_REABIERTO},
         ESTADO_CERRADO: set(),
     }
@@ -309,7 +334,25 @@ class Incidencia(models.Model):
     evidencia_solucion_3 = models.ImageField(upload_to=upload_to_soluciones, null=True, blank=True)
     fecha_resolucion = models.DateTimeField(null=True, blank=True)
     fecha_cierre = models.DateTimeField(null=True, blank=True)
+    fecha_limite_respuesta = models.DateTimeField(null=True, blank=True)
+    fecha_limite_resolucion = models.DateTimeField(null=True, blank=True)
+    fecha_auto_cierre = models.DateTimeField(null=True, blank=True)
+    estado_sla = models.CharField(max_length=30, choices=EstadoSLA.choices, default=EstadoSLA.EN_TIEMPO)
+    sla_respuesta_notificado = models.BooleanField(default=False)
+    sla_resolucion_notificado = models.BooleanField(default=False)
+    auto_cerrado = models.BooleanField(default=False)
+    escalado = models.BooleanField(default=False)
     documento_informe = models.FileField(upload_to=upload_to_informes, null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["estado", "prioridad"], name="idx_inc_estado_prioridad"),
+            models.Index(fields=["estado", "fecha_limite_resolucion"], name="idx_inc_estado_lim_res"),
+            models.Index(fields=["prioridad"], name="idx_inc_prioridad"),
+            models.Index(fields=["fecha_limite_resolucion"], name="idx_inc_limite_resol"),
+            models.Index(fields=["fecha_limite_respuesta"], name="idx_inc_limite_resp"),
+            models.Index(fields=["estado_sla"], name="idx_inc_estado_sla"),
+        ]
 
     @property
     def puede_cerrar(self):
@@ -339,6 +382,7 @@ class Incidencia(models.Model):
             self.ESTADO_EN_PROCESO,
             self.ESTADO_RECHAZADO,
             self.ESTADO_REABIERTO,
+            self.ESTADO_PENDIENTE_VALIDACION,
             self.ESTADO_RESUELTO,
             self.ESTADO_CERRADO,
         }
@@ -356,6 +400,7 @@ class Incidencia(models.Model):
     def prioridad_texto_plano(self):
         return self.estado_actual in {
             self.ESTADO_EN_PROCESO,
+            self.ESTADO_PENDIENTE_VALIDACION,
             self.ESTADO_RESUELTO,
             self.ESTADO_CERRADO,
         }
@@ -383,6 +428,7 @@ class Incidencia(models.Model):
             self.ESTADO_EN_PROCESO: "badge-asignado",
             self.ESTADO_RECHAZADO: "badge-reabierto",
             self.ESTADO_REABIERTO: "badge-reabierto",
+            self.ESTADO_PENDIENTE_VALIDACION: "badge-resuelto",
             self.ESTADO_RESUELTO: "badge-resuelto",
             self.ESTADO_CERRADO: "badge-cerrado",
         }.get(self.estado_visual, "badge-pendiente")
@@ -433,6 +479,82 @@ class IncidenciaImagen(models.Model):
 
     def __str__(self):
         return f"Imagen para Incidencia #{self.incidencia.id}"
+
+
+class SLAConfiguracion(models.Model):
+    prioridad = models.CharField(max_length=20, choices=Incidencia.PRIORIDAD_CHOICES)
+    categoria = models.CharField(max_length=20, choices=Incidencia.CATEGORIA_CHOICES, null=True, blank=True)
+    tiempo_respuesta_minutos = models.PositiveIntegerField(default=240)
+    tiempo_resolucion_minutos = models.PositiveIntegerField(default=1440)
+    auto_cierre_horas = models.PositiveIntegerField(default=72)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Configuración SLA"
+        verbose_name_plural = "Configuraciones SLA"
+        unique_together = ("prioridad", "categoria")
+
+    def __str__(self):
+        categoria = self.get_categoria_display() if self.categoria else "Todas"
+        return f"SLA {self.get_prioridad_display()} / {categoria}"
+
+
+class ReemplazoEquipoIncidencia(models.Model):
+    incidencia = models.ForeignKey(Incidencia, on_delete=models.PROTECT, related_name="reemplazos")
+    equipo_original = models.ForeignKey(
+        "inventario.Equipo",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="reemplazos_como_original",
+    )
+    equipo_reemplazo = models.ForeignKey(
+        "inventario.Equipo",
+        on_delete=models.PROTECT,
+        related_name="reemplazos_como_temporal",
+    )
+    area_origen = models.ForeignKey("Area", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    area_destino = models.ForeignKey("Area", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    usuario = models.ForeignKey(CustomUser, on_delete=models.PROTECT, related_name="reemplazos_registrados")
+    motivo = models.TextField()
+    fecha_inicio = models.DateTimeField(auto_now_add=True)
+    fecha_fin = models.DateTimeField(null=True, blank=True)
+    activo = models.BooleanField(default=True)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        verbose_name = "Reemplazo de equipo por incidencia"
+        verbose_name_plural = "Reemplazos de equipos por incidencias"
+        indexes = [
+            models.Index(fields=["incidencia", "activo"]),
+            models.Index(fields=["equipo_reemplazo", "activo"]),
+            models.Index(fields=["activo"], name="idx_reemplazo_activo"),
+        ]
+
+    def __str__(self):
+        return f"{self.incidencia.codigo}: {self.equipo_original} -> {self.equipo_reemplazo}"
+
+
+class MetricaDiaria(models.Model):
+    fecha = models.DateField(unique=True)
+    tickets_abiertos = models.PositiveIntegerField(default=0)
+    tickets_cerrados = models.PositiveIntegerField(default=0)
+    sla_vencidos = models.PositiveIntegerField(default=0)
+    sla_por_vencer = models.PositiveIntegerField(default=0)
+    tickets_validacion_vencidos = models.PositiveIntegerField(default=0)
+    equipos_reparacion_sin_ticket_activo = models.PositiveIntegerField(default=0)
+    reemplazos_activos = models.PositiveIntegerField(default=0)
+    metadata = models.JSONField(default=dict, blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Métrica diaria"
+        verbose_name_plural = "Métricas diarias"
+        ordering = ["-fecha"]
+
+    def __str__(self):
+        return f"Métricas SGI {self.fecha}"
 
 class Notificacion(models.Model):
     TIPO_CHOICES = (
@@ -503,6 +625,8 @@ from channels.layers import get_channel_layer
 def send_notification_update(sender, instance, created, **kwargs):
     if created:
         channel_layer = get_channel_layer()
+        if channel_layer is None:
+            return
         # El número de no leídos para este usuario en particular (modelo intermedio)
         unread_count = NotificacionUsuario.objects.filter(usuario=instance.usuario, leido=False).count()
         

@@ -48,6 +48,22 @@ class EquipoForm(forms.ModelForm):
             raise forms.ValidationError("Este campo es obligatorio.")
         return nombre
 
+    def clean(self):
+        cleaned_data = super().clean()
+        disponibilidad = cleaned_data.get("disponibilidad") or getattr(self.instance, "disponibilidad", None)
+        if disponibilidad != Equipo.DISPONIBILIDAD_LIBRE and not getattr(self.instance, "origen_ocupacion", None):
+            self.instance.origen_ocupacion = Equipo.ORIGEN_OCUPACION_ASIGNACION_DIRECTA
+        return cleaned_data
+
+    def save(self, commit=True):
+        equipo = super().save(commit=False)
+        if equipo.disponibilidad != Equipo.DISPONIBILIDAD_LIBRE and not equipo.origen_ocupacion:
+            equipo.origen_ocupacion = Equipo.ORIGEN_OCUPACION_ASIGNACION_DIRECTA
+        if commit:
+            equipo.save()
+            self.save_m2m()
+        return equipo
+
 
 class EquipoEstadoUpdateForm(forms.Form):
     estado = forms.ModelChoiceField(

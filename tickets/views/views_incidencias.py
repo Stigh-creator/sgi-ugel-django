@@ -38,6 +38,8 @@ from ..services import (
     resolver_incidencia_service,
     compatible_replacement_type_ids,
     equipos_ocupados_por_incidencias,
+    emitir_evento_incidencia,
+    IncidenciaService,
 )
 from inventario.models import Marca, TipoEquipo, Equipo, EstadoEquipo
 
@@ -235,12 +237,6 @@ def crear_incidencia(request):
                 }
                 return render(request, "tickets/crear_incidencia.html", context)
             
-            registrar_auditoria(
-                request, "Incidencias", "creó incidencia",
-                f"{ticket_label(incidencia)} Incidencia creada por {nombre_usuario(request.user)}: {incidencia.descripcion[:50]}...",
-                incidencia.id
-            )
-            
             messages.success(request, f"Incidencia {incidencia.codigo} registrada correctamente.")
             return redirect('incidencias_list')
         else:
@@ -301,7 +297,7 @@ def detalle_incidencia(request, pk):
     estado_operativo = EstadoEquipo.objects.filter(nombre="Operativo").first()
     equipos_reemplazo = Equipo.objects.filter(
         activo=True,
-        estado=estado_operativo,
+        estado_tecnico=estado_operativo,
         disponibilidad=Equipo.DISPONIBILIDAD_LIBRE,
     )
     if incidencia.equipo_id:
@@ -373,9 +369,10 @@ def asignar_tecnico(request, pk):
     tecnico = get_object_or_404(CustomUser, pk=tecnico_id)
     try:
         current_load = get_active_ticket_load_for_user(tecnico, exclude_incidencia_id=incidencia.pk)
-        assign_incidencia_service(
-            incidencia,
+        IncidenciaService.asignar(
+            incidencia.pk,
             tecnico=tecnico,
+            actor=request.user,
             fecha_programada=request.POST.get("fecha_programada"),
             hora_programada=request.POST.get("hora_programada"),
             observaciones=request.POST.get("observaciones"),
@@ -383,14 +380,6 @@ def asignar_tecnico(request, pk):
     except ValidationError as exc:
         messages.error(request, exc.message)
         return HttpResponseClientRefresh()
-    
-    registrar_auditoria(
-        request, "Incidencias", "asignó técnico",
-        f"{ticket_label(incidencia)} Asignación inicial de técnico: {nombre_usuario(tecnico)}. "
-        f"Acción realizada por {nombre_usuario(request.user)}. "
-        f"Carga previa: {current_load} tickets activos.",
-        pk
-    )
     
     messages.success(request, f"Técnico {tecnico.first_name} asignado a la incidencia {incidencia.codigo}")
     return HttpResponseClientRefresh()
@@ -406,19 +395,6 @@ def aceptar_incidencia(request, pk):
         messages.error(request, exc.message)
         return redirect("detalle_incidencia", pk=pk)
 
-    crear_comentario_estado(
-        incidencia=incidencia,
-        usuario=request.user,
-        tipo="confirmacion",
-        texto=f"{nombre_usuario(request.user)} aceptó la atención y cambió el estado a En Proceso.",
-    )
-    registrar_auditoria(
-        request,
-        "Incidencias",
-        "aceptó incidencia",
-        f"{ticket_label(incidencia)} El técnico {nombre_usuario(request.user)} aceptó la incidencia. Estado cambiado a 'En Proceso'.",
-        pk,
-    )
     messages.success(request, f"Incidencia {incidencia.codigo} aceptada. Ya puedes registrar la solución cuando corresponda.")
     return redirect("detalle_incidencia", pk=pk)
 
@@ -434,22 +410,6 @@ def rechazar_incidencia(request, pk):
         messages.error(request, exc.message)
         return redirect("detalle_incidencia", pk=pk)
 
-    crear_comentario_estado(
-        incidencia=incidencia,
-        usuario=request.user,
-        tipo="observacion",
-        texto=(
-            f"{especialista_nombre} rechazó la atención asignada y fue desvinculado del ticket.\n"
-            f"Motivo: {motivo}"
-        ),
-    )
-    registrar_auditoria(
-        request,
-        "Incidencias",
-        "rechazó incidencia",
-        f"{ticket_label(incidencia)} El técnico {especialista_nombre} rechazó la incidencia. Motivo: {motivo}. El ticket ha sido desvinculado.",
-        pk,
-    )
     messages.warning(request, f"Incidencia {incidencia.codigo} rechazada. El motivo quedó registrado en el seguimiento.")
     return redirect("incidencias_list")
 
@@ -465,15 +425,15 @@ def get_equipos_for_area(request):
             equipos = Equipo.objects.filter(
                 area__sede_principal=user.area.sede_principal,
                 activo=True,
-                estado=estado_operativo,
+                estado_tecnico=estado_operativo,
             ).distinct()
         else:
             equipos = Equipo.objects.none()
     else:
         if area_id:
-            equipos = Equipo.objects.filter(area_id=area_id, activo=True, estado=estado_operativo)
+            equipos = Equipo.objects.filter(area_id=area_id, activo=True, estado_tecnico=estado_operativo)
         else:
-            equipos = Equipo.objects.filter(activo=True, estado=estado_operativo)
+            equipos = Equipo.objects.filter(activo=True, estado_tecnico=estado_operativo)
             
     return render(request, "tickets/partials/equipo_options.html", {"equipos": equipos})
 
@@ -526,6 +486,7 @@ def crear_incidencia_modal(request):
                         numero_serie=serie,
                         area=incidencia.area,
                         estado=estado_operativo,
+                        estado_tecnico=estado_operativo,
                         observaciones=f"Activo creado automáticamente desde reporte de incidencia."
                     )
                     incidencia.equipo = nuevo_equipo
@@ -548,14 +509,6 @@ def crear_incidencia_modal(request):
                     )
                 add_form_errors_to_messages(request, form)
                 return render_fullscreen_create(form)
-
-            registrar_auditoria(
-                request,
-                "Incidencias",
-                "creó incidencia",
-                f"{ticket_label(incidencia)} Incidencia reportada por {nombre_usuario(request.user)}.",
-                incidencia.id,
-            )
 
             if is_htmx:
                 return HttpResponseClientRefresh()
@@ -594,11 +547,7 @@ def agregar_comentario(request, pk):
         comentario.usuario = request.user
         comentario.save()
         
-        registrar_auditoria(
-            request, "Incidencias", "comentó incidencia",
-            f"{ticket_label(incidencia)} {nombre_usuario(request.user)} añadió un comentario al seguimiento.",
-            pk
-        )
+        emitir_evento_incidencia("incidencia.comentada", incidencia, actor=request.user, metadata={"comentario_id": comentario.id})
         
         comentarios = incidencia.comentarios.all().order_by("fecha_creacion")
         return render(request, 'tickets/partials/_comentarios_list.html', {'comentarios': comentarios, 'typing_users': []})
@@ -633,45 +582,6 @@ def resolver_incidencia(request, pk):
             evidencia_2=form.cleaned_data.get("evidencia_solucion_2"),
             evidencia_3=form.cleaned_data.get("evidencia_solucion_3")
         )
-        crear_comentario_estado(
-            incidencia=incidencia,
-            usuario=request.user,
-            tipo="confirmacion",
-            texto=(
-                f"{request.user.get_full_name() or request.user.username} cambió el estado a Resuelto.\n"
-                f"Tipo de resolución: {incidencia.get_tipo_resolucion_display()}.\n"
-                f"Solución aplicada: {solucion}"
-            ),
-        )
-        
-        tipo_display = incidencia.get_tipo_resolucion_display()
-        if incidencia.tipo_resolucion == Incidencia.RESOLUCION_REEMPLAZADO:
-            detalle_resolucion = (
-                f"Resolución: reemplazo temporal. Equipo afectado: {equipo_label(incidencia.equipo)}. "
-                f"Equipo entregado como reemplazo: {equipo_label(incidencia.equipo_reemplazo)}."
-            )
-        elif incidencia.tipo_resolucion == Incidencia.RESOLUCION_REPARADO:
-            detalle_resolucion = (
-                f"Resolución: reparación. Equipo afectado: {equipo_label(incidencia.equipo)}. "
-                "El equipo permanece en reparación hasta que el solicitante cierre el ticket."
-            )
-        elif incidencia.tipo_resolucion == Incidencia.RESOLUCION_BAJA:
-            detalle_resolucion = (
-                f"Resolución: baja definitiva. Equipo afectado: {equipo_label(incidencia.equipo)}."
-            )
-        else:
-            detalle_resolucion = "Resolución: derivado/externo. No se realizaron cambios automáticos de inventario."
-        registrar_auditoria(
-            request,
-            "Incidencias",
-            "resolvió incidencia",
-            (
-                f"{ticket_label(incidencia)} Incidencia marcada como Resuelta por {nombre_usuario(request.user)}. "
-                f"Tipo de solución: {tipo_display}. {detalle_resolucion} "
-                f"Detalle técnico: {solucion}"
-            ),
-            pk,
-        )
         messages.success(request, f"Incidencia #{pk} marcada como resuelta.")
         return redirect('detalle_incidencia', pk=pk)
     
@@ -694,7 +604,7 @@ def reabrir_incidencia(request, pk):
                 messages.error(request, error)
         return redirect('detalle_incidencia', pk=pk)
 
-    reabrir_incidencia_service(incidencia)
+    IncidenciaService.reabrir(incidencia.pk, request.user, motivo=form.cleaned_data["motivo"].strip())
 
     motivo = form.cleaned_data["motivo"].strip()
     imagenes = [
@@ -726,7 +636,6 @@ def reabrir_incidencia(request, pk):
         if imagen_extra:
             IncidenciaImagen.objects.create(incidencia=incidencia, imagen=imagen_extra)
     
-    registrar_auditoria(request, "Incidencias", "reabrió incidencia", f"{ticket_label(incidencia)} Incidencia reabierta por {nombre_usuario(request.user)}. Motivo: {motivo}.", pk)
     messages.warning(request, f"Incidencia #{pk} ha sido reabierta.")
     return redirect('detalle_incidencia', pk=pk)
 
@@ -739,14 +648,6 @@ def cerrar_incidencia(request, pk):
         return JsonResponse({"success": False, "message": "No tienes permiso."}, status=403)
         
     cerrar_incidencia_service(incidencia, request.user)
-    crear_comentario_estado(
-        incidencia=incidencia,
-        usuario=request.user,
-        tipo="confirmacion",
-        texto=f"{request.user.get_full_name() or request.user.username} confirmó la solución y cambió el estado a Cerrado.",
-    )
-    
-    registrar_auditoria(request, "Incidencias", "cerró incidencia", f"{ticket_label(incidencia)} Incidencia cerrada definitivamente por {nombre_usuario(request.user)}.", pk)
     return JsonResponse({"success": True})
 
 @login_required

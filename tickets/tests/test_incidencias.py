@@ -1,12 +1,18 @@
+from datetime import timedelta
+from unittest.mock import patch
+
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
-from auditoria.models import Auditoria
+from auditoria.models import Auditoria, EventoFallido
 from inventario.models import Equipo, EstadoEquipo, HistorialEstadoEquipo, Marca, TipoEquipo
 from tickets.forms.forms_incidencias import IncidenciaCierreForm, IncidenciaForm
-from tickets.models import Area, Comentario, CustomUser, Incidencia
+from tickets.models import Area, Comentario, CustomUser, EstadoSLA, Incidencia, MetricaDiaria, Notificacion, ReemplazoEquipoIncidencia
 from tickets.services import (
     aceptar_incidencia_service,
     assign_incidencia_service,
@@ -16,6 +22,7 @@ from tickets.services import (
     rechazar_incidencia_service,
     reabrir_incidencia_service,
     resolver_incidencia_service,
+    emitir_evento_incidencia,
 )
 
 
@@ -248,7 +255,10 @@ class IncidenciasBusinessRulesTests(TestCase):
         reemplazo.refresh_from_db()
         self.assertEqual(self.equipo.estado.nombre, "Inoperativo")
         self.assertEqual(reemplazo.estado.nombre, "Operativo")
+        self.assertEqual(reemplazo.disponibilidad, Equipo.DISPONIBILIDAD_REEMPLAZO_TEMPORAL)
+        self.assertEqual(reemplazo.origen_ocupacion, Equipo.ORIGEN_OCUPACION_REEMPLAZO)
         self.assertEqual(reemplazo.area, self.area)
+        self.assertTrue(ReemplazoEquipoIncidencia.objects.get(incidencia=incidencia).activo)
         self.assertTrue(
             Auditoria.objects.filter(
                 modulo="Inventario",
@@ -262,6 +272,10 @@ class IncidenciasBusinessRulesTests(TestCase):
         reemplazo.refresh_from_db()
         self.assertEqual(self.equipo.estado.nombre, "Inoperativo")
         self.assertEqual(reemplazo.estado.nombre, "Operativo")
+        self.assertEqual(reemplazo.disponibilidad, Equipo.DISPONIBILIDAD_LIBRE)
+        self.assertIsNone(reemplazo.origen_ocupacion)
+        self.assertEqual(reemplazo.area, area_reemplazo)
+        self.assertFalse(ReemplazoEquipoIncidencia.objects.get(incidencia=incidencia).activo)
 
     def test_reemplazo_pc_y_laptop_son_compatibles(self):
         tipo_laptop = TipoEquipo.objects.create(nombre="Laptop")
@@ -299,7 +313,92 @@ class IncidenciasBusinessRulesTests(TestCase):
         incidencia.refresh_from_db()
         reemplazo.refresh_from_db()
         self.assertEqual(incidencia.equipo_reemplazo, reemplazo)
-        self.assertEqual(reemplazo.disponibilidad, Equipo.DISPONIBILIDAD_EN_USO)
+        self.assertEqual(reemplazo.disponibilidad, Equipo.DISPONIBILIDAD_REEMPLAZO_TEMPORAL)
+        self.assertEqual(reemplazo.origen_ocupacion, Equipo.ORIGEN_OCUPACION_REEMPLAZO)
+
+    def test_emitir_evento_incidencia_es_idempotente(self):
+        incidencia = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="software",
+            prioridad="media",
+            descripcion="Validar idempotencia de eventos.",
+            estado=get_estado(Incidencia.ESTADO_ASIGNADO),
+            tecnico_asignado=self.tecnico,
+        )
+        metadata = {"tecnico_id": self.tecnico.id, "tecnico_nombre": self.tecnico.get_full_name()}
+
+        emitir_evento_incidencia("incidencia.asignada", incidencia, actor=self.admin, metadata=metadata)
+        emitir_evento_incidencia("incidencia.asignada", incidencia, actor=self.admin, metadata=metadata)
+
+        self.assertEqual(Auditoria.objects.filter(evento="incidencia.asignada", referencia_id=incidencia.id).count(), 1)
+        self.assertEqual(Notificacion.objects.filter(incidencia=incidencia, tipo="asignacion").count(), 1)
+
+    def test_equipo_ocupado_requiere_origen_ocupacion(self):
+        self.equipo.disponibilidad = Equipo.DISPONIBILIDAD_EN_USO
+        self.equipo.origen_ocupacion = None
+
+        with self.assertRaisesMessage(ValidationError, "origen de ocupación"):
+            self.equipo.save(update_fields=["disponibilidad", "origen_ocupacion"])
+
+    def test_dos_resoluciones_no_pueden_usar_mismo_reemplazo(self):
+        reemplazo = Equipo.objects.create(
+            codigo_equipo="PC-CONC",
+            nombre_equipo="PC Concurrencia",
+            tipo_equipo=self.tipo,
+            marca=self.marca,
+            modelo="Optiplex",
+            area=self.area,
+            estado=self.estado_operativo,
+            activo=True,
+        )
+        incidencia_1 = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            equipo=self.equipo,
+            categoria="hardware",
+            prioridad="media",
+            descripcion="Primera incidencia concurrente.",
+            tecnico_asignado=self.tecnico,
+            estado=get_estado(Incidencia.ESTADO_EN_PROCESO),
+        )
+        equipo_2 = Equipo.objects.create(
+            codigo_equipo="PC-002",
+            nombre_equipo="PC Segunda",
+            tipo_equipo=self.tipo,
+            marca=self.marca,
+            modelo="Optiplex",
+            area=self.area,
+            estado=self.estado_operativo,
+            activo=True,
+        )
+        incidencia_2 = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            equipo=equipo_2,
+            categoria="hardware",
+            prioridad="media",
+            descripcion="Segunda incidencia concurrente.",
+            tecnico_asignado=self.tecnico_2,
+            estado=get_estado(Incidencia.ESTADO_EN_PROCESO),
+        )
+
+        resolver_incidencia_service(
+            incidencia_1,
+            self.tecnico,
+            "Se asigna el reemplazo temporal al primer ticket concurrente.",
+            Incidencia.RESOLUCION_REEMPLAZADO,
+            equipo_reemplazo=reemplazo,
+        )
+
+        with self.assertRaisesMessage(ValidationError, "no está libre"):
+            resolver_incidencia_service(
+                incidencia_2,
+                self.tecnico_2,
+                "Se intenta usar el mismo reemplazo en otro ticket.",
+                Incidencia.RESOLUCION_REEMPLAZADO,
+                equipo_reemplazo=reemplazo,
+            )
 
     def test_reemplazo_con_tipo_computadora_de_escritorio_muestra_laptop_libre(self):
         tipo_pc_largo = TipoEquipo.objects.create(nombre="Computadora de Escritorio (PC)")
@@ -386,6 +485,7 @@ class IncidenciasBusinessRulesTests(TestCase):
             area=self.area,
             estado=self.estado_operativo,
             disponibilidad=Equipo.DISPONIBILIDAD_EN_USO,
+            origen_ocupacion=Equipo.ORIGEN_OCUPACION_ASIGNACION_DIRECTA,
             activo=True,
         )
         incidencia = Incidencia.objects.create(
@@ -1084,3 +1184,160 @@ class IncidenciasBusinessRulesTests(TestCase):
         detalle = self.client.get(reverse("detalle_incidencia", args=[incidencia.pk]))
         self.assertContains(detalle, "Aceptar atención")
         self.assertContains(detalle, "Rechazar")
+
+    def test_evento_idempotente_blindado_por_bd(self):
+        incidencia = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Ticket para validar idempotencia de eventos.",
+            estado=get_estado(Incidencia.ESTADO_PENDIENTE),
+        )
+
+        emitir_evento_incidencia("incidencia.creada", incidencia, actor=self.usuario, metadata={"retry": "same"})
+        emitir_evento_incidencia("incidencia.creada", incidencia, actor=self.usuario, metadata={"retry": "same"})
+
+        auditorias = Auditoria.objects.filter(evento="incidencia.creada", referencia_id=incidencia.pk)
+        self.assertEqual(auditorias.count(), 1)
+        auditoria = auditorias.get()
+        self.assertEqual(auditoria.version_evento, 1)
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Auditoria.objects.create(
+                    usuario=self.usuario,
+                    modulo="Incidencias",
+                    accion="duplicado forzado",
+                    descripcion="Duplicado concurrente simulado.",
+                    referencia_id=incidencia.pk,
+                    evento=auditoria.evento,
+                    hash_evento=auditoria.hash_evento,
+                )
+
+    def test_evento_fallido_queda_en_dead_letter(self):
+        incidencia = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Ticket para validar evento fallido.",
+            estado=get_estado(Incidencia.ESTADO_PENDIENTE),
+        )
+
+        with patch("tickets.services.registrar_auditoria", side_effect=RuntimeError("Fallo simulado")):
+            with self.assertRaisesMessage(RuntimeError, "Fallo simulado"):
+                emitir_evento_incidencia("incidencia.creada", incidencia, actor=self.usuario)
+
+        fallido = EventoFallido.objects.get(evento="incidencia.creada")
+        self.assertEqual(fallido.version_evento, 1)
+        self.assertEqual(fallido.payload["incidencia_id"], incidencia.pk)
+        self.assertEqual(fallido.payload["evento"], "incidencia.creada")
+        self.assertEqual(fallido.payload["version"], 1)
+        self.assertEqual(fallido.payload["actor_id"], self.usuario.pk)
+        self.assertIn("timestamp", fallido.payload)
+        self.assertEqual(fallido.intentos, 1)
+        self.assertIn("Fallo simulado", fallido.error)
+
+    def test_reprocesar_eventos_fallidos_marca_procesado(self):
+        incidencia = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Ticket para reprocesar evento fallido.",
+            estado=get_estado(Incidencia.ESTADO_PENDIENTE),
+        )
+        EventoFallido.objects.create(
+            evento="incidencia.creada",
+            version_evento=1,
+            payload={
+                "incidencia_id": incidencia.pk,
+                "evento": "incidencia.creada",
+                "version": 1,
+                "actor_id": self.usuario.pk,
+                "timestamp": timezone.now().isoformat(),
+                "metadata": {"origen": "test"},
+            },
+            error="Fallo previo.",
+            ultimo_error="Fallo previo.",
+            intentos=1,
+        )
+
+        call_command("reprocesar_eventos_fallidos")
+
+        fallido = EventoFallido.objects.get(evento="incidencia.creada")
+        self.assertTrue(fallido.procesado)
+        self.assertEqual(fallido.ultimo_error, "")
+        self.assertTrue(Auditoria.objects.filter(evento="incidencia.creada", referencia_id=incidencia.pk).exists())
+
+    def test_sla_por_vencer_se_marca_antes_del_vencimiento(self):
+        incidencia = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Ticket cerca de vencer SLA.",
+            estado=get_estado(Incidencia.ESTADO_PENDIENTE),
+        )
+        base = timezone.now() - timedelta(minutes=81)
+        Incidencia.objects.filter(pk=incidencia.pk).update(
+            fecha_creacion=base,
+            fecha_limite_respuesta=base + timedelta(minutes=100),
+            fecha_limite_resolucion=base + timedelta(minutes=200),
+            estado_sla=EstadoSLA.EN_TIEMPO,
+        )
+
+        call_command("procesar_sla_incidencias")
+
+        incidencia.refresh_from_db()
+        self.assertEqual(incidencia.estado_sla, EstadoSLA.POR_VENCER)
+        self.assertTrue(Auditoria.objects.filter(evento="incidencia.sla_por_vencer", referencia_id=incidencia.pk).exists())
+
+    def test_snapshot_metricas_guarda_historico_diario(self):
+        call_command("snapshot_metricas")
+
+        snapshot = MetricaDiaria.objects.get(fecha=timezone.localdate())
+        self.assertGreaterEqual(snapshot.tickets_abiertos, 0)
+        self.assertIn("reemplazos_activos", snapshot.metadata)
+
+    def test_integridad_global_fix_cierra_reemplazo_huerfano(self):
+        reemplazo = Equipo.objects.create(
+            codigo_equipo="PC-HUERFANO",
+            nombre_equipo="PC Reemplazo Huérfano",
+            tipo_equipo=self.tipo,
+            marca=self.marca,
+            modelo="Optiplex",
+            area=self.area,
+            estado=self.estado_operativo,
+            disponibilidad=Equipo.DISPONIBILIDAD_REEMPLAZO_TEMPORAL,
+            origen_ocupacion=Equipo.ORIGEN_OCUPACION_REEMPLAZO,
+            activo=True,
+        )
+        incidencia = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            equipo=self.equipo,
+            categoria="hardware",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Ticket cerrado con reemplazo huérfano.",
+            estado=get_estado(Incidencia.ESTADO_CERRADO),
+        )
+        registro = ReemplazoEquipoIncidencia.objects.create(
+            incidencia=incidencia,
+            equipo_original=self.equipo,
+            equipo_reemplazo=reemplazo,
+            area_origen=self.area,
+            area_destino=self.area,
+            usuario=self.tecnico,
+            motivo="Reemplazo huérfano de prueba.",
+            activo=True,
+        )
+
+        call_command("sistema_integridad_global", fix=True)
+
+        registro.refresh_from_db()
+        reemplazo.refresh_from_db()
+        self.assertFalse(registro.activo)
+        self.assertIsNotNone(registro.fecha_fin)
+        self.assertEqual(reemplazo.disponibilidad, Equipo.DISPONIBILIDAD_LIBRE)
+        self.assertIsNone(reemplazo.origen_ocupacion)

@@ -17,7 +17,7 @@ def reset_sequences(table_names):
 
 from django.contrib.admin.models import LogEntry
 from django.contrib.sessions.models import Session
-from tickets.models import CustomUser, Area, Estado, Incidencia, IncidenciaImagen, Notificacion, NotificacionUsuario, Comentario
+from tickets.models import CustomUser, Area, Estado, Incidencia, IncidenciaImagen, Notificacion, NotificacionUsuario, Comentario, ReemplazoEquipoIncidencia, SLAConfiguracion
 from inventario.models import Marca, TipoEquipo, EstadoEquipo, Equipo, HistorialEstadoEquipo
 from auditoria.models import Auditoria
 
@@ -37,6 +37,7 @@ def reset_database():
                 Session._meta.db_table,
                 Auditoria._meta.db_table,
                 IncidenciaImagen._meta.db_table,
+                ReemplazoEquipoIncidencia._meta.db_table,
                 Comentario._meta.db_table,
                 NotificacionUsuario._meta.db_table,
                 Notificacion._meta.db_table,
@@ -48,6 +49,7 @@ def reset_database():
                 Marca._meta.db_table,
                 TipoEquipo._meta.db_table,
                 EstadoEquipo._meta.db_table,
+                SLAConfiguracion._meta.db_table,
             ]
 
             # Auditoría y Logs
@@ -58,6 +60,7 @@ def reset_database():
             
             # Incidencias (Tickets) y relacionados
             IncidenciaImagen.objects.all().delete()
+            ReemplazoEquipoIncidencia.objects.all().delete()
             Comentario.objects.all().delete()
             NotificacionUsuario.objects.all().delete()
             Notificacion.objects.all().delete()
@@ -78,7 +81,8 @@ def reset_database():
             Marca.objects.all().delete()
             TipoEquipo.objects.all().delete()
             EstadoEquipo.objects.all().delete()
-            print("OK: Tablas maestras (Estado, Area, Marca, TipoEquipo, EstadoEquipo) limpias.")
+            SLAConfiguracion.objects.all().delete()
+            print("OK: Tablas maestras (Estado, Area, Marca, TipoEquipo, EstadoEquipo, SLA) limpias.")
             
             # 3. REINICIAR IDs (Secuencias)
             print("\n--- Reiniciando contadores de ID (PK = 1) ---")
@@ -109,6 +113,7 @@ def verificar_estado():
         "Marcas": Marca.objects.count(),
         "Tipos Equipo": TipoEquipo.objects.count(),
         "Estados Equipo": EstadoEquipo.objects.count(),
+        "SLA": SLAConfiguracion.objects.count(),
         "Usuarios (Conservados)": CustomUser.objects.count(),
     }
     

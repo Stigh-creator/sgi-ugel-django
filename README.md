@@ -29,6 +29,137 @@ Su objetivo principal es eliminar los cuellos de botella en la atención al usua
 - **Documentación:** ReportLab (Generación de PDF)
 - **Infraestructura:** Docker & Docker Compose (Listo para despliegue)
 
+## Mejoras de Producción
+
+### Servicios de dominio
+
+Las transiciones críticas de incidencias se centralizan en `tickets.services.IncidenciaService`:
+
+```python
+IncidenciaService.asignar(...)
+IncidenciaService.aceptar(...)
+IncidenciaService.rechazar(...)
+IncidenciaService.resolver(...)
+IncidenciaService.reabrir(...)
+IncidenciaService.cerrar(...)
+```
+
+Las operaciones usan `transaction.atomic()` y `select_for_update()` para bloquear incidencia y equipos relacionados durante cambios críticos.
+
+### Estados e inventario
+
+El inventario separa:
+
+- `estado_tecnico`: condición real del equipo.
+- `disponibilidad`: disponibilidad operativa.
+- `origen_ocupacion`: causa de ocupación.
+
+Disponibilidades soportadas:
+
+- `LIBRE`
+- `EN_USO`
+- `REEMPLAZO_TEMPORAL`
+
+### SLA
+
+El modelo `SLAConfiguracion` define tiempos de:
+
+- respuesta
+- resolución
+- auto-cierre
+
+Las incidencias almacenan:
+
+- `fecha_limite_respuesta`
+- `fecha_limite_resolucion`
+- `fecha_auto_cierre`
+- `estado_sla`
+- banderas de notificación SLA
+
+### Eventos
+
+Las notificaciones, auditoría y comentarios automáticos se emiten desde:
+
+```python
+emitir_evento_incidencia(evento, incidencia, actor=None, metadata=None)
+```
+
+Eventos implementados:
+
+- `incidencia.creada`
+- `incidencia.asignada`
+- `incidencia.aceptada`
+- `incidencia.rechazada`
+- `incidencia.reasignada`
+- `incidencia.comentada`
+- `incidencia.resuelta`
+- `incidencia.reabierta`
+- `incidencia.cerrada`
+- `incidencia.sla_por_vencer`
+- `incidencia.sla_respuesta_vencido`
+- `incidencia.sla_resolucion_vencido`
+- `inventario.estado_cambiado`
+- `inventario.reemplazo_registrado`
+
+### Trazabilidad
+
+`Auditoria.metadata` registra datos estructurados en JSON.
+`Auditoria.evento` + `Auditoria.hash_evento` tienen una restricción única en base de datos para impedir duplicados incluso con retries o workers concurrentes.
+`Auditoria.version_evento` versiona el contrato de eventos para evolucionar mensajes y metadata sin perder trazabilidad histórica.
+`EventoFallido` funciona como dead letter operativo para registrar payload normalizado, error e intentos cuando un evento no puede procesarse.
+`ReemplazoEquipoIncidencia` registra reemplazos temporales con incidencia, equipo original, equipo de reemplazo, áreas, responsable, fechas y metadata.
+`MetricaDiaria` guarda snapshots diarios para reportes históricos sin depender solo de consultas en vivo.
+
+### Integridad Administrativa
+
+Los campos críticos de incidencias e inventario quedan protegidos en Django Admin. Los cambios de estado, SLA, asignaciones, resolución, disponibilidad y origen de ocupación deben pasar por los servicios de dominio para conservar auditoría, inventario y notificaciones consistentes.
+
+### Índices Operativos
+
+Se agregaron índices para consultas de producción en incidencias, SLA, prioridad, disponibilidad de equipos y reemplazos activos. Esto mejora listados, jobs e integridad cuando el volumen de tickets crezca.
+
+### Comandos Programados
+
+Ejecutar manualmente:
+
+```bash
+python manage.py procesar_sla_incidencias
+python manage.py autocerrar_incidencias_resueltas
+python manage.py verificar_integridad_inventario
+python manage.py sistema_integridad_global
+python manage.py verificar_integridad_inventario --fix
+python manage.py sistema_integridad_global --fix
+python manage.py metricas_operativas_sgi
+python manage.py snapshot_metricas
+python manage.py reprocesar_eventos_fallidos
+```
+
+Ejecución recomendada en producción:
+
+```bash
+*/5 * * * * /ruta/python /ruta/manage.py procesar_sla_incidencias
+*/15 * * * * /ruta/python /ruta/manage.py autocerrar_incidencias_resueltas
+0 7 * * * /ruta/python /ruta/manage.py verificar_integridad_inventario
+5 0 * * * /ruta/python /ruta/manage.py snapshot_metricas
+*/30 * * * * /ruta/python /ruta/manage.py reprocesar_eventos_fallidos
+```
+
+Todos los comandos son idempotentes.
+
+`--fix` solo aplica correcciones seguras: SLA vencido, auto-cierre, reemplazos huérfanos cerrados y equipos ocupados sin origen pasan a `ASIGNACION_DIRECTA`. Los casos ambiguos de inventario se reportan para revisión manual.
+
+Los eventos de negocio usan `hash_evento` en auditoría para evitar duplicar notificaciones, comentarios automáticos e historial ante retries o jobs repetidos. El hook `USE_ASYNC` + `INCIDENCIA_EVENT_TASK` deja preparado el camino para procesar eventos con Celery u otro worker sin cambiar la API de dominio.
+
+### Backup Lógico
+
+En producción se recomienda backup lógico diario de la base de datos y retención mínima de 7 a 30 días. Para PostgreSQL:
+
+```bash
+pg_dump --format=custom --file=/backups/sgi_$(date +%Y%m%d).dump sgi_db
+```
+
+Validar restauración periódicamente en un entorno de prueba. Un backup que no se restaura no cuenta como backup.
+
 ## 📦 Instalación y Configuración
 
 ### Prerrequisitos

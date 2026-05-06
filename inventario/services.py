@@ -1,5 +1,7 @@
 from .models import HistorialEstadoEquipo, EstadoEquipo
 from auditoria.utils import registrar_auditoria
+from tickets.models import ReemplazoEquipoIncidencia
+from django.utils import timezone
 
 ESTADO_OPERATIVO = "Operativo"
 ESTADO_OBSERVACION = "Observación"
@@ -26,10 +28,12 @@ def registrar_cambio_manual_estado_equipo(*, equipo, nuevo_estado, usuario, obse
         observacion=observacion.strip(),
     )
     equipo.estado = nuevo_estado
+    equipo.estado_tecnico = nuevo_estado
     equipo.activo = nuevo_estado.nombre != "Dado de baja"
     if not equipo.activo:
         equipo.disponibilidad = equipo.DISPONIBILIDAD_EN_USO
-    equipo.save(update_fields=["estado", "activo", "disponibilidad", "actualizado_en"])
+        equipo.origen_ocupacion = equipo.ORIGEN_OCUPACION_MANUAL
+    equipo.save(update_fields=["estado", "estado_tecnico", "activo", "disponibilidad", "origen_ocupacion", "actualizado_en"])
     
     registrar_auditoria(
         None, 
@@ -37,7 +41,15 @@ def registrar_cambio_manual_estado_equipo(*, equipo, nuevo_estado, usuario, obse
         "cambió estado equipo", 
         f"Equipo {equipo.codigo_equipo}: {estado_anterior} -> {nuevo_estado}. Motivo: {observacion}. "
         f"equipo_id={equipo.id}; usuario_id={usuario.id if usuario else 'sistema'}; origen=Administración.",
-        equipo.id
+        equipo.id,
+        metadata={
+            "equipo_id": equipo.id,
+            "estado_anterior": str(estado_anterior),
+            "estado_nuevo": str(nuevo_estado),
+            "usuario_id": usuario.id if usuario else None,
+            "origen": "Administración",
+        },
+        actor=usuario,
     )
     return historial
 
@@ -61,10 +73,12 @@ def cambiar_estado_equipo_por_incidencia(*, equipo, estado_nombre, usuario, inci
         observacion=f"{motivo} Incidencia {incidencia_codigo}.",
     )
     equipo.estado = nuevo_estado
+    equipo.estado_tecnico = nuevo_estado
     equipo.activo = nuevo_estado.nombre != ESTADO_BAJA
     if not equipo.activo:
         equipo.disponibilidad = equipo.DISPONIBILIDAD_EN_USO
-    equipo.save(update_fields=["estado", "activo", "disponibilidad", "actualizado_en"])
+        equipo.origen_ocupacion = equipo.ORIGEN_OCUPACION_INCIDENCIA
+    equipo.save(update_fields=["estado", "estado_tecnico", "activo", "disponibilidad", "origen_ocupacion", "actualizado_en"])
 
     registrar_auditoria(
         None,
@@ -72,7 +86,16 @@ def cambiar_estado_equipo_por_incidencia(*, equipo, estado_nombre, usuario, inci
         "cambió estado equipo",
         f"Equipo {equipo.codigo_equipo}: {estado_anterior} -> {nuevo_estado}. Motivo: {motivo} Incidencia {incidencia_codigo}. "
         f"equipo_id={equipo.id}; usuario_id={usuario.id if usuario else 'sistema'}; origen=Incidencia.",
-        equipo.id
+        equipo.id,
+        metadata={
+            "equipo_id": equipo.id,
+            "estado_anterior": str(estado_anterior),
+            "estado_nuevo": str(nuevo_estado),
+            "usuario_id": usuario.id if usuario else None,
+            "incidencia_codigo": incidencia_codigo,
+            "origen": "Incidencia",
+        },
+        actor=usuario,
     )
     return historial
 
@@ -96,11 +119,30 @@ def registrar_reemplazo_temporal_por_incidencia(*, incidencia, usuario):
 
     if area_cambia:
         reemplazo.area = area_nueva
-    reemplazo.disponibilidad = reemplazo.DISPONIBILIDAD_EN_USO
-    update_fields = ["disponibilidad", "actualizado_en"]
+    reemplazo.disponibilidad = reemplazo.DISPONIBILIDAD_REEMPLAZO_TEMPORAL
+    reemplazo.origen_ocupacion = reemplazo.ORIGEN_OCUPACION_REEMPLAZO
+    update_fields = ["disponibilidad", "origen_ocupacion", "actualizado_en"]
     if area_cambia:
         update_fields.append("area")
     reemplazo.save(update_fields=update_fields)
+    ReemplazoEquipoIncidencia.objects.update_or_create(
+        incidencia=incidencia,
+        equipo_reemplazo=reemplazo,
+        activo=True,
+        defaults={
+            "equipo_original": equipo_original,
+            "area_origen": area_anterior,
+            "area_destino": area_nueva,
+            "usuario": usuario,
+            "motivo": f"Reemplazo temporal por incidencia {incidencia.codigo}.",
+            "metadata": {
+                "incidencia_id": incidencia.id,
+                "codigo": incidencia.codigo,
+                "equipo_original_id": getattr(equipo_original, "id", None),
+                "equipo_reemplazo_id": reemplazo.id,
+            },
+        },
+    )
 
     descripcion_area = (
         f"Área actualizada de {area_anterior_nombre} a {area_nueva_nombre}."
@@ -117,12 +159,22 @@ def registrar_reemplazo_temporal_por_incidencia(*, incidencia, usuario):
             f"Acción realizada por {usuario.get_full_name() or usuario.username if usuario else 'Sistema'}."
         ),
         reemplazo.id,
+        metadata={
+            "incidencia_id": incidencia.id,
+            "codigo": incidencia.codigo,
+            "equipo_original_id": getattr(equipo_original, "id", None),
+            "equipo_reemplazo_id": reemplazo.id,
+            "area_origen_id": getattr(area_anterior, "id", None),
+            "area_destino_id": getattr(area_nueva, "id", None),
+            "origen": "Incidencia",
+        },
+        actor=usuario,
     )
     return reemplazo
 
 
 def actualizar_estado_equipo_por_incidencia(*, equipo, usuario, incidencia_codigo):
-    if not equipo or not equipo.activo or equipo.estado.nombre != ESTADO_OPERATIVO:
+    if not equipo or not equipo.activo or equipo.estado_tecnico.nombre != ESTADO_OPERATIVO:
         return None
     return cambiar_estado_equipo_por_incidencia(
         equipo=equipo,
@@ -134,7 +186,7 @@ def actualizar_estado_equipo_por_incidencia(*, equipo, usuario, incidencia_codig
 
 
 def marcar_equipo_en_reparacion_por_asignacion(*, equipo, usuario, incidencia_codigo):
-    if not equipo or not equipo.activo or equipo.estado.nombre == ESTADO_BAJA:
+    if not equipo or not equipo.activo or equipo.estado_tecnico.nombre == ESTADO_BAJA:
         return None
     return cambiar_estado_equipo_por_incidencia(
         equipo=equipo,
@@ -198,6 +250,7 @@ def aplicar_inventario_al_resolver_incidencia(*, incidencia, usuario):
 
 
 def aplicar_inventario_al_cerrar_incidencia(*, incidencia, usuario):
+    cerrar_reemplazos_temporales_por_incidencia(incidencia=incidencia, usuario=usuario)
     if not incidencia.equipo or incidencia.tipo_resolucion != incidencia.RESOLUCION_REPARADO:
         return None
     return cambiar_estado_equipo_por_incidencia(
@@ -207,3 +260,44 @@ def aplicar_inventario_al_cerrar_incidencia(*, incidencia, usuario):
         incidencia_codigo=incidencia.codigo,
         motivo="Cierre confirmado por solicitante tras reparación.",
     )
+
+
+def cerrar_reemplazos_temporales_por_incidencia(*, incidencia, usuario):
+    cerrados = []
+    reemplazos = ReemplazoEquipoIncidencia.objects.select_related("equipo_reemplazo", "area_origen").filter(
+        incidencia=incidencia,
+        activo=True,
+    )
+    for reemplazo in reemplazos:
+        equipo = reemplazo.equipo_reemplazo
+        reemplazo.activo = False
+        reemplazo.fecha_fin = timezone.now()
+        reemplazo.save(update_fields=["activo", "fecha_fin"])
+        if equipo:
+            equipo.disponibilidad = equipo.DISPONIBILIDAD_LIBRE
+            equipo.origen_ocupacion = None
+            if reemplazo.area_origen_id:
+                equipo.area = reemplazo.area_origen
+                equipo.save(update_fields=["disponibilidad", "origen_ocupacion", "area", "actualizado_en"])
+            else:
+                equipo.save(update_fields=["disponibilidad", "origen_ocupacion", "actualizado_en"])
+            registrar_auditoria(
+                None,
+                "Inventario",
+                "cerró reemplazo temporal",
+                (
+                    f"Equipo {equipo.codigo_equipo} liberado como reemplazo temporal "
+                    f"al cerrar la incidencia {incidencia.codigo}."
+                ),
+                equipo.id,
+                metadata={
+                    "incidencia_id": incidencia.id,
+                    "codigo": incidencia.codigo,
+                    "reemplazo_id": reemplazo.id,
+                    "equipo_reemplazo_id": equipo.id,
+                    "origen": "Incidencia",
+                },
+                actor=usuario,
+            )
+        cerrados.append(reemplazo)
+    return cerrados

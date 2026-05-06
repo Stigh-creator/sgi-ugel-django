@@ -72,7 +72,7 @@ class IncidenciaForm(forms.ModelForm):
         from inventario.models import Equipo, EstadoEquipo
 
         estado_operativo = EstadoEquipo.objects.filter(nombre="Operativo").first()
-        equipos_operativos = Equipo.objects.filter(activo=True, estado=estado_operativo)
+        equipos_operativos = Equipo.objects.filter(activo=True, estado_tecnico=estado_operativo)
 
         if user:
             if user.es_usuario:
@@ -134,7 +134,7 @@ class IncidenciaForm(forms.ModelForm):
             elif equipo_val == "otro":
                 if not cleaned_data.get("otro_tipo") or not cleaned_data.get("otro_marca") or not cleaned_data.get("otro_modelo"):
                     raise ValidationError("Si el equipo no está en la lista, debe completar Tipo, Marca y Modelo.")
-            elif equipo and equipo.estado.nombre != "Operativo":
+            elif equipo and equipo.estado_tecnico.nombre != "Operativo":
                 self.add_error("equipo", "Solo puede reportar incidencias sobre equipos en estado Operativo.")
         return cleaned_data
 
@@ -185,7 +185,7 @@ class IncidenciaCierreForm(forms.ModelForm):
         estado_operativo = EstadoEquipo.objects.filter(nombre="Operativo").first()
         reemplazos = Equipo.objects.filter(
             activo=True,
-            estado=estado_operativo,
+            estado_tecnico=estado_operativo,
             disponibilidad=Equipo.DISPONIBILIDAD_LIBRE,
         )
         if incidencia and incidencia.equipo_id:
@@ -226,7 +226,7 @@ class IncidenciaCierreForm(forms.ModelForm):
                 self.add_error("equipo_reemplazo", "El equipo de reemplazo no puede ser el mismo")
             elif not equipo_reemplazo_es_compatible(equipo, equipo_reemplazo):
                 self.add_error("equipo_reemplazo", "El equipo de reemplazo debe ser del mismo tipo o compatible con el equipo afectado")
-            elif not equipo_reemplazo.activo or equipo_reemplazo.estado.nombre != "Operativo":
+            elif not equipo_reemplazo.activo or equipo_reemplazo.estado_tecnico.nombre != "Operativo":
                 self.add_error("equipo_reemplazo", "El equipo de reemplazo no está disponible")
             elif equipo_reemplazo.disponibilidad != equipo_reemplazo.DISPONIBILIDAD_LIBRE:
                 self.add_error("equipo_reemplazo", "El equipo de reemplazo no está libre")
@@ -295,7 +295,7 @@ class IncidenciaAdminForm(forms.ModelForm):
         from inventario.models import Equipo, EstadoEquipo
 
         estado_operativo = EstadoEquipo.objects.filter(nombre="Operativo").first()
-        equipo_queryset = Equipo.objects.filter(activo=True, estado=estado_operativo)
+        equipo_queryset = Equipo.objects.filter(activo=True, estado_tecnico=estado_operativo)
         if self.instance and self.instance.pk and self.instance.equipo_id:
             equipo_queryset = Equipo.objects.filter(
                 pk__in=list(equipo_queryset.values_list("pk", flat=True)) + [self.instance.equipo_id]
@@ -354,7 +354,7 @@ class IncidenciaAdminForm(forms.ModelForm):
             elif equipo_val == "otro":
                 if not cleaned_data.get("otro_tipo") or not cleaned_data.get("otro_marca") or not cleaned_data.get("otro_modelo"):
                     raise ValidationError("Complete los datos del equipo no listado.")
-            elif equipo and equipo.estado.nombre != "Operativo":
+            elif equipo and equipo.estado_tecnico.nombre != "Operativo":
                 self.add_error("equipo", "Solo puede asociar incidencias a equipos en estado Operativo.")
 
         if not tecnico_asignado:

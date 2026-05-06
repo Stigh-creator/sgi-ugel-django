@@ -51,7 +51,7 @@ def get_inventario_context(request, form=None):
     if area_id:
         equipos_list = equipos_list.filter(area_id=area_id)
     if estado:
-        equipos_list = equipos_list.filter(estado__nombre=estado)
+        equipos_list = equipos_list.filter(estado_tecnico__nombre=estado)
     if disponibilidad:
         equipos_list = equipos_list.filter(disponibilidad=disponibilidad)
     if marca_id:
@@ -61,11 +61,11 @@ def get_inventario_context(request, form=None):
         
     stats = Equipo.objects.filter(activo=True).aggregate(
         total=Count('id'),
-        operativos=Count('id', filter=Q(estado__nombre='Operativo')),
-        en_revision=Count('id', filter=Q(estado__nombre='En revisión')),
-        reparacion=Count('id', filter=Q(estado__nombre='En reparación')),
-        inoperativos=Count('id', filter=Q(estado__nombre='Inoperativo')),
-        baja=Count('id', filter=Q(estado__nombre='Dado de baja')),
+        operativos=Count('id', filter=Q(estado_tecnico__nombre='Operativo')),
+        en_revision=Count('id', filter=Q(estado_tecnico__nombre='En revisión')),
+        reparacion=Count('id', filter=Q(estado_tecnico__nombre='En reparación')),
+        inoperativos=Count('id', filter=Q(estado_tecnico__nombre='Inoperativo')),
+        baja=Count('id', filter=Q(estado_tecnico__nombre='Dado de baja')),
         libres=Count('id', filter=Q(disponibilidad=Equipo.DISPONIBILIDAD_LIBRE)),
         en_uso=Count('id', filter=Q(disponibilidad=Equipo.DISPONIBILIDAD_EN_USO)),
     )
@@ -138,6 +138,9 @@ def equipo_editar(request, pk):
             cambios.append(f"Nombre: {nombre_ant} -> {equipo.nombre_equipo}")
         if disponibilidad_ant != equipo.get_disponibilidad_display():
             cambios.append(f"Disponibilidad: {disponibilidad_ant} -> {equipo.get_disponibilidad_display()}")
+            if equipo.disponibilidad != Equipo.DISPONIBILIDAD_LIBRE and not equipo.origen_ocupacion:
+                equipo.origen_ocupacion = Equipo.ORIGEN_OCUPACION_ASIGNACION_DIRECTA
+                equipo.save(update_fields=["origen_ocupacion", "actualizado_en"])
             
         desc = f"Se actualizó el equipo {equipo.codigo_equipo}."
         if cambios:
@@ -164,7 +167,7 @@ def equipo_detalle(request, pk):
         equipo.incidencia_set.select_related('creador', 'tecnico_asignado', 'estado')
         .order_by('-fecha_creacion')
     )
-    historial_estado_form = EquipoEstadoUpdateForm(current_estado=equipo.estado)
+    historial_estado_form = EquipoEstadoUpdateForm(current_estado=equipo.estado_tecnico)
     return render(
         request,
         'inventario/equipo_detalle.html',
@@ -181,7 +184,7 @@ def equipo_detalle(request, pk):
 @require_POST
 def equipo_actualizar_estado(request, pk):
     equipo = get_object_or_404(Equipo, pk=pk)
-    form = EquipoEstadoUpdateForm(request.POST, current_estado=equipo.estado)
+    form = EquipoEstadoUpdateForm(request.POST, current_estado=equipo.estado_tecnico)
     if form.is_valid():
         historial = registrar_cambio_manual_estado_equipo(
             equipo=equipo,

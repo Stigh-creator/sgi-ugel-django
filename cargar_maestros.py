@@ -6,7 +6,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "gestion_incidencias.settings")
 django.setup()
 
 from inventario.models import Marca, TipoEquipo, EstadoEquipo
-from tickets.models import Area, Estado, Incidencia
+from tickets.models import Area, Estado, Incidencia, SLAConfiguracion
 
 
 ESTADOS_BASE = list(Incidencia.FLUJO_ESTADOS)
@@ -84,6 +84,13 @@ ESTADOS_EQUIPO_BASE = [
     'Dado de baja',
 ]
 
+SLA_BASE = [
+    {"prioridad": Incidencia.PRIORIDAD_BAJA, "respuesta": 480, "resolucion": 4320, "auto_cierre": 96},
+    {"prioridad": Incidencia.PRIORIDAD_MEDIA, "respuesta": 240, "resolucion": 1440, "auto_cierre": 72},
+    {"prioridad": Incidencia.PRIORIDAD_ALTA, "respuesta": 120, "resolucion": 480, "auto_cierre": 48},
+    {"prioridad": Incidencia.PRIORIDAD_CRITICA, "respuesta": 30, "resolucion": 240, "auto_cierre": 24},
+]
+
 def cargar_estados():
     print("\n--- Cargando Estados ---")
     for nombre in ESTADOS_BASE:
@@ -131,12 +138,29 @@ def cargar_estados_equipo():
         print(f"{'[NUEVO]' if created else '[EXISTE]'} Estado Equipo: {nombre}")
 
 
+def cargar_sla_configuracion():
+    print("\n--- Cargando Configuracion SLA ---")
+    for data in SLA_BASE:
+        sla, created = SLAConfiguracion.objects.update_or_create(
+            prioridad=data["prioridad"],
+            categoria=None,
+            defaults={
+                "tiempo_respuesta_minutos": data["respuesta"],
+                "tiempo_resolucion_minutos": data["resolucion"],
+                "auto_cierre_horas": data["auto_cierre"],
+                "activo": True,
+            },
+        )
+        print(f"{'[NUEVO]' if created else '[ACTUALIZADO]'} SLA: {sla}")
+
+
 def cargar_datos_maestros():
     cargar_estados()
     cargar_areas()
     cargar_marcas()
     cargar_tipos_equipo()
     cargar_estados_equipo()
+    cargar_sla_configuracion()
 
 
 if __name__ == "__main__":
