@@ -80,6 +80,17 @@
 </div>
 
 <script>
+    (function () {
+        function syncLoginViewport() {
+            document.documentElement.style.setProperty('--login-vh', `${window.innerHeight}px`);
+        }
+
+        syncLoginViewport();
+        window.addEventListener('resize', syncLoginViewport, { passive: true });
+        window.addEventListener('orientationchange', syncLoginViewport, { passive: true });
+        window.addEventListener('pageshow', syncLoginViewport, { passive: true });
+    })();
+
     document.addEventListener('DOMContentLoaded', function() {
         const togglePassword = document.querySelector('#togglePassword');
         const password = document.querySelector('#password');

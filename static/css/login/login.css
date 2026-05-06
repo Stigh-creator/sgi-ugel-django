@@ -172,11 +172,29 @@
 
 /* Ajustes finales de fuente para móviles */
 @media (max-width: 767.98px) {
+    html,
+    body {
+        width: 100%;
+        min-height: 100%;
+        overflow-x: hidden;
+        background: #fff;
+    }
+
     .login-wrapper {
-        min-height: 100svh !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-height: var(--login-vh, 100vh) !important;
+        height: var(--login-vh, 100vh) !important;
+        margin: 0 !important;
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .branding-side {
+        flex: 0 0 auto;
+        width: 100% !important;
+        max-width: 100% !important;
         min-height: auto;
         padding: 1rem 1.25rem !important;
     }
@@ -201,9 +219,17 @@
     }
 
     .login-side {
-        flex-grow: 0;
-        justify-content: flex-start;
+        flex: 1 1 auto;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-height: 0;
+        justify-content: center;
         padding: 1rem 1.25rem 0.75rem !important;
+    }
+
+    .login-form-container,
+    .login-footer {
+        max-width: 100%;
     }
 
     .login-form-container > .text-center {
@@ -267,11 +293,16 @@
     }
 
     .login-side {
+        justify-content: flex-start;
         padding-top: 0.75rem !important;
     }
 
     .login-form-container > .text-center {
         margin-bottom: 0.75rem !important;
+    }
+
+    .login-footer {
+        display: none;
     }
 }
 
@@ -280,8 +311,20 @@ body {
     overflow-x: hidden;
 }
 
+.content-area {
+    margin-left: 0 !important;
+    width: 100% !important;
+    min-height: var(--login-vh, 100vh) !important;
+    background: #fff !important;
+    overflow-x: hidden !important;
+}
+
 .content-area > .p-4 {
+    width: 100% !important;
+    min-height: var(--login-vh, 100vh) !important;
     padding: 0 !important;
+    background: #fff !important;
+    overflow-x: hidden !important;
 }
 
 .app-topbar {
