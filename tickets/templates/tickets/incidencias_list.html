@@ -11,8 +11,8 @@
 {% block content %}
 {% csrf_token %}
 <div class="container-fluid">
-    <div class="d-flex flex-column flex-lg-row align-items-start align-items-lg-center justify-content-between mb-4 gap-3">
-        <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-3 gap-md-4 w-100">
+    <div class="d-flex flex-column flex-lg-row align-items-start align-items-lg-center mb-4 gap-3">
+        <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-3 gap-md-4">
             <div>
                 <h1 class="h3 mb-1 fw-bold text-dark">Centro de Incidencias</h1>
                 <p class="text-muted small mb-0">Listado unificado de reportes y soporte técnico.</p>
@@ -32,8 +32,8 @@
 
         <button
             type="button"
-            class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2 w-100 w-lg-auto mt-2 mt-lg-0"
-            style="white-space: nowrap; flex-shrink: 0;"
+            class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2 ms-lg-auto mt-2 mt-lg-0"
+            style="width: fit-content !important; min-width: fit-content !important; white-space: nowrap; flex-shrink: 0;"
             data-bs-toggle="modal"
             data-bs-target="#genericModal"
             hx-get="{% url 'crear_incidencia_modal' %}"
