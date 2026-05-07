@@ -145,7 +145,7 @@
                 </div>
             </div>
         </div>
-        <p class="text-muted tiny-text mt-2 mb-0 ps-1"><i class="fas fa-info-circle me-1"></i>Formatos: JPG, PNG. Máx 8 MB por archivo; el sistema optimiza la imagen al guardar.</p>
+        <p class="text-muted tiny-text mt-2 mb-0 ps-1"><i class="fas fa-info-circle me-1"></i>Formatos: JPG, PNG, WebP. Máx 8 MB por archivo; el sistema optimiza la imagen al guardar.</p>
         {% if form.imagen_adjunta.errors %}<div class="text-danger tiny-text mt-1">{{ form.imagen_adjunta.errors.0 }}</div>{% endif %}
         {% if form.imagen_2.errors %}<div class="text-danger tiny-text mt-1">{{ form.imagen_2.errors.0 }}</div>{% endif %}
         {% if form.imagen_3.errors %}<div class="text-danger tiny-text mt-1">{{ form.imagen_3.errors.0 }}</div>{% endif %}
@@ -283,6 +283,7 @@
         const descriptionCounter = form.querySelector('#descriptionCounter');
         const mainImageInput = form.querySelector('#id_imagen_adjunta');
         const prioritySelect = form.querySelector('#id_prioridad');
+        let equiposRequestSeq = 0;
         const recommendationChecks = {
             category: form.closest('.modal-content, .container-fluid')?.querySelector('[data-check-target="category"]'),
             priority: form.closest('.modal-content, .container-fluid')?.querySelector('[data-check-target="priority"]'),
@@ -340,9 +341,47 @@
             guiaCategoriasContent.innerHTML = text;
         };
 
+        const getSelectValue = (selectEl) => {
+            if (!selectEl) return '';
+            if (selectEl.tomselect) return selectEl.tomselect.getValue() || '';
+            return selectEl.value || '';
+        };
+
+        const refreshEquiposForArea = async () => {
+            if (!areaSelect || !eqSelect || catSelect?.value !== 'hardware') return;
+            const requestSeq = ++equiposRequestSeq;
+            const params = new URLSearchParams();
+            params.set('area', getSelectValue(areaSelect));
+            params.set('categoria', catSelect.value || '');
+            try {
+                const response = await fetch(`/incidencias/get-equipos/?${params.toString()}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!response.ok) return;
+                const html = await response.text();
+                if (requestSeq !== equiposRequestSeq) return;
+                if (eqSelect.tomselect) {
+                    eqSelect.tomselect.destroy();
+                }
+                eqSelect.innerHTML = html;
+                eqSelect.value = '';
+                if (window.TomSelect && eqSelect.classList.contains('live-search')) {
+                    new TomSelect(eqSelect, {
+                        create: false,
+                        sortField: { field: 'text', direction: 'asc' }
+                    });
+                }
+                toggleEquipoOtro(eqSelect);
+                updateChecklist();
+            } catch (error) {
+                console.warn('No se pudo cargar equipos por área.', error);
+            }
+        };
+
         if (catSelect) {
             catSelect.addEventListener('change', () => {
                 toggleEquipoSection(catSelect);
+                refreshEquiposForArea();
                 updateChecklist();
                 updateGuiaCategorias();
             });
@@ -366,6 +405,14 @@
                 el.addEventListener('input', updateChecklist);
             }
         });
+        if (areaSelect) {
+            areaSelect.addEventListener('change', refreshEquiposForArea);
+            window.setTimeout(() => {
+                if (areaSelect.tomselect) {
+                    areaSelect.tomselect.on('change', refreshEquiposForArea);
+                }
+            }, 0);
+        }
 
         // Configurar previsualización para todas las imágenes
         ['id_imagen_adjunta', 'id_imagen_2', 'id_imagen_3'].forEach(id => {

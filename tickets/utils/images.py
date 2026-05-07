@@ -1,5 +1,5 @@
 import os
-from PIL import Image
+from PIL import Image, ImageOps
 
 def process_image(image_field, size=(800, 800), quality=75):
     """
@@ -16,15 +16,26 @@ def process_image(image_field, size=(800, 800), quality=75):
     img_path = image_field.path
     if os.path.exists(img_path):
         try:
-            img = Image.open(img_path)
-            # Solo redimensiona si es más grande que el límite
+            original_img = Image.open(img_path)
+            image_format = (original_img.format or "").upper()
+            img = ImageOps.exif_transpose(original_img)
+
             if img.height > size[1] or img.width > size[0]:
                 img.thumbnail(size)
-                # Calidad optimizada para reducir el peso
-                img.save(img_path, quality=quality, optimize=True)
-            elif quality < 100:
-                # Incluso si no se redimensiona, guardar con calidad optimizada
+
+            save_kwargs = {"optimize": True}
+            if image_format in {"JPEG", "JPG", "WEBP"}:
+                save_kwargs["quality"] = quality
+            if image_format in {"JPEG", "JPG"} and img.mode in {"RGBA", "P"}:
+                img = img.convert("RGB")
+
+            if image_format == "PNG":
+                img.save(img_path, format="PNG", **save_kwargs)
+            elif image_format == "WEBP":
+                img.save(img_path, format="WEBP", **save_kwargs)
+            elif image_format in {"JPEG", "JPG"}:
+                img.save(img_path, format="JPEG", **save_kwargs)
+            else:
                 img.save(img_path, quality=quality, optimize=True)
         except Exception as e:
-            # Log error or handle gracefully
             print(f"Error processing image {img_path}: {e}")

@@ -13,12 +13,21 @@ from ..services import (
 
 MAX_INCIDENT_IMAGE_UPLOAD_SIZE = 8 * 1024 * 1024
 MAX_INCIDENT_IMAGE_UPLOAD_LABEL = "8 MB"
+IMAGE_INPUT_ACCEPT = "image/jpeg,image/png,image/webp"
 
 
 def validate_incident_image_size(file, message_prefix="La imagen"):
     if file and file.size > MAX_INCIDENT_IMAGE_UPLOAD_SIZE:
         raise ValidationError(f"{message_prefix} no debe superar los {MAX_INCIDENT_IMAGE_UPLOAD_LABEL}.")
     return file
+
+
+def filtrar_equipos_por_area_principal(equipos_queryset, area):
+    if not area:
+        return equipos_queryset.none()
+    if not area.sede_principal:
+        return equipos_queryset.none()
+    return equipos_queryset.filter(area__sede_principal=area.sede_principal).distinct()
 
 
 class IncidenciaForm(forms.ModelForm):
@@ -40,7 +49,7 @@ class IncidenciaForm(forms.ModelForm):
         widgets = {
             "categoria": forms.Select(attrs={"class": "form-select", "onchange": "toggleEquipoSection(this)"}),
             "prioridad": forms.Select(attrs={"class": "form-select"}),
-            "area": forms.Select(attrs={"class": "form-select live-search", "hx-get": "/incidencias/get-equipos/", "hx-target": "#id_equipo", "hx-include": "[name='categoria']"}),
+            "area": forms.Select(attrs={"class": "form-select live-search", "hx-get": "/incidencias/get-equipos/", "hx-target": "#id_equipo", "hx-include": "[name='area'], [name='categoria']"}),
             "descripcion": forms.Textarea(attrs={"class": "form-control w-100", "rows": 4, "placeholder": "Describe detalladamente el problema..."}),
             "otro_tipo": forms.TextInput(attrs={"placeholder": "Ej: Monitor, Teclado, etc."}),
             "otro_marca": forms.TextInput(attrs={"placeholder": "Ej: Dell, HP, Samsung"}),
@@ -51,17 +60,17 @@ class IncidenciaForm(forms.ModelForm):
     imagen_adjunta = forms.ImageField(
         required=True,
         label="Evidencia Principal",
-        widget=forms.FileInput(attrs={"class": "form-control", "accept": "image/*", "capture": "camera"})
+        widget=forms.FileInput(attrs={"class": "form-control", "accept": IMAGE_INPUT_ACCEPT, "capture": "camera"})
     )
     imagen_2 = forms.ImageField(
         required=False,
         label="Imagen Adicional 1",
-        widget=forms.FileInput(attrs={"class": "form-control", "accept": "image/*", "capture": "camera"})
+        widget=forms.FileInput(attrs={"class": "form-control", "accept": IMAGE_INPUT_ACCEPT, "capture": "camera"})
     )
     imagen_3 = forms.ImageField(
         required=False,
         label="Imagen Adicional 2",
-        widget=forms.FileInput(attrs={"class": "form-control", "accept": "image/*", "capture": "camera"})
+        widget=forms.FileInput(attrs={"class": "form-control", "accept": IMAGE_INPUT_ACCEPT, "capture": "camera"})
     )
 
     def __init__(self, *args, **kwargs):
@@ -94,9 +103,10 @@ class IncidenciaForm(forms.ModelForm):
                 
                 area_id = self.data.get('area') or (self.instance.area.id if self.instance.pk and self.instance.area else None)
                 if area_id:
-                    self.fields["equipo"].queryset = equipos_operativos.filter(area_id=area_id)
+                    selected_area = Area.objects.filter(pk=area_id).first()
+                    self.fields["equipo"].queryset = filtrar_equipos_por_area_principal(equipos_operativos, selected_area)
                 else:
-                    self.fields["equipo"].queryset = equipos_operativos
+                    self.fields["equipo"].queryset = Equipo.objects.none()
 
         posted_equipo_id = self.data.get("equipo") if self.is_bound else None
         if posted_equipo_id and posted_equipo_id != "otro":
@@ -120,6 +130,14 @@ class IncidenciaForm(forms.ModelForm):
             if equipo.area.sede_principal != user.area.sede_principal:
                 raise ValidationError("El equipo no pertenece a su área")
 
+        if equipo and user and not user.es_usuario:
+            selected_area = self.cleaned_data.get("area")
+            if selected_area:
+                if not selected_area.sede_principal:
+                    raise ValidationError("El área elegida no tiene una sede principal configurada.")
+                if not equipo.area or equipo.area.sede_principal != selected_area.sede_principal:
+                    raise ValidationError("El equipo seleccionado no pertenece al área principal elegida.")
+
         return equipo
 
     def clean(self):
@@ -129,6 +147,8 @@ class IncidenciaForm(forms.ModelForm):
         equipo = cleaned_data.get("equipo")
 
         if categoria == "hardware":
+            if self.user and not self.user.es_usuario and not cleaned_data.get("area"):
+                self.add_error("area", "Seleccione el área solicitante para cargar solo sus equipos.")
             if not equipo_val:
                 self.add_error("equipo", "Para fallas de Hardware debe seleccionar un equipo o la opción 'OTRO'.")
             elif equipo_val == "otro":
@@ -158,17 +178,17 @@ class IncidenciaCierreForm(forms.ModelForm):
     evidencia_solucion = forms.ImageField(
         required=True,
         label="Evidencia de Solución 1",
-        widget=forms.FileInput(attrs={"class": "form-control", "accept": "image/*", "capture": "camera"})
+        widget=forms.FileInput(attrs={"class": "form-control", "accept": IMAGE_INPUT_ACCEPT, "capture": "camera"})
     )
     evidencia_solucion_2 = forms.ImageField(
         required=False,
         label="Evidencia de Solución 2",
-        widget=forms.FileInput(attrs={"class": "form-control", "accept": "image/*", "capture": "camera"})
+        widget=forms.FileInput(attrs={"class": "form-control", "accept": IMAGE_INPUT_ACCEPT, "capture": "camera"})
     )
     evidencia_solucion_3 = forms.ImageField(
         required=False,
         label="Evidencia de Solución 3",
-        widget=forms.FileInput(attrs={"class": "form-control", "accept": "image/*", "capture": "camera"})
+        widget=forms.FileInput(attrs={"class": "form-control", "accept": IMAGE_INPUT_ACCEPT, "capture": "camera"})
     )
 
     def __init__(self, *args, **kwargs):
@@ -256,17 +276,17 @@ class IncidenciaAdminForm(forms.ModelForm):
     imagen_adjunta = forms.ImageField(
         required=True,
         label="Evidencia Principal",
-        widget=forms.FileInput(attrs={"class": "form-control", "accept": "image/*", "capture": "camera"})
+        widget=forms.FileInput(attrs={"class": "form-control", "accept": IMAGE_INPUT_ACCEPT, "capture": "camera"})
     )
     imagen_2 = forms.ImageField(
         required=False,
         label="Imagen Adicional 1",
-        widget=forms.FileInput(attrs={"class": "form-control", "accept": "image/*", "capture": "camera"})
+        widget=forms.FileInput(attrs={"class": "form-control", "accept": IMAGE_INPUT_ACCEPT, "capture": "camera"})
     )
     imagen_3 = forms.ImageField(
         required=False,
         label="Imagen Adicional 2",
-        widget=forms.FileInput(attrs={"class": "form-control", "accept": "image/*", "capture": "camera"})
+        widget=forms.FileInput(attrs={"class": "form-control", "accept": IMAGE_INPUT_ACCEPT, "capture": "camera"})
     )
 
     class Meta:
@@ -301,6 +321,26 @@ class IncidenciaAdminForm(forms.ModelForm):
                 pk__in=list(equipo_queryset.values_list("pk", flat=True)) + [self.instance.equipo_id]
             ).distinct()
         self.fields["equipo"].queryset = equipo_queryset
+        area_id = self.data.get("area") or (self.instance.area_id if self.instance and self.instance.pk else None)
+        if area_id:
+            selected_area = Area.objects.filter(pk=area_id).first()
+            self.fields["equipo"].queryset = filtrar_equipos_por_area_principal(
+                self.fields["equipo"].queryset,
+                selected_area,
+            )
+        else:
+            self.fields["equipo"].queryset = Equipo.objects.none()
+        posted_equipo_id = self.data.get("equipo") if self.is_bound else None
+        if posted_equipo_id and posted_equipo_id != "otro":
+            equipo_ids = list(self.fields["equipo"].queryset.values_list("pk", flat=True))
+            equipo_ids.append(posted_equipo_id)
+            self.fields["equipo"].queryset = Equipo.objects.filter(pk__in=equipo_ids).distinct()
+
+        self.fields["area"].widget.attrs.update({
+            "hx-get": "/incidencias/get-equipos/",
+            "hx-target": "#id_equipo",
+            "hx-include": "[name='area'], [name='categoria']",
+        })
         
         choices = list(self.fields["equipo"].choices)
         choices.append(('otro', '--- OTRO (No está en la lista) ---'))
@@ -347,6 +387,8 @@ class IncidenciaAdminForm(forms.ModelForm):
         is_equipo_disabled = self.fields['equipo'].disabled if 'equipo' in self.fields else False
 
         if not is_equipo_disabled and categoria == "hardware":
+            if not cleaned_data.get("area"):
+                self.add_error("area", "Seleccione el área solicitante para cargar solo sus equipos.")
             equipo_val = self.data.get("equipo")
             equipo = cleaned_data.get("equipo")
             if not equipo_val:
@@ -371,6 +413,17 @@ class IncidenciaAdminForm(forms.ModelForm):
             
         return cleaned_data
 
+    def clean_equipo(self):
+        equipo = self.cleaned_data.get("equipo")
+        area = self.cleaned_data.get("area")
+        is_equipo_disabled = self.fields["equipo"].disabled if "equipo" in self.fields else False
+        if equipo and area and not is_equipo_disabled:
+            if not area.sede_principal:
+                raise ValidationError("El área elegida no tiene una sede principal configurada.")
+            if not equipo.area or equipo.area.sede_principal != area.sede_principal:
+                raise ValidationError("El equipo seleccionado no pertenece al área principal elegida.")
+        return equipo
+
     def clean_imagen_adjunta(self):
         file = self.cleaned_data.get("imagen_adjunta")
         if self.instance and self.instance.pk and self.instance.imagen_adjunta:
@@ -389,7 +442,7 @@ class ComentarioForm(forms.ModelForm):
         fields = ("texto", "evidencia_adjunta")
         widgets = {
             "texto": forms.Textarea(attrs={"rows": 2, "class": "form-control input-custom", "placeholder": "Escribe un mensaje o añade evidencias..."}),
-            "evidencia_adjunta": forms.FileInput(attrs={"class": "form-control form-control-sm input-custom", "accept": "image/*", "capture": "camera"}),
+            "evidencia_adjunta": forms.FileInput(attrs={"class": "form-control form-control-sm input-custom", "accept": IMAGE_INPUT_ACCEPT, "capture": "camera"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -417,17 +470,17 @@ class ReabrirIncidenciaForm(forms.Form):
     imagen_1 = forms.ImageField(
         required=False,
         label="Foto 1",
-        widget=forms.FileInput(attrs={"class": "form-control", "accept": "image/*", "capture": "camera"}),
+        widget=forms.FileInput(attrs={"class": "form-control", "accept": IMAGE_INPUT_ACCEPT, "capture": "camera"}),
     )
     imagen_2 = forms.ImageField(
         required=False,
         label="Foto 2",
-        widget=forms.FileInput(attrs={"class": "form-control", "accept": "image/*", "capture": "camera"}),
+        widget=forms.FileInput(attrs={"class": "form-control", "accept": IMAGE_INPUT_ACCEPT, "capture": "camera"}),
     )
     imagen_3 = forms.ImageField(
         required=False,
         label="Foto 3",
-        widget=forms.FileInput(attrs={"class": "form-control", "accept": "image/*", "capture": "camera"}),
+        widget=forms.FileInput(attrs={"class": "form-control", "accept": IMAGE_INPUT_ACCEPT, "capture": "camera"}),
     )
 
     def clean(self):

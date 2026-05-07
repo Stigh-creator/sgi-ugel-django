@@ -289,9 +289,6 @@ def crear_incidencia(request):
             form = IncidenciaAdminForm()
         else:
             form = IncidenciaForm(user=request.user)
-            
-        if not request.user.es_usuario:
-            form.fields['equipo'].queryset = Equipo.objects.filter(activo=True)
     
     context = {
         'form': form,
@@ -465,7 +462,7 @@ def rechazar_incidencia(request, pk):
 
 @login_required
 def get_equipos_for_area(request):
-    area_id = request.GET.get('area')
+    area_id = request.GET.get("area") or request.GET.get("id_area")
     user = request.user
     estado_operativo = EstadoEquipo.objects.filter(nombre="Operativo").first()
     
@@ -480,11 +477,19 @@ def get_equipos_for_area(request):
             equipos = Equipo.objects.none()
     else:
         if area_id:
-            equipos = Equipo.objects.filter(area_id=area_id, activo=True, estado_tecnico=estado_operativo)
+            selected_area = Area.objects.filter(pk=area_id).first()
+            if selected_area and selected_area.sede_principal:
+                equipos = Equipo.objects.filter(
+                    area__sede_principal=selected_area.sede_principal,
+                    activo=True,
+                    estado_tecnico=estado_operativo,
+                )
+            else:
+                equipos = Equipo.objects.none()
         else:
-            equipos = Equipo.objects.filter(activo=True, estado_tecnico=estado_operativo)
+            equipos = Equipo.objects.none()
             
-    return render(request, "tickets/partials/equipo_options.html", {"equipos": equipos})
+    return render(request, "tickets/partials/equipo_options.html", {"equipos": equipos.distinct().order_by("codigo_equipo")})
 
 @login_required
 def crear_incidencia_modal(request):

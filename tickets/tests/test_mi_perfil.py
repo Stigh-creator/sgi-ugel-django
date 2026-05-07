@@ -197,7 +197,7 @@ class MiPerfilModuleTests(TestCase):
         response = self.client.post(reverse("update_photo"), {"foto": invalid_file})
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn("JPG o PNG", response.json()["message"])
+        self.assertIn("JPG, PNG o WebP", response.json()["message"])
 
     def test_update_photo_guarda_imagen_valida(self):
         self.client.force_login(self.usuario)
@@ -209,6 +209,17 @@ class MiPerfilModuleTests(TestCase):
         self.usuario.refresh_from_db()
         self.assertTrue(bool(self.usuario.foto))
         self.assertTrue(response.json()["url"].startswith("/media/perfiles/"))
+
+    def test_update_photo_guarda_imagen_webp(self):
+        self.client.force_login(self.usuario)
+        valid_file = build_test_image(name="perfil.webp", image_format="WEBP", content_type="image/webp")
+
+        response = self.client.post(reverse("update_photo"), {"foto": valid_file})
+
+        self.assertEqual(response.status_code, 200)
+        self.usuario.refresh_from_db()
+        self.assertTrue(bool(self.usuario.foto))
+        self.assertTrue(self.usuario.foto.name.endswith(".webp"))
 
     def test_mi_perfil_rechaza_telefono_duplicado(self):
         self.client.force_login(self.usuario)

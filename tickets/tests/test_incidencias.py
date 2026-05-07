@@ -11,7 +11,7 @@ from django.utils import timezone
 
 from auditoria.models import Auditoria, EventoFallido
 from inventario.models import Equipo, EstadoEquipo, HistorialEstadoEquipo, Marca, TipoEquipo
-from tickets.forms.forms_incidencias import IncidenciaCierreForm, IncidenciaForm
+from tickets.forms.forms_incidencias import IncidenciaAdminForm, IncidenciaCierreForm, IncidenciaForm
 from tickets.models import Area, Comentario, CustomUser, EstadoSLA, Incidencia, MetricaDiaria, Notificacion, ReemplazoEquipoIncidencia
 from tickets.services import (
     aceptar_incidencia_service,
@@ -83,6 +83,124 @@ class IncidenciasBusinessRulesTests(TestCase):
             estado=self.estado_operativo,
             activo=True,
         )
+
+    def test_get_equipos_for_area_filtra_area_principal_para_admin_y_tecnico(self):
+        area_planificacion = Area.objects.create(name="Planificación", sede_principal="UPDI")
+        area_estadistica = Area.objects.create(name="Estadística", sede_principal="UPDI")
+        area_administracion = Area.objects.create(name="Administración", sede_principal="ADMINISTRACIÓN")
+        equipo_planificacion = Equipo.objects.create(
+            codigo_equipo="UPDI-001",
+            nombre_equipo="PC Planificación",
+            tipo_equipo=self.tipo,
+            marca=self.marca,
+            modelo="Optiplex",
+            area=area_planificacion,
+            estado=self.estado_operativo,
+            activo=True,
+        )
+        equipo_estadistica = Equipo.objects.create(
+            codigo_equipo="UPDI-002",
+            nombre_equipo="PC Estadística",
+            tipo_equipo=self.tipo,
+            marca=self.marca,
+            modelo="Optiplex",
+            area=area_estadistica,
+            estado=self.estado_operativo,
+            activo=True,
+        )
+        equipo_administracion = Equipo.objects.create(
+            codigo_equipo="ADM-001",
+            nombre_equipo="PC Administración",
+            tipo_equipo=self.tipo,
+            marca=self.marca,
+            modelo="Optiplex",
+            area=area_administracion,
+            estado=self.estado_operativo,
+            activo=True,
+        )
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("get_equipos_for_area"), {"area": area_planificacion.pk, "categoria": "hardware"})
+
+        self.assertContains(response, equipo_planificacion.nombre_equipo)
+        self.assertContains(response, equipo_estadistica.nombre_equipo)
+        self.assertNotContains(response, equipo_administracion.nombre_equipo)
+
+    def test_get_equipos_for_area_sin_area_no_lista_equipos_en_hardware(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("get_equipos_for_area"), {"categoria": "hardware"})
+
+        self.assertContains(response, "-- Seleccione Equipo --")
+        self.assertNotContains(response, self.equipo.nombre_equipo)
+
+    def test_admin_form_permite_equipo_de_misma_area_principal(self):
+        area_planificacion = Area.objects.create(name="Planificación", sede_principal="UPDI")
+        area_estadistica = Area.objects.create(name="Estadística", sede_principal="UPDI")
+        equipo_misma_area_principal = Equipo.objects.create(
+            codigo_equipo="UPDI-003",
+            nombre_equipo="PC Estadística",
+            tipo_equipo=self.tipo,
+            marca=self.marca,
+            modelo="Optiplex",
+            area=area_estadistica,
+            estado=self.estado_operativo,
+            activo=True,
+        )
+        image = SimpleUploadedFile(
+            "falla.gif",
+            b"GIF87a\x01\x00\x01\x00\x80\x01\x00\x00\x00\x00ccc,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;",
+            content_type="image/gif",
+        )
+
+        form = IncidenciaAdminForm(
+            data={
+                "categoria": "hardware",
+                "prioridad": "media",
+                "area": area_planificacion.pk,
+                "equipo": equipo_misma_area_principal.pk,
+                "descripcion": "El equipo presenta fallas intermitentes al iniciar.",
+                "tecnico_asignado": self.tecnico.pk,
+            },
+            files={"imagen_adjunta": image},
+        )
+
+        self.assertTrue(form.is_valid(), form.errors.as_text())
+
+    def test_admin_form_rechaza_equipo_de_area_principal_distinta(self):
+        area_planificacion = Area.objects.create(name="Planificación", sede_principal="UPDI")
+        area_administracion = Area.objects.create(name="Administración", sede_principal="ADMINISTRACIÓN")
+        equipo_otra_area_principal = Equipo.objects.create(
+            codigo_equipo="ADM-002",
+            nombre_equipo="PC Administración",
+            tipo_equipo=self.tipo,
+            marca=self.marca,
+            modelo="Optiplex",
+            area=area_administracion,
+            estado=self.estado_operativo,
+            activo=True,
+        )
+        image = SimpleUploadedFile(
+            "falla.gif",
+            b"GIF87a\x01\x00\x01\x00\x80\x01\x00\x00\x00\x00ccc,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;",
+            content_type="image/gif",
+        )
+
+        form = IncidenciaAdminForm(
+            data={
+                "categoria": "hardware",
+                "prioridad": "media",
+                "area": area_planificacion.pk,
+                "equipo": equipo_otra_area_principal.pk,
+                "descripcion": "El equipo presenta fallas intermitentes al iniciar.",
+                "tecnico_asignado": self.tecnico.pk,
+            },
+            files={"imagen_adjunta": image},
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("equipo", form.errors)
+        self.assertIn("no pertenece al área principal elegida", form.errors["equipo"][0])
 
     def test_crear_incidencia_genera_codigo_y_cambia_equipo_a_observacion(self):
         incidencia = Incidencia(

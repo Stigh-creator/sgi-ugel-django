@@ -277,7 +277,7 @@
                                 <div class="col-md-4">
                                     <div class="evidence-upload-card p-2 border rounded-4 bg-white position-relative">
                                         <div class="input-file-container">
-                                            <input type="file" name="evidencia_solucion" id="id_evidencia_solucion" class="form-control" accept="image/*" capture="camera" required onchange="previewCardImage(this)">
+                                            <input type="file" name="evidencia_solucion" id="id_evidencia_solucion" class="form-control" accept="image/jpeg,image/png,image/webp" capture="camera" required onchange="previewCardImage(this)">
                                         </div>
                                         <div class="preview-container" style="display: none;">
                                             <img src="" class="img-fluid rounded-3" alt="Vista previa">
@@ -291,7 +291,7 @@
                                 <div class="col-md-4">
                                     <div class="evidence-upload-card p-2 border rounded-4 bg-white position-relative">
                                         <div class="input-file-container">
-                                            <input type="file" name="evidencia_solucion_2" id="id_evidencia_solucion_2" class="form-control" accept="image/*" capture="camera" onchange="previewCardImage(this)">
+                                            <input type="file" name="evidencia_solucion_2" id="id_evidencia_solucion_2" class="form-control" accept="image/jpeg,image/png,image/webp" capture="camera" onchange="previewCardImage(this)">
                                         </div>
                                         <div class="preview-container" style="display: none;">
                                             <img src="" class="img-fluid rounded-3" alt="Vista previa">
@@ -305,7 +305,7 @@
                                 <div class="col-md-4">
                                     <div class="evidence-upload-card p-2 border rounded-4 bg-white position-relative">
                                         <div class="input-file-container">
-                                            <input type="file" name="evidencia_solucion_3" id="id_evidencia_solucion_3" class="form-control" accept="image/*" capture="camera" onchange="previewCardImage(this)">
+                                            <input type="file" name="evidencia_solucion_3" id="id_evidencia_solucion_3" class="form-control" accept="image/jpeg,image/png,image/webp" capture="camera" onchange="previewCardImage(this)">
                                         </div>
                                         <div class="preview-container" style="display: none;">
                                             <img src="" class="img-fluid rounded-3" alt="Vista previa">
@@ -363,7 +363,7 @@
                                         <textarea id="texto_comentario" name="texto" class="form-control composer-textarea" placeholder="Escribe un mensaje..." rows="1" style="resize: none;" required hx-post="{% url 'marcar_escribiendo' incidencia.id %}" hx-trigger="keyup changed delay:500ms" hx-swap="none"></textarea>
                                         <label for="id_evidencia_adjunta" class="composer-icon-btn" title="Adjuntar imagen">
                                             <i class="bi bi-camera-fill"></i>
-                                            <input type="file" name="evidencia_adjunta" id="id_evidencia_adjunta" accept="image/*" capture="camera" class="d-none" onchange="previewImage(this)">
+                                            <input type="file" name="evidencia_adjunta" id="id_evidencia_adjunta" accept="image/jpeg,image/png,image/webp" capture="camera" class="d-none" onchange="previewImage(this)">
                                         </label>
                                         <button type="submit" class="composer-send-btn">
                                             <i class="bi bi-send-fill"></i>
@@ -583,7 +583,7 @@
                             <label class="form-label-custom" for="id_reabrir_imagen_1">Foto 1 (opcional)</label>
                             <div class="evidence-upload-card p-2 border rounded-4 bg-white position-relative">
                                 <div class="input-file-container">
-                                    <input type="file" name="imagen_1" id="id_reabrir_imagen_1" class="form-control" accept="image/*" capture="camera" onchange="previewCardImage(this)">
+                                    <input type="file" name="imagen_1" id="id_reabrir_imagen_1" class="form-control" accept="image/jpeg,image/png,image/webp" capture="camera" onchange="previewCardImage(this)">
                                 </div>
                                 <div class="preview-container" style="display: none;">
                                     <img src="" class="img-fluid rounded-3" alt="Vista previa">
@@ -597,7 +597,7 @@
                             <label class="form-label-custom" for="id_reabrir_imagen_2">Foto 2 (opcional)</label>
                             <div class="evidence-upload-card p-2 border rounded-4 bg-white position-relative">
                                 <div class="input-file-container">
-                                    <input type="file" name="imagen_2" id="id_reabrir_imagen_2" class="form-control" accept="image/*" capture="camera" onchange="previewCardImage(this)">
+                                    <input type="file" name="imagen_2" id="id_reabrir_imagen_2" class="form-control" accept="image/jpeg,image/png,image/webp" capture="camera" onchange="previewCardImage(this)">
                                 </div>
                                 <div class="preview-container" style="display: none;">
                                     <img src="" class="img-fluid rounded-3" alt="Vista previa">
@@ -611,7 +611,7 @@
                             <label class="form-label-custom" for="id_reabrir_imagen_3">Foto 3 (opcional)</label>
                             <div class="evidence-upload-card p-2 border rounded-4 bg-white position-relative">
                                 <div class="input-file-container">
-                                    <input type="file" name="imagen_3" id="id_reabrir_imagen_3" class="form-control" accept="image/*" capture="camera" onchange="previewCardImage(this)">
+                                    <input type="file" name="imagen_3" id="id_reabrir_imagen_3" class="form-control" accept="image/jpeg,image/png,image/webp" capture="camera" onchange="previewCardImage(this)">
                                 </div>
                                 <div class="preview-container" style="display: none;">
                                     <img src="" class="img-fluid rounded-3" alt="Vista previa">

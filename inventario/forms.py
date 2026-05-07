@@ -3,6 +3,8 @@ from django import forms
 from .models import Equipo, EstadoEquipo
 from tickets.models import Area
 
+IMAGE_INPUT_ACCEPT = "image/jpeg,image/png,image/webp"
+
 
 class EquipoForm(forms.ModelForm):
     class Meta:
@@ -23,7 +25,7 @@ class EquipoForm(forms.ModelForm):
             'estado': forms.Select(attrs={'class': 'form-select'}),
             'disponibilidad': forms.Select(attrs={'class': 'form-select'}),
             'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Ej: Color negro, tapa lateral con rayón leve, base genérica del monitor, etiquetas institucionales visibles.'}),
-            'foto_estado': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'capture': 'camera'}),
+            'foto_estado': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': IMAGE_INPUT_ACCEPT, 'capture': 'camera'}),
         }
 
     def __init__(self, *args, **kwargs):

@@ -11,8 +11,8 @@ from django.utils import timezone
 
 from ..models import CustomUser
 
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png"}
-ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_PROFILE_PHOTO_SIZE = 8 * 1024 * 1024
 MAX_PROFILE_PHOTO_SIZE_LABEL = "8 MB"
 USER_ACTIVE_INCIDENT_STATES = (
@@ -78,7 +78,7 @@ def validate_profile_photo(file_obj):
     content_type = getattr(file_obj, "content_type", "")
 
     if content_type not in ALLOWED_IMAGE_TYPES or extension not in ALLOWED_IMAGE_EXTENSIONS:
-        raise ValidationError("La foto de perfil solo permite archivos JPG o PNG.")
+        raise ValidationError("La foto de perfil solo permite archivos JPG, PNG o WebP.")
 
     if file_obj.size > MAX_PROFILE_PHOTO_SIZE:
         raise ValidationError(f"La foto de perfil no debe superar los {MAX_PROFILE_PHOTO_SIZE_LABEL}.")

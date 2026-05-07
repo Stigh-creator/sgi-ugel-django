@@ -42,7 +42,7 @@
                         <label for="foto-input" class="btn-camera-upload">
                             <i class="bi bi-camera-fill"></i>
                         </label>
-                        <input type="file" id="foto-input" class="d-none" accept="image/*">
+                        <input type="file" id="foto-input" class="d-none" accept="image/jpeg,image/png,image/webp">
                     </div>
                 </div>
 
@@ -382,8 +382,8 @@
             const file = this.files[0];
             if (!file) return;
 
-            if (!['image/jpeg', 'image/png'].includes(file.type)) {
-                Swal.fire('Error', 'Solo se permiten imágenes JPG o PNG.', 'error');
+            if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                Swal.fire('Error', 'Solo se permiten imágenes JPG, PNG o WebP.', 'error');
                 this.value = '';
                 return;
             }
@@ -439,12 +439,12 @@
 
             canvas.toBlob((blob) => {
                 subirFoto(blob);
-            }, 'image/jpeg', 0.9);
+            }, 'image/webp', 0.82);
         });
 
         async function subirFoto(fileOrBlob) {
             const formData = new FormData();
-            const uploadName = fileOrBlob.name || 'perfil_recortado.jpg';
+            const uploadName = fileOrBlob.name || 'perfil_recortado.webp';
             formData.append('foto', fileOrBlob, uploadName);
 
             const Toast = Swal.mixin({

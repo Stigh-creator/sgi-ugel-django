@@ -126,7 +126,7 @@
                             <label class="form-label small fw-bold text-muted">Nueva Foto del Estado</label>
                             <input type="file" name="{{ form.foto_estado.name }}" 
                                    id="id_foto_estado_editar"
-                                   accept="image/*" capture="camera"
+                                   accept="image/jpeg,image/png,image/webp" capture="camera"
                                    class="form-control {% if form.foto_estado.errors %}is-invalid{% endif %}"
                                    onchange="previewImage(this, 'preview_editar')">
                             {% for error in form.foto_estado.errors %}
