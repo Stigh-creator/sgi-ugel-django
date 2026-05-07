@@ -446,26 +446,6 @@
                         <h6 class="mb-0 fw-bold">Ficha de incidencia</h6>
                     </div>
                     <dl class="aside-list">
-                        {% if incidencia.tecnico_asignado_id == request.user.id and incidencia.estado_visual != 'Resuelto' and incidencia.estado_visual != 'Cerrado' and incidencia.fecha_limite_resolucion %}
-                        <div class="{% if sla_notice and sla_notice.vencido %}text-danger{% else %}text-warning{% endif %}">
-                            <dt>
-                                <i class="bi {% if sla_notice and sla_notice.vencido %}bi-exclamation-octagon-fill{% else %}bi-clock-history{% endif %} me-1"></i>
-                                Vencimiento SLA
-                            </dt>
-                            <dd class="fw-bold mb-1">
-                                {{ incidencia.fecha_limite_resolucion|date:"d/m/Y H:i" }}
-                            </dd>
-                            {% if sla_notice %}
-                            <dd class="small mb-2">
-                                {% if sla_notice.vencido %}
-                                Vencido hace {{ sla_notice.tiempo }}.
-                                {% else %}
-                                Restan {{ sla_notice.tiempo }}.
-                                {% endif %}
-                            </dd>
-                            {% endif %}
-                        </div>
-                        {% endif %}
                         <div>
                             <dt>Fecha de creación</dt>
                             <dd>{{ incidencia.fecha_creacion|date:"d/m/Y H:i" }}</dd>
