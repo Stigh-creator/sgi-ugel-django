@@ -1,14 +1,23 @@
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils.dateparse import parse_date
 from django.utils import timezone
 
-from ..models import Incidencia
+from ..models import CustomUser, Incidencia
 from inventario.models import Equipo
 from ..utils.exports import generate_pdf, generate_excel_inventario
 
+
+def can_export_inventory(user):
+    return user.is_authenticated and (
+        user.is_superuser
+        or user.role in {CustomUser.ROL_ADMIN, CustomUser.ROL_ALMACEN}
+    )
+
+
 @login_required
+@user_passes_test(can_export_inventory)
 def export_inventario_excel(request):
     """
     Exporta el inventario completo a Excel.

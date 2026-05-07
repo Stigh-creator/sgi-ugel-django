@@ -30,8 +30,8 @@ def registrar_cambio_manual_estado_equipo(*, equipo, nuevo_estado, usuario, obse
     equipo.estado = nuevo_estado
     equipo.estado_tecnico = nuevo_estado
     equipo.activo = nuevo_estado.nombre != "Dado de baja"
-    if not equipo.activo:
-        equipo.disponibilidad = equipo.DISPONIBILIDAD_EN_USO
+    if nuevo_estado.nombre in {ESTADO_INOPERATIVO, ESTADO_BAJA}:
+        equipo.disponibilidad = equipo.DISPONIBILIDAD_NO_DISPONIBLE
         equipo.origen_ocupacion = equipo.ORIGEN_OCUPACION_MANUAL
     equipo.save(update_fields=["estado", "estado_tecnico", "activo", "disponibilidad", "origen_ocupacion", "actualizado_en"])
     
@@ -75,8 +75,8 @@ def cambiar_estado_equipo_por_incidencia(*, equipo, estado_nombre, usuario, inci
     equipo.estado = nuevo_estado
     equipo.estado_tecnico = nuevo_estado
     equipo.activo = nuevo_estado.nombre != ESTADO_BAJA
-    if not equipo.activo:
-        equipo.disponibilidad = equipo.DISPONIBILIDAD_EN_USO
+    if nuevo_estado.nombre in {ESTADO_INOPERATIVO, ESTADO_BAJA}:
+        equipo.disponibilidad = equipo.DISPONIBILIDAD_NO_DISPONIBLE
         equipo.origen_ocupacion = equipo.ORIGEN_OCUPACION_INCIDENCIA
     equipo.save(update_fields=["estado", "estado_tecnico", "activo", "disponibilidad", "origen_ocupacion", "actualizado_en"])
 

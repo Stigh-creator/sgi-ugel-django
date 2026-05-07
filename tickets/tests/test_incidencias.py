@@ -372,6 +372,7 @@ class IncidenciasBusinessRulesTests(TestCase):
         self.equipo.refresh_from_db()
         reemplazo.refresh_from_db()
         self.assertEqual(self.equipo.estado.nombre, "Inoperativo")
+        self.assertEqual(self.equipo.disponibilidad, Equipo.DISPONIBILIDAD_NO_DISPONIBLE)
         self.assertEqual(reemplazo.estado.nombre, "Operativo")
         self.assertEqual(reemplazo.disponibilidad, Equipo.DISPONIBILIDAD_REEMPLAZO_TEMPORAL)
         self.assertEqual(reemplazo.origen_ocupacion, Equipo.ORIGEN_OCUPACION_REEMPLAZO)
@@ -389,6 +390,7 @@ class IncidenciasBusinessRulesTests(TestCase):
         self.equipo.refresh_from_db()
         reemplazo.refresh_from_db()
         self.assertEqual(self.equipo.estado.nombre, "Inoperativo")
+        self.assertEqual(self.equipo.disponibilidad, Equipo.DISPONIBILIDAD_NO_DISPONIBLE)
         self.assertEqual(reemplazo.estado.nombre, "Operativo")
         self.assertEqual(reemplazo.disponibilidad, Equipo.DISPONIBILIDAD_LIBRE)
         self.assertIsNone(reemplazo.origen_ocupacion)
@@ -779,6 +781,7 @@ class IncidenciasBusinessRulesTests(TestCase):
         self.equipo.refresh_from_db()
         reemplazo.refresh_from_db()
         self.assertEqual(self.equipo.estado.nombre, "Inoperativo")
+        self.assertEqual(self.equipo.disponibilidad, Equipo.DISPONIBILIDAD_NO_DISPONIBLE)
         self.assertEqual(reemplazo.estado.nombre, "Operativo")
 
     def test_resolver_baja_deja_equipo_dado_de_baja_y_cierre_no_lo_reactiva(self):
@@ -802,6 +805,7 @@ class IncidenciasBusinessRulesTests(TestCase):
         self.equipo.refresh_from_db()
         self.assertEqual(self.equipo.estado.nombre, "Dado de baja")
         self.assertFalse(self.equipo.activo)
+        self.assertEqual(self.equipo.disponibilidad, Equipo.DISPONIBILIDAD_NO_DISPONIBLE)
 
     def test_equipo_dado_de_baja_no_aparece_en_formulario_incidencia(self):
         self.equipo.estado = self.estado_baja

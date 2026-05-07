@@ -45,10 +45,12 @@ class Equipo(models.Model):
     DISPONIBILIDAD_LIBRE = "LIBRE"
     DISPONIBILIDAD_EN_USO = "EN_USO"
     DISPONIBILIDAD_REEMPLAZO_TEMPORAL = "REEMPLAZO_TEMPORAL"
+    DISPONIBILIDAD_NO_DISPONIBLE = "NO_DISPONIBLE"
     DISPONIBILIDAD_CHOICES = (
         (DISPONIBILIDAD_LIBRE, "Libre"),
         (DISPONIBILIDAD_EN_USO, "En uso"),
         (DISPONIBILIDAD_REEMPLAZO_TEMPORAL, "Reemplazo temporal"),
+        (DISPONIBILIDAD_NO_DISPONIBLE, "No disponible"),
     )
     ORIGEN_OCUPACION_MANUAL = "MANUAL"
     ORIGEN_OCUPACION_ASIGNACION_DIRECTA = "ASIGNACION_DIRECTA"
@@ -133,16 +135,21 @@ class Equipo(models.Model):
                 self.estado_tecnico = estado_baja
                 if update_fields is not None:
                     update_fields.update({"estado", "estado_tecnico"})
-            self.disponibilidad = self.DISPONIBILIDAD_EN_USO
+            self.disponibilidad = self.DISPONIBILIDAD_NO_DISPONIBLE
             self.origen_ocupacion = self.origen_ocupacion or self.ORIGEN_OCUPACION_MANUAL
             if update_fields is not None:
                 update_fields.update({"disponibilidad", "origen_ocupacion"})
         elif self.estado and self.estado.nombre == 'Dado de baja':
             self.activo = False
-            self.disponibilidad = self.DISPONIBILIDAD_EN_USO
+            self.disponibilidad = self.DISPONIBILIDAD_NO_DISPONIBLE
             self.origen_ocupacion = self.origen_ocupacion or self.ORIGEN_OCUPACION_MANUAL
             if update_fields is not None:
                 update_fields.update({"activo", "disponibilidad", "origen_ocupacion"})
+        elif self.estado_tecnico and self.estado_tecnico.nombre == 'Inoperativo':
+            self.disponibilidad = self.DISPONIBILIDAD_NO_DISPONIBLE
+            self.origen_ocupacion = self.origen_ocupacion or self.ORIGEN_OCUPACION_MANUAL
+            if update_fields is not None:
+                update_fields.update({"disponibilidad", "origen_ocupacion"})
         elif self.estado_tecnico and self.estado_tecnico.nombre in {'Operativo', 'Observación', 'En revisión', 'En reparación', 'Inoperativo'} and self.activo is False:
             self.activo = True
             if update_fields is not None:

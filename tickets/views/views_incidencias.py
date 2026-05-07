@@ -123,6 +123,8 @@ def index(request):
         return redirect("dashboard_admin")
     if request.user.es_tecnico:
         return redirect("dashboard_tecnico")
+    if request.user.es_almacen:
+        return redirect("inventario_list")
     return redirect("mis_incidencias")
 
 @login_required

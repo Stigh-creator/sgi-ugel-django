@@ -116,11 +116,13 @@ class CustomUser(AbstractUser):
     ROL_TRABAJADOR = "usuario"
     ROL_TECNICO = "tecnico"
     ROL_ADMIN = "administrador"
+    ROL_ALMACEN = "almacen"
 
     ROLE_CHOICES = (
         (ROL_TRABAJADOR, "Usuario (Trabajador)"),
         (ROL_TECNICO, "Técnico"),
         (ROL_ADMIN, "Administrador/Ingeniero TI"),
+        (ROL_ALMACEN, "Responsable de Almacén"),
     )
     REQUIRED_FIELDS = ["first_name", "last_name", "telefono"]
     objects = CustomUserManager()
@@ -172,6 +174,10 @@ class CustomUser(AbstractUser):
         return self.role == self.ROL_ADMIN
 
     @property
+    def es_almacen(self):
+        return self.role == self.ROL_ALMACEN
+
+    @property
     def es_usuario(self):
         return self.role == self.ROL_TRABAJADOR
 
@@ -184,6 +190,7 @@ class CustomUser(AbstractUser):
         return {
             self.ROL_ADMIN: "Administrador",
             self.ROL_TECNICO: "Técnico TI",
+            self.ROL_ALMACEN: "Almacén",
             self.ROL_TRABAJADOR: "Trabajador",
         }.get(self.role, "Usuario")
 
@@ -192,6 +199,7 @@ class CustomUser(AbstractUser):
         return {
             self.ROL_ADMIN: "role-admin-soft",
             self.ROL_TECNICO: "role-tech-soft",
+            self.ROL_ALMACEN: "role-admin-soft",
             self.ROL_TRABAJADOR: "role-user-soft",
         }.get(self.role, "role-user-soft")
 

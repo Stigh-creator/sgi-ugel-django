@@ -45,6 +45,8 @@
         <span class="badge role-badge-admin">Administrador</span>
         {% elif user_obj.role == 'tecnico' %}
         <span class="badge role-badge-tecnico">Técnico</span>
+        {% elif user_obj.role == 'almacen' %}
+        <span class="badge role-badge-admin">Almacén</span>
         {% else %}
         <span class="badge role-badge-user">Trabajador</span>
         {% endif %}

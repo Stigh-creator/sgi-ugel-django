@@ -21,9 +21,11 @@
                 <p class="text-muted mb-0">Gestión de activos tecnológicos institucionales.</p>
             </div>
         </div>
+        {% if can_manage_inventory %}
         <button type="button" class="btn-new btn-hover-scale" data-bs-toggle="modal" data-bs-target="#modalNuevoEquipo">
             <i class="bi bi-plus-lg"></i> Registrar Equipo
         </button>
+        {% endif %}
     </div>
 
     <div class="d-flex gap-2 mb-4">
@@ -84,6 +86,13 @@
                 <div class="stat-icon icon-reparacion"><i class="bi bi-person-check"></i></div>
                 <h3 class="h2 fw-bold mb-0 text-secondary">{{ stats.en_uso }}</h3>
                 <p class="text-muted small mb-0">En uso</p>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="stat-card">
+                <div class="stat-icon icon-inoperativo"><i class="bi bi-slash-circle"></i></div>
+                <h3 class="h2 fw-bold mb-0 text-danger">{{ stats.no_disponibles }}</h3>
+                <p class="text-muted small mb-0">No disponibles</p>
             </div>
         </div>
     </div>
@@ -149,6 +158,8 @@
                     <option value="">Todas</option>
                     <option value="LIBRE" {% if disponibilidad_selected == 'LIBRE' %}selected{% endif %}>Libre</option>
                     <option value="EN_USO" {% if disponibilidad_selected == 'EN_USO' %}selected{% endif %}>En uso</option>
+                    <option value="REEMPLAZO_TEMPORAL" {% if disponibilidad_selected == 'REEMPLAZO_TEMPORAL' %}selected{% endif %}>Reemplazo temporal</option>
+                    <option value="NO_DISPONIBLE" {% if disponibilidad_selected == 'NO_DISPONIBLE' %}selected{% endif %}>No disponible</option>
                 </select>
             </div>
             <div class="col-md-2">
@@ -234,7 +245,7 @@
                             </span>
                         </td>
                         <td>
-                            <span class="badge {% if equipo.disponibilidad == 'LIBRE' %}bg-primary{% else %}bg-secondary{% endif %}">
+                            <span class="badge {% if equipo.disponibilidad == 'LIBRE' %}bg-primary{% elif equipo.disponibilidad == 'NO_DISPONIBLE' %}bg-danger{% elif equipo.disponibilidad == 'REEMPLAZO_TEMPORAL' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
                                 {{ equipo.get_disponibilidad_display }}
                             </span>
                         </td>
@@ -243,7 +254,7 @@
                                 <a href="{% url 'equipo_detalle' equipo.pk %}" class="btn btn-sm btn-outline-info rounded-pill px-3" title="Ver detalle">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                {% if vista_selected != 'bajas' %}
+                                {% if can_manage_inventory and vista_selected != 'bajas' %}
                                 <button class="btn btn-sm btn-outline-primary rounded-pill px-3" 
                                     data-bs-toggle="modal" data-bs-target="#modalEditarEquipo"
                                     data-id="{{ equipo.pk }}"
@@ -305,8 +316,10 @@
     </div>
 </div>
 
-{% include 'inventario/modals/equipo_nuevo.html' %}
-{% include 'inventario/modals/equipo_editar.html' %}
+{% if can_manage_inventory %}
+    {% include 'inventario/modals/equipo_nuevo.html' %}
+    {% include 'inventario/modals/equipo_editar.html' %}
+{% endif %}
 
 {% endblock %}
 

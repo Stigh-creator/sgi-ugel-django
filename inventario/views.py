@@ -8,13 +8,23 @@ from django.views.decorators.http import require_POST
 from .models import Equipo, Marca, TipoEquipo, EstadoEquipo
 from .forms import EquipoEstadoUpdateForm, EquipoForm
 from .services import registrar_cambio_manual_estado_equipo
-from tickets.models import Area
+from tickets.models import Area, CustomUser
 from tickets.views.views_utils import add_form_errors_to_messages, page_querystring
 from tickets.services import normalize_expression, normalize_text
 from auditoria.utils import registrar_auditoria
 
-def is_admin(user):
-    return user.is_authenticated and (user.is_staff or user.role == "administrador")
+def can_view_inventory(user):
+    return user.is_authenticated and (
+        user.is_superuser
+        or user.role in {CustomUser.ROL_ADMIN, CustomUser.ROL_ALMACEN}
+    )
+
+
+def can_manage_inventory(user):
+    return user.is_authenticated and (
+        user.is_superuser
+        or user.role == CustomUser.ROL_ALMACEN
+    )
 
 def get_inventario_context(request, form=None):
     vista = request.GET.get('vista', 'activos')
@@ -68,6 +78,7 @@ def get_inventario_context(request, form=None):
         baja=Count('id', filter=Q(estado_tecnico__nombre='Dado de baja')),
         libres=Count('id', filter=Q(disponibilidad=Equipo.DISPONIBILIDAD_LIBRE)),
         en_uso=Count('id', filter=Q(disponibilidad=Equipo.DISPONIBILIDAD_EN_USO)),
+        no_disponibles=Count('id', filter=Q(disponibilidad=Equipo.DISPONIBILIDAD_NO_DISPONIBLE)),
     )
 
     paginator = Paginator(equipos_list, 10)
@@ -92,6 +103,7 @@ def get_inventario_context(request, form=None):
         'page_querystring': page_querystring(request),
         'total_bajas': Equipo.objects.filter(activo=False).count(),
         'form': form or EquipoForm(),
+        'can_manage_inventory': can_manage_inventory(request.user),
     }
 
 
@@ -106,12 +118,12 @@ def equipo_form_error_message(form):
     return "Corrija los errores en el formulario: " + " ".join(parts) if parts else "Corrija los errores en el formulario."
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(can_view_inventory)
 def inventario_list(request):
     return render(request, 'inventario/inventario_list.html', get_inventario_context(request))
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(can_manage_inventory)
 @require_POST
 def equipo_crear(request):
     form = EquipoForm(request.POST, request.FILES)
@@ -131,7 +143,7 @@ def equipo_crear(request):
     return render(request, 'inventario/inventario_list.html', context)
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(can_manage_inventory)
 @require_POST
 def equipo_editar(request, pk):
     equipo = get_object_or_404(Equipo, pk=pk, activo=True)
@@ -168,7 +180,7 @@ def equipo_editar(request, pk):
     return render(request, 'inventario/inventario_list.html', context)
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(can_view_inventory)
 def equipo_detalle(request, pk):
     equipo = get_object_or_404(
         Equipo.objects.select_related('area', 'marca', 'tipo_equipo').prefetch_related('historial_estado__usuario_que_cambio'),
@@ -186,12 +198,13 @@ def equipo_detalle(request, pk):
             'equipo': equipo,
             'incidencias_relacionadas': incidencias_relacionadas,
             'historial_estado_form': historial_estado_form,
+            'can_manage_inventory': can_manage_inventory(request.user),
         },
     )
 
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(can_manage_inventory)
 @require_POST
 def equipo_actualizar_estado(request, pk):
     equipo = get_object_or_404(Equipo, pk=pk)
@@ -225,7 +238,7 @@ def equipo_actualizar_estado(request, pk):
     )
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(can_manage_inventory)
 @require_POST
 def equipo_eliminar_logico(request, pk):
     equipo = get_object_or_404(Equipo, pk=pk)
