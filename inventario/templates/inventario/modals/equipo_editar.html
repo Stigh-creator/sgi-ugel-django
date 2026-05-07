@@ -7,7 +7,29 @@
             </div>
             <form action="" method="POST" enctype="multipart/form-data" novalidate class="js-disable-on-submit">
                 {% csrf_token %}
+                <input type="hidden" name="{{ form.estado.name }}" value="{{ form.estado.value|default:'' }}">
                 <div class="modal-body p-4">
+                    {% if form.errors %}
+                    <div class="alert alert-danger d-flex align-items-start gap-2 rounded-4 mb-3" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+                        <div class="small">
+                            <strong>No se pudo actualizar el equipo.</strong>
+                            <ul class="mb-0 ps-3">
+                                {% for field, errors in form.errors.items %}
+                                    {% for error in errors %}
+                                        <li>
+                                            {% if field == '__all__' %}
+                                                {{ error }}
+                                            {% else %}
+                                                {{ field|capfirst }}: {{ error }}
+                                            {% endif %}
+                                        </li>
+                                    {% endfor %}
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                    {% endif %}
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label small fw-bold text-muted">Código de Equipo</label>

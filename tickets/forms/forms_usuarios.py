@@ -223,6 +223,7 @@ class AdminUserUpdateForm(forms.ModelForm):
     SELF_ROLE_CHANGE_ERROR = "No puedes cambiar tu propio rol por motivos de seguridad. Solicita este cambio a otro administrador o al superusuario"
     SUPERUSER_HIERARCHY_ERROR = "No se puede cambiar el rol ni el área del superusuario."
     SUPERUSER_PROTECTED_ERROR = "Solo el superusuario puede modificar, restablecer o deshabilitar a otro superusuario."
+    SUSPENDED_USER_ERROR = "No se puede editar un usuario suspendido. Primero debe reactivarse el acceso desde el módulo de usuarios."
     LAST_ADMIN_ERROR = "No se puede cambiar el rol del único administrador activo. Debe existir al menos un administrador activo."
     ACTIVE_INCIDENTS_ERROR = (
         "No se pueden modificar {fields} porque el usuario tiene incidencias activas o pendientes "
@@ -285,6 +286,9 @@ class AdminUserUpdateForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         if self.instance and self.instance.pk:
+            if not self.instance.is_active:
+                raise ValidationError(self.SUSPENDED_USER_ERROR)
+
             if self.instance.is_superuser and self.actor and not self.actor.is_superuser:
                 raise ValidationError(self.SUPERUSER_PROTECTED_ERROR)
 

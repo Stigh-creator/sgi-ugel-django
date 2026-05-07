@@ -74,6 +74,49 @@ def equipo_label(equipo):
     return f"{equipo.codigo_equipo} - {equipo.nombre_equipo}"
 
 
+def format_timedelta_humano(delta):
+    seconds = int(abs(delta.total_seconds()))
+    days, remainder = divmod(seconds, 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes = max(1, remainder // 60) if days == 0 and hours == 0 else remainder // 60
+    parts = []
+    if days:
+        parts.append(f"{days} día{'s' if days != 1 else ''}")
+    if hours:
+        parts.append(f"{hours} hora{'s' if hours != 1 else ''}")
+    if not days and minutes:
+        parts.append(f"{minutes} minuto{'s' if minutes != 1 else ''}")
+    return " y ".join(parts[:2]) or "menos de 1 minuto"
+
+
+def build_sla_notice(incidencia, user):
+    if incidencia.tecnico_asignado_id != user.id:
+        return None
+    if incidencia.estado_actual in {Incidencia.ESTADO_RESUELTO, Incidencia.ESTADO_CERRADO}:
+        return None
+    if incidencia.estado_sla in {"cumplido", "no_aplica"}:
+        return None
+
+    tipo = "resolución"
+    deadline = incidencia.fecha_limite_resolucion
+    if incidencia.estado_actual == Incidencia.ESTADO_ASIGNADO and incidencia.fecha_limite_respuesta:
+        tipo = "respuesta"
+        deadline = incidencia.fecha_limite_respuesta
+    if not deadline:
+        return None
+
+    now = timezone.now()
+    delta = deadline - now
+    vencido = delta.total_seconds() <= 0
+    return {
+        "tipo": tipo,
+        "fecha": timezone.localtime(deadline),
+        "vencido": vencido,
+        "tiempo": format_timedelta_humano(delta),
+        "estado": incidencia.get_estado_sla_display(),
+    }
+
+
 @login_required
 def index(request):
     if is_admin(request.user):
@@ -275,6 +318,11 @@ def detalle_incidencia(request, pk):
     from inventario.models import Equipo, EstadoEquipo
     logs = Auditoria.objects.filter(modulo="Incidencias", referencia_id=pk).order_by("-fecha_hora")
     comentarios = incidencia.comentarios.all().order_by("fecha_creacion")
+    if incidencia.tecnico_asignado_id != request.user.id:
+        comentarios = comentarios.exclude(
+            tipo_comentario="observacion",
+            texto__icontains="SLA",
+        )
     
     timeline = []
     for log in logs:
@@ -325,6 +373,7 @@ def detalle_incidencia(request, pk):
         'reabrir_form': ReabrirIncidenciaForm(),
         'equipos_reemplazo': equipos_reemplazo.select_related("area", "marca", "tipo_equipo"),
         'now': timezone.localtime(timezone.now()),
+        'sla_notice': build_sla_notice(incidencia, request.user),
     }
 
     if request.headers.get('HX-Request') and not request.method == 'POST':

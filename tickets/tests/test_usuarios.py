@@ -128,6 +128,28 @@ class UsuariosAdminModuleTests(TestCase):
         self.assertFalse(self.usuario.is_active)
         self.assertFalse(Session.objects.filter(session_key=other_client.session.session_key).exists())
 
+    def test_usuario_suspendido_no_puede_ser_editado(self):
+        self.usuario.is_active = False
+        self.usuario.save(update_fields=["is_active"])
+
+        response = self.client.post(
+            reverse("editar_usuario", args=[self.usuario.pk]),
+            {
+                "first_name": "Carlos",
+                "last_name": self.usuario.last_name,
+                "email": "pedro@example.com",
+                "telefono": self.usuario.telefono,
+                "role": self.usuario.role,
+                "area": self.usuario.area.pk,
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("usuario suspendido", response.json()["message"])
+        self.usuario.refresh_from_db()
+        self.assertEqual(self.usuario.first_name, "Pedro")
+
     def test_reset_password_admin_funciona_y_cierra_sesiones(self):
         other_client = self.client_class()
         other_client.force_login(self.usuario)

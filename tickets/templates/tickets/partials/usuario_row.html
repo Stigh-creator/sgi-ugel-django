@@ -57,7 +57,14 @@
     </td>
     <td class="text-center">
         <div class="d-flex justify-content-center gap-2">
-            {% if user_obj.is_superuser and not request.user.is_superuser %}
+            {% if not user_obj.is_active %}
+            <button class="btn btn-action btn-edit shadow-sm"
+                    type="button"
+                    title="Usuario suspendido: reactive el acceso antes de editar"
+                    disabled>
+                <i class="bi bi-pencil-square"></i>
+            </button>
+            {% elif user_obj.is_superuser and not request.user.is_superuser %}
             <button class="btn btn-action btn-edit shadow-sm"
                     type="button"
                     title="Protegido: solo el superusuario puede editar esta cuenta"

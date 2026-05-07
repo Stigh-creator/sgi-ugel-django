@@ -39,6 +39,11 @@ VALID_TRANSITIONS = Incidencia.ALLOWED_TRANSITIONS
 EVENT_VERSION = 1
 POR_VENCER_UMBRAL = 0.8
 LOCKED_RESOURCE_MESSAGE = "El registro está siendo procesado por otro usuario. Intente nuevamente en unos segundos."
+SLA_EVENTOS = {
+    "incidencia.sla_por_vencer",
+    "incidencia.sla_respuesta_vencido",
+    "incidencia.sla_resolucion_vencido",
+}
 
 
 def lock_queryset(queryset):
@@ -109,14 +114,18 @@ def calcular_fecha_auto_cierre(incidencia):
 
 def recipients_for_event(evento, incidencia, actor=None):
     usuarios = set()
+    if evento in SLA_EVENTOS:
+        if incidencia.tecnico_asignado_id and incidencia.tecnico_asignado and incidencia.tecnico_asignado.is_active:
+            usuarios.add(incidencia.tecnico_asignado)
+        if actor:
+            usuarios.discard(actor)
+        return [u for u in usuarios if u and u.is_active]
+
     admins = CustomUser.objects.filter(role=CustomUser.ROL_ADMIN, is_active=True)
     if evento in {
         "incidencia.creada",
         "incidencia.rechazada",
         "incidencia.reabierta",
-        "incidencia.sla_por_vencer",
-        "incidencia.sla_respuesta_vencido",
-        "incidencia.sla_resolucion_vencido",
         "inventario.integridad_alerta",
     }:
         usuarios.update(admins)
@@ -177,9 +186,6 @@ def comentario_tipo_para_evento(evento):
         "incidencia.resuelta": "confirmacion",
         "incidencia.reabierta": "persiste",
         "incidencia.cerrada": "confirmacion",
-        "incidencia.sla_por_vencer": "observacion",
-        "incidencia.sla_respuesta_vencido": "observacion",
-        "incidencia.sla_resolucion_vencido": "observacion",
     }.get(evento)
 
 

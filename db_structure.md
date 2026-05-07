@@ -21,6 +21,7 @@ Gestiona la autenticación y perfiles de usuario. Extiende de `AbstractUser` de 
 | `last_password_change` | DateTimeField | Not Null | Fecha del último cambio de contraseña. |
 | `must_change_password` | BooleanField | Default: False | Obliga al cambio de clave tras reset. |
 | `last_seen` | DateTimeField | Null, Blank | Última actividad para estado "En línea". |
+| `capacidad_base` | PositiveIntegerField | Default: 4 | Capacidad operativa base para balanceo de carga. |
 | `is_active` | BooleanField | Default: True | Habilita o bloquea el acceso del usuario. |
 | `is_staff` | BooleanField | Default: False | Acceso al panel administrativo de Django. |
 | `date_joined` | DateTimeField | Not Null | Fecha de creación del usuario. |
@@ -76,6 +77,14 @@ Entidad principal para el registro de tickets de soporte.
 | `evidencia_solucion_3` | ImageField | Null, Blank | Evidencia adicional de solución. |
 | `fecha_resolucion` | DateTimeField | Null, Blank | Fecha y hora de resolución técnica. |
 | `fecha_cierre` | DateTimeField | Null, Blank | Fecha de cierre administrativo. |
+| `fecha_limite_respuesta` | DateTimeField | Null, Blank | Deadline para la primera respuesta (SLA). |
+| `fecha_limite_resolucion` | DateTimeField | Null, Blank | Deadline para la resolución final (SLA). |
+| `fecha_auto_cierre` | DateTimeField | Null, Blank | Fecha programada para cierre automático tras resolución. |
+| `estado_sla` | CharField(30) | Choice | Estado SLA: en_tiempo, por_vencer, vencida, etc. |
+| `sla_respuesta_notificado` | BooleanField | Default: False | Flag de notificación de vencimiento de respuesta. |
+| `sla_resolucion_notificado` | BooleanField | Default: False | Flag de notificación de vencimiento de resolución. |
+| `auto_cerrado` | BooleanField | Default: False | Indica si el ticket fue cerrado por el sistema. |
+| `escalado` | BooleanField | Default: False | Indica si el ticket fue escalado a un nivel superior. |
 | `documento_informe` | FileField | Null, Blank | Informe técnico en PDF (en `pdf_incidencias/`). |
 | `fecha_creacion` | DateTimeField | Auto Add | Fecha y hora de registro. |
 
@@ -125,6 +134,54 @@ Tabla intermedia de entrega y lectura de notificaciones por usuario.
 | `leido` | BooleanField | Default: False | Indica si el usuario ya la leyó. |
 | `fecha_recibida` | DateTimeField | Auto Add | Fecha y hora de recepción. |
 
+### Tabla: `SLAConfiguracion` (tickets_slaconfiguracion)
+Configuración de tiempos de respuesta y resolución por prioridad/categoría.
+
+| Campo | Tipo | Restricciones | Descripción |
+| :--- | :--- | :--- | :--- |
+| `id` | BigAutoField | PK | Identificador único. |
+| `prioridad` | CharField(20) | Choice | Prioridad a la que aplica el SLA. |
+| `categoria` | CharField(20) | Choice, Null | Categoría específica (opcional). |
+| `tiempo_respuesta_minutos` | PositiveIntegerField | Default: 240 | Minutos permitidos para responder. |
+| `tiempo_resolucion_minutos` | PositiveIntegerField | Default: 1440 | Minutos permitidos para resolver. |
+| `auto_cierre_horas` | PositiveIntegerField | Default: 72 | Horas para cierre automático tras resolución. |
+| `activo` | BooleanField | Default: True | Estado de la configuración. |
+
+*Nota: Existe una restricción de unicidad combinada para `prioridad` y `categoria`.*
+
+### Tabla: `ReemplazoEquipoIncidencia` (tickets_reemplazoequipoincidencia)
+Control de préstamos de equipos temporales durante incidencias.
+
+| Campo | Tipo | Restricciones | Descripción |
+| :--- | :--- | :--- | :--- |
+| `id` | BigAutoField | PK | Identificador único. |
+| `incidencia` | ForeignKey | FK -> `Incidencia` | Ticket que originó el reemplazo. |
+| `equipo_original` | ForeignKey | FK -> `Equipo` | Equipo que está siendo reparado. |
+| `equipo_reemplazo` | ForeignKey | FK -> `Equipo` | Equipo entregado temporalmente. |
+| `area_origen` | ForeignKey | FK -> `Area` | Área de procedencia del equipo. |
+| `area_destino` | ForeignKey | FK -> `Area` | Área donde se usará el equipo. |
+| `usuario` | ForeignKey | FK -> `CustomUser` | Usuario responsable del registro. |
+| `motivo` | TextField | Not Null | Justificación del reemplazo. |
+| `fecha_inicio` | DateTimeField | Auto Add | Inicio del préstamo. |
+| `fecha_fin` | DateTimeField | Null, Blank | Devolución del equipo. |
+| `activo` | BooleanField | Default: True | Indica si el reemplazo sigue vigente. |
+| `metadata` | JSONField | Default: {} | Datos técnicos adicionales. |
+
+### Tabla: `MetricaDiaria` (tickets_metricadiaria)
+Consolidado histórico de KPIs del sistema.
+
+| Campo | Tipo | Restricciones | Descripción |
+| :--- | :--- | :--- | :--- |
+| `id` | BigAutoField | PK | Identificador único. |
+| `fecha` | DateField | Unique | Día de la métrica. |
+| `tickets_abiertos` | PositiveIntegerField | Default: 0 | Total de tickets abiertos ese día. |
+| `tickets_cerrados` | PositiveIntegerField | Default: 0 | Total de tickets cerrados ese día. |
+| `sla_vencidos` | PositiveIntegerField | Default: 0 | Total de tickets con SLA vencido. |
+| `reemplazos_activos` | PositiveIntegerField | Default: 0 | Total de préstamos vigentes. |
+| `metadata` | JSONField | Default: {} | KPIs secundarios (por área, técnico, etc). |
+| `creado_en` | DateTimeField | Auto Add | Registro de creación. |
+| `actualizado_en` | DateTimeField | Auto Now | Última actualización del KPI. |
+
 *Nota: Existe una restricción de unicidad combinada para `usuario` y `notificacion`.*
 
 ---
@@ -173,10 +230,12 @@ Registro de hardware y activos tecnológicos.
 | `fecha_register` | DateTimeField | Auto Add | Fecha y hora de registro del activo. |
 | `actualizado_en` | DateTimeField | Auto Now | Fecha y hora de última actualización. |
 | `activo` | BooleanField | Default: True | Control lógico para activos o bajas administrativas. |
-| `disponibilidad` | CharField(10) | Choice | Estado de uso: `LIBRE` o `EN_USO`. |
+| `disponibilidad` | CharField(30) | Choice | Estado: `LIBRE`, `EN_USO`, `REEMPLAZO_TEMPORAL`. |
+| `origen_ocupacion` | CharField(20) | Choice | Manual, Incidencia, Reemplazo, etc. |
 | `foto_estado` | ImageField | Null, Blank | Evidencia fotográfica del estado del equipo. |
 | `area` | ForeignKey | FK -> `Area` (Set Null) | Ubicación física actual. |
-| `estado` | ForeignKey | FK -> `EstadoEquipo` | Estado operativo actual del equipo. |
+| `estado` | ForeignKey | FK -> `EstadoEquipo` | Estado funcional (Inventario). |
+| `estado_tecnico` | ForeignKey | FK -> `EstadoEquipo` | Estado técnico detallado. |
 | `ficha_tecnica` | FileField | Null, Blank | Manual o ficha en PDF (en `inventario_docs/`). |
 
 ### Tabla: `HistorialEstadoEquipo` (inventario_historialestadoequipo)
@@ -205,9 +264,28 @@ Logs de acciones críticas para seguridad y cumplimiento.
 | `modulo` | CharField(50) | Choice | Usuarios, Inventario, Incidencias. |
 | `accion` | CharField(100) | Not Null | Verbo de la acción (ej. Creó, Editó). |
 | `descripcion` | TextField | Not Null | Detalle legible de la actividad. |
+| `evento` | CharField(100) | Null | Identificador del tipo de evento técnico. |
+| `version_evento` | PositiveIntegerField | Default: 1 | Versión del esquema del evento. |
+| `hash_evento` | CharField(64) | Unique | Hash para evitar duplicidad de registros. |
+| `metadata` | JSONField | Default: {} | Datos crudos del objeto auditado. |
 | `fecha_hora` | DateTimeField | Auto Add | Momento exacto del evento auditado. |
 | `referencia_id` | IntegerField | Null | ID del objeto afectado. |
 | `ip` | GenericIPAddress | Null | Dirección IP de origen. |
+
+*Nota: Existe una restricción de unicidad para `evento` y `hash_evento` para evitar duplicados.*
+
+### Tabla: `EventoFallido` (auditoria_eventofallido)
+Registro de auditorías que fallaron al procesarse (asíncronas).
+
+| Campo | Tipo | Restricciones | Descripción |
+| :--- | :--- | :--- | :--- |
+| `id` | BigAutoField | PK | Identificador único. |
+| `evento` | CharField(100) | Not Null | Nombre del evento fallido. |
+| `payload` | JSONField | Default: {} | Datos que no pudieron guardarse. |
+| `error` | TextField | Not Null | Mensaje de excepción. |
+| `intentos` | PositiveSmallIntegerField| Default: 0 | Veces que se intentó re-procesar. |
+| `procesado` | BooleanField | Default: False | Indica si ya se recuperó con éxito. |
+| `fecha` | DateTimeField | Auto Add | Fecha del fallo original. |
 
 ---
 

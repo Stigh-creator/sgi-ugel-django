@@ -415,11 +415,57 @@
                 </div>
                 {% endif %}
 
+                {% if sla_notice %}
+                <div class="aside-group border {% if sla_notice.vencido %}border-danger bg-danger bg-opacity-10{% else %}border-warning bg-warning bg-opacity-10{% endif %}">
+                    <div class="aside-title-row">
+                        <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
+                            <i class="bi {% if sla_notice.vencido %}bi-exclamation-octagon-fill text-danger{% else %}bi-clock-history text-warning{% endif %}"></i>
+                            {% if sla_notice.vencido %}SLA vencido{% else %}SLA en seguimiento{% endif %}
+                        </h6>
+                    </div>
+                    <dl class="aside-list mb-0">
+                        <div>
+                            <dt>Tipo</dt>
+                            <dd>{{ sla_notice.tipo|title }}</dd>
+                        </div>
+                        <div>
+                            <dt>Fecha límite</dt>
+                            <dd>{{ sla_notice.fecha|date:"d/m/Y H:i" }}</dd>
+                        </div>
+                        <div>
+                            <dt>{% if sla_notice.vencido %}Vencido hace{% else %}Tiempo restante{% endif %}</dt>
+                            <dd class="{% if sla_notice.vencido %}text-danger{% else %}text-warning{% endif %} fw-bold">{{ sla_notice.tiempo }}</dd>
+                        </div>
+                    </dl>
+                    <small class="d-block text-muted mt-2">Visible solo para el especialista asignado.</small>
+                </div>
+                {% endif %}
+
                 <div class="aside-group">
                     <div class="aside-title-row">
                         <h6 class="mb-0 fw-bold">Ficha de incidencia</h6>
                     </div>
                     <dl class="aside-list">
+                        {% if incidencia.tecnico_asignado_id == request.user.id and incidencia.estado_visual != 'Resuelto' and incidencia.estado_visual != 'Cerrado' and incidencia.fecha_limite_resolucion %}
+                        <div class="{% if sla_notice and sla_notice.vencido %}text-danger{% else %}text-warning{% endif %}">
+                            <dt>
+                                <i class="bi {% if sla_notice and sla_notice.vencido %}bi-exclamation-octagon-fill{% else %}bi-clock-history{% endif %} me-1"></i>
+                                Vencimiento SLA
+                            </dt>
+                            <dd class="fw-bold mb-1">
+                                {{ incidencia.fecha_limite_resolucion|date:"d/m/Y H:i" }}
+                            </dd>
+                            {% if sla_notice %}
+                            <dd class="small mb-2">
+                                {% if sla_notice.vencido %}
+                                Vencido hace {{ sla_notice.tiempo }}.
+                                {% else %}
+                                Restan {{ sla_notice.tiempo }}.
+                                {% endif %}
+                            </dd>
+                            {% endif %}
+                        </div>
+                        {% endif %}
                         <div>
                             <dt>Fecha de creación</dt>
                             <dd>{{ incidencia.fecha_creacion|date:"d/m/Y H:i" }}</dd>

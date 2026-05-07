@@ -9,7 +9,7 @@ from .models import Equipo, Marca, TipoEquipo, EstadoEquipo
 from .forms import EquipoEstadoUpdateForm, EquipoForm
 from .services import registrar_cambio_manual_estado_equipo
 from tickets.models import Area
-from tickets.views.views_utils import page_querystring
+from tickets.views.views_utils import add_form_errors_to_messages, page_querystring
 from tickets.services import normalize_expression, normalize_text
 from auditoria.utils import registrar_auditoria
 
@@ -94,6 +94,17 @@ def get_inventario_context(request, form=None):
         'form': form or EquipoForm(),
     }
 
+
+def equipo_form_error_message(form):
+    parts = []
+    for field, errors in form.errors.items():
+        label = form.fields.get(field).label if field in form.fields else "Error"
+        if field == "__all__":
+            label = "Error general"
+        for error in errors:
+            parts.append(f"{label}: {error}")
+    return "Corrija los errores en el formulario: " + " ".join(parts) if parts else "Corrija los errores en el formulario."
+
 @login_required
 @user_passes_test(is_admin)
 def inventario_list(request):
@@ -114,7 +125,7 @@ def equipo_crear(request):
         messages.success(request, f"Equipo {equipo.codigo_equipo} registrado exitosamente.")
         return redirect('inventario_list')
     
-    messages.error(request, "Corrija los errores en el formulario.")
+    add_form_errors_to_messages(request, form)
     context = get_inventario_context(request, form=form)
     context['show_modal_nuevo'] = True
     return render(request, 'inventario/inventario_list.html', context)
@@ -150,7 +161,7 @@ def equipo_editar(request, pk):
         messages.success(request, f"Equipo {equipo.codigo_equipo} actualizado.")
         return redirect('inventario_list')
     
-    messages.error(request, "Corrija los errores en el formulario.")
+    messages.error(request, equipo_form_error_message(form))
     context = get_inventario_context(request, form=form)
     context['show_modal_editar'] = True
     context['equipo_id_error'] = pk

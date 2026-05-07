@@ -45,6 +45,10 @@ def protected_superuser_message():
     return "No tienes permisos para editar, restablecer contraseña o deshabilitar al superusuario."
 
 
+def suspended_user_edit_message():
+    return "No se puede editar un usuario suspendido. Primero debe reactivarse el acceso desde el módulo de usuarios."
+
+
 def is_protected_superuser_target(actor, target):
     return target.is_superuser and not actor.is_superuser
 
@@ -209,6 +213,9 @@ def crear_usuario(request):
 @require_POST
 def editar_usuario(request, pk):
     usuario = get_object_or_404(CustomUser, pk=pk)
+    if not usuario.is_active:
+        return reject_request(request, suspended_user_edit_message(), status=403)
+
     if is_protected_superuser_target(request.user, usuario):
         return reject_request(request, protected_superuser_message(), status=403)
 

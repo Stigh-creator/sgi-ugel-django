@@ -42,10 +42,6 @@
             flex: 0 0 auto;
         }
 
-        .security-alert .btn-close {
-            margin-left: auto;
-            padding: 0.35rem;
-        }
     </style>
 </head>
 <body class="wrapper-forced"> <div class="forced-center"> <div class="card shadow-sm">
@@ -59,7 +55,7 @@
 
             {% if messages %}
                 {% for message in messages %}
-                    <div class="alert alert-danger security-alert alert-dismissible fade show js-auto-dismiss-alert mb-4" role="alert">
+                    <div class="alert alert-danger security-alert fade show js-auto-dismiss-alert mb-4" role="alert">
                         <span class="security-alert-icon">
                             <i class="bi bi-exclamation-triangle-fill"></i>
                         </span>
@@ -67,7 +63,6 @@
                             <strong>Revisa tu contraseña</strong>
                             <div>{{ message }}</div>
                         </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 {% endfor %}
             {% endif %}
@@ -174,8 +169,17 @@
         document.querySelectorAll('.js-auto-dismiss-alert').forEach(function (alertEl) {
             window.setTimeout(function () {
                 if (alertEl && alertEl.parentNode) {
-                    const bsAlert = bootstrap.Alert.getOrCreateInstance(alertEl);
-                    bsAlert.close();
+                    if (typeof bootstrap !== 'undefined' && bootstrap.Alert) {
+                        const bsAlert = bootstrap.Alert.getOrCreateInstance(alertEl);
+                        bsAlert.close();
+                    } else {
+                        alertEl.classList.remove('show');
+                        window.setTimeout(function () {
+                            if (alertEl && alertEl.parentNode) {
+                                alertEl.remove();
+                            }
+                        }, 150);
+                    }
                 }
             }, 4000);
         });

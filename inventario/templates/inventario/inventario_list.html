@@ -254,6 +254,7 @@
                                     data-modelo="{{ equipo.modelo }}"
                                     data-serie="{{ equipo.numero_serie|default:'' }}"
                                     data-area="{{ equipo.area.id|default:'' }}"
+                                    data-estado="{{ equipo.estado.id }}"
                                     data-disponibilidad="{{ equipo.disponibilidad }}"
                                     data-foto="{% if equipo.foto_estado %}{{ equipo.foto_estado.url }}{% endif %}"
                                     data-obs="{{ equipo.observaciones|default:'' }}">
@@ -427,6 +428,7 @@
                 modalEditar.querySelector('[name="modelo"]').value = button.getAttribute('data-modelo');
                 modalEditar.querySelector('[name="numero_serie"]').value = button.getAttribute('data-serie');
                 modalEditar.querySelector('[name="area"]').value = button.getAttribute('data-area');
+                modalEditar.querySelector('[name="estado"]').value = button.getAttribute('data-estado');
                 modalEditar.querySelector('[name="disponibilidad"]').value = button.getAttribute('data-disponibilidad');
                 modalEditar.querySelector('[name="observaciones"]').value = button.getAttribute('data-obs');
 
