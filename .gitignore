@@ -47,7 +47,10 @@ ENV/
 *.swo
 .DS_Store
 
-# Office temporary files
+# Ignorar el archivo específico
+kanban modificado.xlsx
+
+# Ignorar archivos temporales de Excel
 ~$*.xlsx
 
 # Docker
