@@ -47,6 +47,9 @@ ENV/
 *.swo
 .DS_Store
 
+# Office temporary files
+~$*.xlsx
+
 # Docker
 .dockerignore
 docker-compose.override.yml
