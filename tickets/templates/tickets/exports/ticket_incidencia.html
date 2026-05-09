@@ -53,6 +53,47 @@
             border-top: 1px solid #eee;
             padding-top: 5px;
         }
+        .signature-box {
+            margin-top: 22px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            font-size: 9pt;
+            background: #fafafa;
+        }
+        .note {
+            font-size: 8pt;
+            color: #666;
+        }
+        .evidence-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+        .evidence-cell {
+            width: 50%;
+            border: 1px solid #e5e5e5;
+            padding: 8px;
+            vertical-align: top;
+        }
+        .evidence-img {
+            width: 220px;
+            height: 150px;
+            object-fit: cover;
+            border: 1px solid #ddd;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .evidence-caption {
+            font-size: 8pt;
+            color: #555;
+            font-weight: bold;
+        }
+        .empty-evidence {
+            color: #777;
+            font-size: 9pt;
+            border: 1px dashed #ddd;
+            padding: 10px;
+        }
     </style>
 </head>
 <body>
@@ -70,7 +111,7 @@
         </tr>
         <tr>
             <td class="label">Estado Actual:</td>
-            <td>{{ incidencia.get_estado_display|default:incidencia.estado.name }}</td>
+            <td>{{ incidencia.estado.name }}</td>
         </tr>
         <tr>
             <td class="label">Prioridad:</td>
@@ -79,6 +120,10 @@
         <tr>
             <td class="label">Categoría:</td>
             <td>{{ incidencia.get_categoria_display }}</td>
+        </tr>
+        <tr>
+            <td class="label">Equipo:</td>
+            <td>{% if incidencia.equipo %}{{ incidencia.equipo.codigo_equipo }} - {{ incidencia.equipo.nombre_equipo }}{% else %}No institucional / no asociado{% endif %}</td>
         </tr>
     </table>
 
@@ -109,11 +154,86 @@
             <td class="label">Fecha de Resolución:</td>
             <td>{{ incidencia.fecha_resolucion|date:"d/m/Y H:i"|default:"Pendiente" }}</td>
         </tr>
+        <tr>
+            <td class="label">Fecha de Cierre:</td>
+            <td>{{ incidencia.fecha_cierre|date:"d/m/Y H:i"|default:"Pendiente" }}</td>
+        </tr>
+        <tr>
+            <td class="label">Tipo de Resolución:</td>
+            <td>{{ incidencia.get_tipo_resolucion_display|default:"Pendiente" }}</td>
+        </tr>
     </table>
     
     <div style="margin-top: 10px; padding: 5px 10px; border: 1px solid #eee; min-height: 80px;">
         <strong>Solución:</strong><br>
         {{ incidencia.solucion_aplicada|default:"Aún no se ha registrado una solución técnica."|linebreaks }}
+    </div>
+
+    <div class="section-title">Evidencias de Apertura</div>
+    {% if evidencias_apertura %}
+    <table class="evidence-table">
+        <tr>
+            {% for evidencia in evidencias_apertura %}
+            <td class="evidence-cell">
+                <img src="{{ evidencia.url }}" class="evidence-img" alt="{{ evidencia.caption }}">
+                <div class="evidence-caption">{{ evidencia.caption }}</div>
+            </td>
+            {% if forloop.counter|divisibleby:2 and not forloop.last %}
+        </tr>
+        <tr>
+            {% endif %}
+            {% endfor %}
+        </tr>
+    </table>
+    {% else %}
+    <div class="empty-evidence">No se registraron evidencias visuales de apertura.</div>
+    {% endif %}
+
+    <div class="section-title">Evidencias de Solución</div>
+    {% if evidencias_solucion %}
+    <table class="evidence-table">
+        <tr>
+            {% for evidencia in evidencias_solucion %}
+            <td class="evidence-cell">
+                <img src="{{ evidencia.url }}" class="evidence-img" alt="{{ evidencia.caption }}">
+                <div class="evidence-caption">{{ evidencia.caption }}</div>
+            </td>
+            {% if forloop.counter|divisibleby:2 and not forloop.last %}
+        </tr>
+        <tr>
+            {% endif %}
+            {% endfor %}
+        </tr>
+    </table>
+    {% else %}
+    <div class="empty-evidence">No se registraron evidencias visuales de solución.</div>
+    {% endif %}
+
+    <div class="section-title">Evidencias del Seguimiento</div>
+    {% if evidencias_seguimiento %}
+    <table class="evidence-table">
+        {% for evidencia in evidencias_seguimiento %}
+        <tr>
+            <td class="evidence-cell">
+                <img src="{{ evidencia.url }}" class="evidence-img" alt="{{ evidencia.caption }}">
+                <div class="evidence-caption">{{ evidencia.caption }}</div>
+            </td>
+            <td class="evidence-cell">
+                {{ evidencia.texto|default:"Comentario con evidencia adjunta."|linebreaks }}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <div class="empty-evidence">No se registraron evidencias visuales en comentarios de seguimiento.</div>
+    {% endif %}
+
+    <div class="signature-box">
+        <strong>Constancia de generación del documento</strong><br>
+        Generado por: {{ generado_por_nombre }}<br>
+        Usuario/DNI: {{ generado_por.username }} | ID interno: {{ generado_por.id }} | Rol: {{ generado_por.get_role_display }}<br>
+        Fecha y hora de descarga: {{ generado_en|date:"d/m/Y H:i" }}<br>
+        <span class="note">Esta constancia identifica al usuario autenticado que generó el PDF desde el sistema.</span>
     </div>
 
     <div class="footer">

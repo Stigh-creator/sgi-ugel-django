@@ -43,12 +43,28 @@
             font-size: 7pt;
             color: #999;
         }
+        .summary {
+            margin-bottom: 12px;
+            font-size: 9pt;
+            color: #555;
+        }
+        .signature {
+            margin-top: 16px;
+            border: 1px solid #ddd;
+            padding: 8px;
+            background: #fafafa;
+            font-size: 8pt;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>REPORTE DE INCIDENCIAS</h1>
         <p>Periodo: {{ fecha_inicio|date:"d/m/Y" }} al {{ fecha_fin|date:"d/m/Y" }}</p>
+    </div>
+
+    <div class="summary">
+        Total de incidencias incluidas: {{ incidencias|length }}
     </div>
 
     <table>
@@ -83,6 +99,15 @@
             {% endfor %}
         </tbody>
     </table>
+
+    <div class="signature">
+        <strong>Constancia de generación del reporte</strong><br>
+        Generado por: {{ generado_por_nombre }} |
+        Usuario/DNI: {{ generado_por.username }} |
+        ID interno: {{ generado_por.id }} |
+        Rol: {{ generado_por.get_role_display }}<br>
+        Fecha y hora de descarga: {{ generado_en|date:"d/m/Y H:i" }}
+    </div>
 
     <div class="footer">
         Generado el: {{ hoy|date:"d/m/Y H:i" }} | UGEL Morropón

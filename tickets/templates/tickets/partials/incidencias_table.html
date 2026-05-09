@@ -72,6 +72,17 @@
                         >
                             <i class="fas fa-eye"></i>
                         </a>
+                        <a
+                            href="{% url 'export_ticket_pdf' i.id %}"
+                            class="table-action-icon table-action-pdf"
+                            target="_blank"
+                            rel="noopener"
+                            onclick="event.stopPropagation()"
+                            title="Abrir PDF de incidencia"
+                            aria-label="Abrir PDF de incidencia"
+                        >
+                            <i class="bi bi-file-earmark-pdf-fill"></i>
+                        </a>
                         {% if user.role == 'administrador' and i.estado_visual != 'Cerrado' and i.estado_visual != 'Resuelto' %}
                         <button
                             type="button"
@@ -149,6 +160,18 @@
                 </button>
             </div>
             {% endif %}
+            <div class="mt-2">
+                <a
+                    href="{% url 'export_ticket_pdf' i.id %}"
+                    class="btn btn-light border rounded-pill w-100 fw-semibold"
+                    target="_blank"
+                    rel="noopener"
+                    onclick="event.stopPropagation()"
+                    title="Abrir PDF de incidencia"
+                >
+                    <i class="bi bi-file-earmark-pdf-fill me-2 text-danger"></i> Abrir PDF
+                </a>
+            </div>
         </article>
         {% empty %}
         <div class="text-center py-5 text-muted">

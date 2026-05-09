@@ -10,58 +10,152 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h3 fw-bold mb-1">Panel de Administración</h1>
-            <p class="text-muted mb-0">Gestiona accesos, usuarios y el monitoreo general del sistema.</p>
+            <p class="text-muted mb-0">Monitorea incidencias, usuarios y actividad operativa del sistema.</p>
         </div>
-        <a href="{% url 'usuarios' %}" class="btn btn-primary rounded-pill px-4">Gestionar Usuarios</a>
     </div>
 
     <div class="row g-4">
-        <div class="col-md-4">
+        <div class="col-md-4 col-xl-3">
             <div class="card stat-card shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <p class="text-muted text-uppercase small mb-2">Rol actual</p>
-                            <h2 class="h4 mb-0">{{ user.get_role_display }}</h2>
+                            <p class="text-muted text-uppercase small mb-2">Críticas activas</p>
+                            <h2 class="h3 fw-bold mb-0">{{ stats.total_criticas }}</h2>
+                            <span class="badge-soft badge-soft-danger mt-2 d-inline-block">Alta prioridad</span>
                         </div>
-                        <div class="icon-shape bg-gradient-primary text-white shadow">
-                            <i class="bi bi-shield-lock fs-4"></i>
+                        <div class="icon-shape bg-gradient-danger text-white shadow">
+                            <i class="bi bi-exclamation-octagon fs-4"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-4 col-xl-3">
             <div class="card stat-card shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <p class="text-muted text-uppercase small mb-2">Área</p>
-                            <h2 class="h4 mb-0">{{ user.area.name|default:"Sin área asignada" }}</h2>
-                        </div>
-                        <div class="icon-shape bg-gradient-success text-white shadow">
-                            <i class="bi bi-briefcase fs-4"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card stat-card shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="text-muted text-uppercase small mb-2">Estado</p>
-                            <span class="badge-soft {% if user.is_online %}badge-soft-success{% else %}badge-soft-warning{% endif %}">
-                                {% if user.is_online %}En línea{% else %}Sin actividad reciente{% endif %}
-                            </span>
+                            <p class="text-muted text-uppercase small mb-2">Pendientes activas</p>
+                            <h2 class="h3 fw-bold mb-0">{{ stats.total_pendientes }}</h2>
+                            <span class="badge-soft badge-soft-warning mt-2 d-inline-block">En seguimiento</span>
                         </div>
                         <div class="icon-shape bg-gradient-warning text-white shadow">
-                            <i class="bi bi-activity fs-4"></i>
+                            <i class="bi bi-hourglass-split fs-4"></i>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
+        <div class="col-md-4 col-xl-3">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-muted text-uppercase small mb-2">Resueltas</p>
+                            <h2 class="h3 fw-bold mb-0">{{ stats.total_resueltos }}</h2>
+                            <span class="badge-soft badge-soft-primary mt-2 d-inline-block">Por validar</span>
+                        </div>
+                        <div class="icon-shape bg-gradient-primary text-white shadow">
+                            <i class="bi bi-tools fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 col-xl-3">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-muted text-uppercase small mb-2">Cerradas</p>
+                            <h2 class="h3 fw-bold mb-0">{{ stats.total_cerrados }}</h2>
+                            <span class="badge-soft badge-soft-success mt-2 d-inline-block">Finalizadas</span>
+                        </div>
+                        <div class="icon-shape bg-gradient-success text-white shadow">
+                            <i class="bi bi-check2-circle fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mt-1">
+        <div class="col-lg-4">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <p class="text-muted text-uppercase small mb-2">Registradas hoy</p>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h3 class="fw-bold mb-0">{{ stats.total_hoy }}</h3>
+                        <span class="badge-soft badge-soft-primary">Actividad diaria</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <p class="text-muted text-uppercase small mb-2">Sin asignar</p>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h3 class="fw-bold mb-0">{{ stats.sin_asignar }}</h3>
+                        <span class="badge-soft badge-soft-warning">Requieren técnico</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <p class="text-muted text-uppercase small mb-2">Alertas SLA</p>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h3 class="fw-bold mb-0">{{ stats.sla_por_vencer }} / {{ stats.sla_vencidas }}</h3>
+                        <span class="badge-soft badge-soft-danger">Por vencer / vencidas</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card stat-card shadow-sm mt-4">
+        <div class="card-header bg-white border-0 pb-0">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="h5 fw-bold mb-1">Incidencias registradas hoy</h2>
+                    <p class="text-muted small mb-0">Últimos tickets creados para seguimiento administrativo.</p>
+                </div>
+                <a href="{% url 'incidencias_list' %}" class="btn btn-sm btn-outline-primary rounded-pill">Abrir listado</a>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if incidencias_hoy_lista %}
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Solicitante</th>
+                                <th>Área</th>
+                                <th>Estado</th>
+                                <th>Prioridad</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for incidencia in incidencias_hoy_lista %}
+                            <tr>
+                                <td><a class="fw-semibold text-decoration-none" href="{% url 'detalle_incidencia' incidencia.pk %}">{{ incidencia.codigo|default:incidencia.id }}</a></td>
+                                <td>{{ incidencia.creador.get_full_name|default:incidencia.creador.username }}</td>
+                                <td>{{ incidencia.area.name|default:"Sin área" }}</td>
+                                <td><span class="badge-soft badge-soft-primary">{{ incidencia.estado_actual }}</span></td>
+                                <td>{{ incidencia.get_prioridad_display }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center text-muted py-4">No se registraron incidencias hoy.</div>
+            {% endif %}
         </div>
     </div>
 </div>

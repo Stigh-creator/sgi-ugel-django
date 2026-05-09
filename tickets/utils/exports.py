@@ -1,8 +1,35 @@
 import io
+import os
+from urllib.parse import unquote, urlparse
+from django.conf import settings
+from django.contrib.staticfiles import finders
 from django.template.loader import get_template
 from xhtml2pdf import pisa
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
+
+
+def link_callback(uri, rel):
+    """
+    Convierte URLs de media/static en rutas locales para que xhtml2pdf pueda
+    incrustar imágenes y recursos dentro del PDF.
+    """
+    parsed_uri = urlparse(uri)
+    path = unquote(parsed_uri.path)
+
+    if path.startswith(settings.MEDIA_URL):
+        absolute_path = os.path.join(settings.MEDIA_ROOT, path.replace(settings.MEDIA_URL, "", 1))
+    elif path.startswith(settings.STATIC_URL):
+        relative_path = path.replace(settings.STATIC_URL, "", 1)
+        static_root = getattr(settings, "STATIC_ROOT", "")
+        absolute_path = finders.find(relative_path) or os.path.join(static_root, relative_path)
+    else:
+        absolute_path = uri
+
+    if not os.path.isfile(absolute_path):
+        return uri
+    return absolute_path
+
 
 def generate_pdf(template_path, context):
     """
@@ -12,7 +39,7 @@ def generate_pdf(template_path, context):
     template = get_template(template_path)
     html = template.render(context)
     result = io.BytesIO()
-    pdf = pisa.pisaDocument(io.BytesIO(html.encode("UTF-8")), result)
+    pdf = pisa.pisaDocument(io.BytesIO(html.encode("UTF-8")), result, link_callback=link_callback)
     if not pdf.err:
         result.seek(0)
         return result

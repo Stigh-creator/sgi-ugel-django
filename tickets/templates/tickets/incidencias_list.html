@@ -43,6 +43,42 @@
         </button>
     </div>
 
+    <section class="pdf-report-panel">
+        <div class="d-flex flex-column flex-xl-row align-items-start align-items-xl-center justify-content-between gap-3">
+            <div>
+                <p class="text-uppercase text-primary fw-bold small mb-1">Reportes PDF</p>
+                <h2 class="h5 fw-bold mb-1">Descarga reportes de incidencias</h2>
+                <p class="text-muted small mb-0">Genera reportes por día, semana, mes o rango personalizado. Cada descarga registra el usuario que genera el documento.</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-light border rounded-pill fw-semibold" href="{% url 'export_reporte_pdf' %}?start_date={{ pdf_today_start|date:'Y-m-d' }}&end_date={{ pdf_today_end|date:'Y-m-d' }}" target="_blank" rel="noopener">
+                    <i class="bi bi-file-earmark-pdf me-2 text-danger"></i>Hoy
+                </a>
+                <a class="btn btn-light border rounded-pill fw-semibold" href="{% url 'export_reporte_pdf' %}?start_date={{ pdf_week_start|date:'Y-m-d' }}&end_date={{ pdf_week_end|date:'Y-m-d' }}" target="_blank" rel="noopener">
+                    <i class="bi bi-calendar-week me-2 text-danger"></i>Semana
+                </a>
+                <a class="btn btn-light border rounded-pill fw-semibold" href="{% url 'export_reporte_pdf' %}?start_date={{ pdf_month_start|date:'Y-m-d' }}&end_date={{ pdf_month_end|date:'Y-m-d' }}" target="_blank" rel="noopener">
+                    <i class="bi bi-calendar3 me-2 text-danger"></i>Mes
+                </a>
+            </div>
+        </div>
+        <form class="pdf-range-form mt-3" method="get" action="{% url 'export_reporte_pdf' %}" target="_blank">
+            <div class="d-flex flex-column flex-md-row gap-2 align-items-md-end">
+                <div>
+                    <label class="form-label small fw-semibold mb-1">Desde</label>
+                    <input type="date" name="start_date" class="form-control" value="{{ pdf_month_start|date:'Y-m-d' }}">
+                </div>
+                <div>
+                    <label class="form-label small fw-semibold mb-1">Hasta</label>
+                    <input type="date" name="end_date" class="form-control" value="{{ pdf_today_end|date:'Y-m-d' }}">
+                </div>
+                <button type="submit" class="btn btn-danger rounded-pill fw-bold px-4">
+                    <i class="bi bi-download me-2"></i>Descargar rango
+                </button>
+            </div>
+        </form>
+    </section>
+
     <!-- Toolbar Premium -->
     <div class="toolbar-premium">
         <form id="filterForm" class="d-flex align-items-center gap-3 w-100"

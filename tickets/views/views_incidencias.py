@@ -6,6 +6,7 @@ from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from datetime import timedelta
 from django.core.cache import cache
 from django.views.decorators.http import require_POST
 
@@ -13,7 +14,7 @@ from auditoria.utils import registrar_auditoria
 from .views_utils import (
     is_admin, is_fetch_request, add_form_errors_to_messages, HttpResponseClientRefresh, page_querystring
 )
-from ..models import Area, Comentario, CustomUser, Incidencia, IncidenciaImagen, Estado
+from ..models import Area, Comentario, CustomUser, Incidencia, IncidenciaImagen, Estado, EstadoSLA
 from ..forms.forms_incidencias import (
     IncidenciaAdminForm,
     IncidenciaForm,
@@ -131,6 +132,7 @@ def index(request):
 @user_passes_test(is_admin)
 def dashboard_admin(request):
     hoy = timezone.localdate()
+    incidencias_base = Incidencia.objects.select_related('area', 'estado', 'creador', 'tecnico_asignado')
     count_criticas = Incidencia.objects.filter(
         Q(prioridad__icontains='alt') | Q(prioridad__icontains='crit')
     ).exclude(estado__name__in=[Incidencia.ESTADO_RESUELTO, Incidencia.ESTADO_CERRADO]).count()
@@ -148,8 +150,18 @@ def dashboard_admin(request):
     count_resueltas = Incidencia.objects.filter(estado__name__iexact=Incidencia.ESTADO_RESUELTO).count()
     count_cerrados = Incidencia.objects.filter(estado__name__iexact=Incidencia.ESTADO_CERRADO).count()
 
-    lista_hoy = Incidencia.objects.filter(fecha_creacion__date=hoy).select_related('area', 'estado', 'creador').order_by('-fecha_creacion')
+    lista_hoy = incidencias_base.filter(fecha_creacion__date=hoy).order_by('-fecha_creacion')
     count_hoy = lista_hoy.count()
+    sla_por_vencer = incidencias_base.filter(estado_sla=EstadoSLA.POR_VENCER).exclude(
+        estado__name=Incidencia.ESTADO_CERRADO
+    ).count()
+    sla_vencidas = incidencias_base.filter(
+        estado_sla__in=[EstadoSLA.RESPUESTA_VENCIDA, EstadoSLA.RESOLUCION_VENCIDA]
+    ).exclude(estado__name=Incidencia.ESTADO_CERRADO).count()
+    sin_asignar = incidencias_base.filter(
+        tecnico_asignado__isnull=True,
+        estado__name=Incidencia.ESTADO_PENDIENTE,
+    ).count()
 
     return render(request, 'tickets/dashboard_admin.html', {
         'stats': {
@@ -158,8 +170,11 @@ def dashboard_admin(request):
             'total_resueltos': count_resueltas,
             'total_cerrados': count_cerrados,
             'total_hoy': count_hoy,
+            'sla_por_vencer': sla_por_vencer,
+            'sla_vencidas': sla_vencidas,
+            'sin_asignar': sin_asignar,
         },
-        'incidencias_hoy_lista': lista_hoy,
+        'incidencias_hoy_lista': lista_hoy[:6],
         'estados_lista': Estado.objects.all(),
         'tecnicos_lista': CustomUser.objects.filter(role=CustomUser.ROL_TECNICO, is_active=True),
     })
@@ -177,6 +192,11 @@ def dashboard_tecnico(request):
     ).exclude(estado__name__in=[Incidencia.ESTADO_RESUELTO, Incidencia.ESTADO_CERRADO]).count()
 
     count_finalizados = tickets_base.filter(estado__name__in=[Incidencia.ESTADO_RESUELTO, Incidencia.ESTADO_CERRADO]).count()
+    count_en_proceso = tickets_base.filter(estado__name=Incidencia.ESTADO_EN_PROCESO).count()
+    count_por_validar = tickets_base.filter(estado__name=Incidencia.ESTADO_RESUELTO).count()
+    count_sla_alerta = tickets_base.filter(
+        estado_sla__in=[EstadoSLA.POR_VENCER, EstadoSLA.RESPUESTA_VENCIDA, EstadoSLA.RESOLUCION_VENCIDA]
+    ).exclude(estado__name=Incidencia.ESTADO_CERRADO).count()
     
     ultimas_incidencias = tickets_base.filter(fecha_creacion__date=hoy).select_related('area', 'estado', 'creador').order_by('-fecha_creacion')
 
@@ -184,7 +204,10 @@ def dashboard_tecnico(request):
         'assigned_tickets': tickets_base.count(),
         'assigned_criticas': count_criticas,
         'resolved_assigned_tickets': count_finalizados,
-        'ultimas_incidencias': ultimas_incidencias,
+        'assigned_en_proceso': count_en_proceso,
+        'assigned_por_validar': count_por_validar,
+        'assigned_sla_alerta': count_sla_alerta,
+        'ultimas_incidencias': ultimas_incidencias[:6],
         'incidencias_hoy': ultimas_incidencias.count(),
         'estados_lista': Estado.objects.all(),
     })
@@ -241,6 +264,16 @@ def incidencias_list(request):
         "prioridades": Incidencia.PRIORIDAD_CHOICES,
         "page_querystring": page_querystring(request),
     }
+    today = timezone.localdate()
+    week_start = today - timedelta(days=today.weekday())
+    context.update({
+        "pdf_today_start": today,
+        "pdf_today_end": today,
+        "pdf_week_start": week_start,
+        "pdf_week_end": today,
+        "pdf_month_start": today.replace(day=1),
+        "pdf_month_end": today,
+    })
 
     if request.headers.get("HX-Request"):
         return render(request, "tickets/partials/incidencias_table.html", context)

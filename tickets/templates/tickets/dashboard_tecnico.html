@@ -8,57 +8,143 @@
 {% block content %}
 <div class="container-fluid">
     <div class="mb-4">
-        <h1 class="h3 fw-bold mb-1">Panel Técnico</h1>
-        <p class="text-muted mb-0">Consulta tu estado de trabajo y los accesos habilitados para soporte.</p>
+        <div>
+            <h1 class="h3 fw-bold mb-1">Panel Técnico</h1>
+            <p class="text-muted mb-0">Consulta tu carga de incidencias y prioridades de atención.</p>
+        </div>
     </div>
 
     <div class="row g-4">
-        <div class="col-md-6 col-xl-4">
+        <div class="col-md-6 col-xl-3">
             <div class="card stat-card shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <p class="text-muted text-uppercase small mb-2">Usuario</p>
-                            <h2 class="h5 mb-0">{{ user.get_full_name|default:user.username }}</h2>
+                            <p class="text-muted text-uppercase small mb-2">Asignadas</p>
+                            <h2 class="h3 fw-bold mb-0">{{ assigned_tickets }}</h2>
+                            <span class="badge-soft badge-soft-primary mt-2 d-inline-block">Carga total</span>
                         </div>
                         <div class="icon-shape bg-gradient-primary text-white shadow">
-                            <i class="bi bi-person-workspace fs-4"></i>
+                            <i class="bi bi-kanban fs-4"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-6 col-xl-4">
+        <div class="col-md-6 col-xl-3">
             <div class="card stat-card shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <p class="text-muted text-uppercase small mb-2">Área</p>
-                            <h2 class="h5 mb-0">{{ user.area.name|default:"Sin área asignada" }}</h2>
+                            <p class="text-muted text-uppercase small mb-2">Críticas</p>
+                            <h2 class="h3 fw-bold mb-0">{{ assigned_criticas }}</h2>
+                            <span class="badge-soft badge-soft-danger mt-2 d-inline-block">Alta prioridad</span>
                         </div>
-                        <div class="icon-shape bg-gradient-success text-white shadow">
-                            <i class="bi bi-hdd-network fs-4"></i>
+                        <div class="icon-shape bg-gradient-danger text-white shadow">
+                            <i class="bi bi-exclamation-triangle fs-4"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-12 col-xl-4">
+        <div class="col-md-6 col-xl-3">
             <div class="card stat-card shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <p class="text-muted text-uppercase small mb-2">Actividad</p>
-                            <span class="badge-soft {% if user.is_online %}badge-soft-success{% else %}badge-soft-warning{% endif %}">
-                                {% if user.is_online %}En línea{% else %}Última actividad: {{ user.last_activity_text }}{% endif %}
-                            </span>
+                            <p class="text-muted text-uppercase small mb-2">En proceso</p>
+                            <h2 class="h3 fw-bold mb-0">{{ assigned_en_proceso }}</h2>
+                            <span class="badge-soft badge-soft-warning mt-2 d-inline-block">Atención activa</span>
                         </div>
                         <div class="icon-shape bg-gradient-warning text-white shadow">
-                            <i class="bi bi-router fs-4"></i>
+                            <i class="bi bi-gear-wide-connected fs-4"></i>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-muted text-uppercase small mb-2">Finalizadas</p>
+                            <h2 class="h3 fw-bold mb-0">{{ resolved_assigned_tickets }}</h2>
+                            <span class="badge-soft badge-soft-success mt-2 d-inline-block">Resueltas/cerradas</span>
+                        </div>
+                        <div class="icon-shape bg-gradient-success text-white shadow">
+                            <i class="bi bi-check2-circle fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mt-1">
+        <div class="col-lg-6">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <p class="text-muted text-uppercase small mb-2">Pendientes de validación</p>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h3 class="fw-bold mb-0">{{ assigned_por_validar }}</h3>
+                        <span class="badge-soft badge-soft-primary">Esperan confirmación</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card stat-card shadow-sm h-100">
+                <div class="card-body">
+                    <p class="text-muted text-uppercase small mb-2">Alertas SLA</p>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h3 class="fw-bold mb-0">{{ assigned_sla_alerta }}</h3>
+                        <span class="badge-soft badge-soft-danger">Por vencer o vencidas</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card stat-card shadow-sm mt-4">
+        <div class="card-header bg-white border-0 pb-0">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="h5 fw-bold mb-1">Incidencias asignadas hoy</h2>
+                    <p class="text-muted small mb-0">Tickets recientes bajo responsabilidad del técnico.</p>
+                </div>
+                <a href="{% url 'incidencias_list' %}?tab=asignadas" class="btn btn-sm btn-outline-primary rounded-pill">Abrir asignadas</a>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if ultimas_incidencias %}
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Solicitante</th>
+                                <th>Área</th>
+                                <th>Estado</th>
+                                <th>Prioridad</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for incidencia in ultimas_incidencias %}
+                            <tr>
+                                <td><a class="fw-semibold text-decoration-none" href="{% url 'detalle_incidencia' incidencia.pk %}">{{ incidencia.codigo|default:incidencia.id }}</a></td>
+                                <td>{{ incidencia.creador.get_full_name|default:incidencia.creador.username }}</td>
+                                <td>{{ incidencia.area.name|default:"Sin área" }}</td>
+                                <td><span class="badge-soft badge-soft-primary">{{ incidencia.estado_actual }}</span></td>
+                                <td>{{ incidencia.get_prioridad_display }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center text-muted py-4">No tienes incidencias nuevas asignadas hoy.</div>
+            {% endif %}
         </div>
     </div>
 </div>
