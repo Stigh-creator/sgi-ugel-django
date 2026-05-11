@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/tickets/pdf_exports.css' %}">
+</head>
+<body>
+    <div class="header">
+        <h1>REPORTE DEL DASHBOARD DE INCIDENCIAS</h1>
+        <p>Indicadores generales, distribución operativa y filtros aplicados</p>
+    </div>
+
+    <div class="filter-box">
+        <strong>Filtros aplicados:</strong>
+        Desde: {{ filter_labels.fecha_inicio }} |
+        Hasta: {{ filter_labels.fecha_fin }} |
+        Técnico: {{ filter_labels.tecnico }} |
+        Estado: {{ filter_labels.estado }} |
+        Prioridad: {{ filter_labels.prioridad }} |
+        Área: {{ filter_labels.area }}
+    </div>
+
+    <div class="section-title">Indicadores principales</div>
+    <table class="dashboard-kpi-table">
+        <tr>
+            <td><div class="kpi-label">Total</div><div class="kpi-value">{{ kpis.total }}</div></td>
+            <td><div class="kpi-label">Críticas / Alta</div><div class="kpi-value">{{ kpis.criticas }}</div></td>
+            <td><div class="kpi-label">Pendientes activas</div><div class="kpi-value">{{ kpis.pendientes_activas }}</div></td>
+            <td><div class="kpi-label">Registradas hoy</div><div class="kpi-value">{{ kpis.registradas_hoy }}</div></td>
+        </tr>
+        <tr>
+            <td><div class="kpi-label">Resueltas</div><div class="kpi-value">{{ kpis.resueltas }}</div></td>
+            <td><div class="kpi-label">Cerradas</div><div class="kpi-value">{{ kpis.cerradas }}</div></td>
+            <td><div class="kpi-label">Sin asignar</div><div class="kpi-value">{{ kpis.sin_asignar }}</div></td>
+            <td><div class="kpi-label">SLA vencidas</div><div class="kpi-value">{{ kpis.sla_vencidas }}</div></td>
+        </tr>
+    </table>
+
+    <div class="section-title">Gráfica por estado</div>
+    <table class="bar-table">
+        {% for row in estado_rows %}
+        <tr>
+            <td class="bar-label">{{ row.label }}</td>
+            <td><div class="bar-wrap"><div class="bar-fill {{ row.width_class }}"></div></div></td>
+            <td class="bar-number">{{ row.total }}</td>
+        </tr>
+        {% empty %}
+        <tr><td class="text-center">No hay datos para este filtro.</td></tr>
+        {% endfor %}
+    </table>
+
+    <div class="section-title">Gráfica por prioridad</div>
+    <table class="bar-table">
+        {% for row in prioridad_rows %}
+        <tr>
+            <td class="bar-label">{{ row.label }}</td>
+            <td><div class="bar-wrap"><div class="bar-fill bar-fill-warning {{ row.width_class }}"></div></div></td>
+            <td class="bar-number">{{ row.total }}</td>
+        </tr>
+        {% empty %}
+        <tr><td class="text-center">No hay datos para este filtro.</td></tr>
+        {% endfor %}
+    </table>
+
+    <div class="section-title">Distribución por técnico</div>
+    <table class="bar-table">
+        {% for row in tecnico_rows %}
+        <tr>
+            <td class="bar-label">{{ row.label }}</td>
+            <td><div class="bar-wrap"><div class="bar-fill bar-fill-success {{ row.width_class }}"></div></div></td>
+            <td class="bar-number">{{ row.total }}</td>
+        </tr>
+        {% empty %}
+        <tr><td class="text-center">No hay datos por técnico.</td></tr>
+        {% endfor %}
+    </table>
+
+    <div class="section-title">Distribución por área</div>
+    <table class="bar-table">
+        {% for row in area_rows %}
+        <tr>
+            <td class="bar-label">{{ row.label }}</td>
+            <td><div class="bar-wrap"><div class="bar-fill bar-fill-danger {{ row.width_class }}"></div></div></td>
+            <td class="bar-number">{{ row.total }}</td>
+        </tr>
+        {% empty %}
+        <tr><td class="text-center">No hay datos por área.</td></tr>
+        {% endfor %}
+    </table>
+
+    <div class="section-title">Incidencias consideradas</div>
+    <table class="report-table">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Fecha</th>
+                <th>Área</th>
+                <th>Estado</th>
+                <th>Prioridad</th>
+                <th>Técnico</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for inc in incidencias %}
+            <tr>
+                <td>{{ inc.codigo }}</td>
+                <td>{{ inc.fecha_creacion|date:"d/m/Y" }}</td>
+                <td>{{ inc.area.name|default:"Sin área" }}</td>
+                <td>{{ inc.estado.name }}</td>
+                <td>{{ inc.get_prioridad_display }}</td>
+                <td>{{ inc.tecnico_asignado.get_full_name|default:"Sin asignar" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center">No se encontraron incidencias para los filtros aplicados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="signature">
+        <strong>Constancia de generación del reporte</strong><br>
+        Generado por: {{ generado_por_nombre }} |
+        Usuario/DNI: {{ generado_por.username }} |
+        ID interno: {{ generado_por.id }} |
+        Rol: {{ generado_por.get_role_display }}<br>
+        Fecha y hora de descarga: {{ generado_en|date:"d/m/Y H:i" }}
+    </div>
+
+    <div class="footer">
+        Documento generado automáticamente por el Sistema de Gestión de Incidencias - UGEL Morropón
+    </div>
+</body>
+</html>

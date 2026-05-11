@@ -1,0 +1,168 @@
+/* ============================================================
+   ESTILOS DEL MÓDULO DE AUDITORÍA
+   ============================================================ */
+
+.metric-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    height: 100%;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.metric-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.metric-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+}
+
+.module-card {
+    background: white;
+    border-radius: 1.25rem;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    height: 100%;
+}
+
+.module-header {
+    padding: 1rem 1.25rem;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Colores de módulo dinámicos */
+.bg-Usuarios {
+    background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+}
+
+.bg-Inventario {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+}
+
+.bg-Incidencias {
+    background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+}
+
+.bg-Sistema {
+    background: linear-gradient(135deg, #6b7280 0%, #374151 100%);
+}
+
+.module-body {
+    padding: 1.25rem;
+}
+
+.module-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #94a3b8;
+    letter-spacing: 0.05em;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.audit-table thead th {
+    background: #f8fafc;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    color: #475569;
+    border-bottom: 2px solid #e2e8f0;
+    padding: 1rem 0.75rem;
+}
+
+.audit-table tbody tr {
+    transition: background 0.2s;
+}
+
+.audit-table tbody tr:hover {
+    background: #f1f5f9;
+}
+
+.border-Usuarios {
+    border-left: 4px solid #6366f1 !important;
+}
+
+.border-Inventario {
+    border-left: 4px solid #3b82f6 !important;
+}
+
+.border-Incidencias {
+    border-left: 4px solid #10b981 !important;
+}
+
+.border-Sistema {
+    border-left: 4px solid #6b7280 !important;
+}
+
+.text-Usuarios {
+    color: #ffffff;
+}
+
+.text-Inventario {
+    color: #ffffff;
+}
+
+.text-Incidencias {
+    color: #ffffff;
+}
+
+.btn-outline-usuarios {
+    border-color: #6366f1;
+    color: #6366f1;
+}
+
+.btn-outline-usuarios:hover {
+    background: #6366f1;
+    color: white;
+}
+
+.btn-outline-inventario {
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.btn-outline-inventario:hover {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-outline-incidencias {
+    border-color: #10b981;
+    color: #10b981;
+}
+
+.btn-outline-incidencias:hover {
+    background: #10b981;
+    color: white;
+}
+
+.filter-sticky {
+    position: sticky;
+    top: 1rem;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.9) !important;
+    border: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+.uppercase {
+    text-transform: uppercase;
+}

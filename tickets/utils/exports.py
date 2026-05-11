@@ -55,8 +55,9 @@ def generate_excel_inventario(equipos_queryset):
 
     # Encabezados
     headers = [
-        "Código", "Nombre", "Tipo", "Marca", 
-        "Modelo", "Serie", "Área", "Estado"
+        "Código", "Nombre", "Tipo", "Marca",
+        "Modelo", "Serie", "Área", "Estado técnico",
+        "Disponibilidad", "Activo", "Fecha registro", "Última actualización"
     ]
     
     # Estilos para encabezados
@@ -82,7 +83,12 @@ def generate_excel_inventario(equipos_queryset):
         ws.cell(row=row_num, column=5, value=equipo.modelo)
         ws.cell(row=row_num, column=6, value=equipo.numero_serie or "S/N")
         ws.cell(row=row_num, column=7, value=str(equipo.area) if equipo.area else "Sin área")
-        ws.cell(row=row_num, column=8, value=equipo.get_estado_display())
+        estado = equipo.estado_tecnico or equipo.estado
+        ws.cell(row=row_num, column=8, value=estado.nombre if estado else "Sin estado")
+        ws.cell(row=row_num, column=9, value=equipo.get_disponibilidad_display())
+        ws.cell(row=row_num, column=10, value="Sí" if equipo.activo else "No")
+        ws.cell(row=row_num, column=11, value=equipo.fecha_register.strftime("%d/%m/%Y %H:%M") if equipo.fecha_register else "")
+        ws.cell(row=row_num, column=12, value=equipo.actualizado_en.strftime("%d/%m/%Y %H:%M") if equipo.actualizado_en else "")
 
     result = io.BytesIO()
     wb.save(result)

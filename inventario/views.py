@@ -4,6 +4,8 @@ from django.contrib import messages
 from django.db.models import Q, Count
 from django.core.paginator import Paginator
 from django.urls import reverse
+from django.http import FileResponse, Http404
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 from .models import Equipo, Marca, TipoEquipo, EstadoEquipo
 from .forms import EquipoEstadoUpdateForm, EquipoForm
@@ -11,6 +13,7 @@ from .services import registrar_cambio_manual_estado_equipo
 from tickets.models import Area, CustomUser
 from tickets.views.views_utils import add_form_errors_to_messages, page_querystring
 from tickets.services import normalize_expression, normalize_text
+from tickets.utils.exports import generate_excel_inventario, generate_pdf
 from auditoria.utils import registrar_auditoria
 
 def can_view_inventory(user):
@@ -26,15 +29,22 @@ def can_manage_inventory(user):
         or user.role == CustomUser.ROL_ALMACEN
     )
 
-def get_inventario_context(request, form=None):
+
+def inventory_export_querystring(request):
+    querydict = request.GET.copy()
+    querydict.pop("page", None)
+    encoded = querydict.urlencode()
+    return f"?{encoded}" if encoded else ""
+
+
+def get_filtered_equipos_queryset(request):
     vista = request.GET.get('vista', 'activos')
-    equipos_list = Equipo.objects.select_related('area', 'marca', 'tipo_equipo').order_by('-fecha_register')
+    equipos_list = Equipo.objects.select_related('area', 'marca', 'tipo_equipo', 'estado_tecnico').order_by('-fecha_register')
     if vista == 'bajas':
         equipos_list = equipos_list.filter(activo=False)
     else:
         equipos_list = equipos_list.filter(activo=True)
-    areas = Area.objects.all()
-    
+
     q = request.GET.get('q')
     area_id = request.GET.get('area')
     estado = request.GET.get('estado')
@@ -68,7 +78,21 @@ def get_inventario_context(request, form=None):
         equipos_list = equipos_list.filter(marca_id=marca_id)
     if tipo_id:
         equipos_list = equipos_list.filter(tipo_equipo_id=tipo_id)
-        
+
+    return equipos_list
+
+
+def get_inventario_context(request, form=None):
+    vista = request.GET.get('vista', 'activos')
+    equipos_list = get_filtered_equipos_queryset(request)
+    areas = Area.objects.all()
+    q = request.GET.get('q')
+    area_id = request.GET.get('area')
+    estado = request.GET.get('estado')
+    disponibilidad = request.GET.get('disponibilidad')
+    marca_id = request.GET.get('marca')
+    tipo_id = request.GET.get('tipo')
+
     stats = Equipo.objects.filter(activo=True).aggregate(
         total=Count('id'),
         operativos=Count('id', filter=Q(estado_tecnico__nombre='Operativo')),
@@ -101,6 +125,7 @@ def get_inventario_context(request, form=None):
         'tipo_selected': tipo_id,
         'vista_selected': vista,
         'page_querystring': page_querystring(request),
+        'export_querystring': inventory_export_querystring(request),
         'total_bajas': Equipo.objects.filter(activo=False).count(),
         'form': form or EquipoForm(),
         'can_manage_inventory': can_manage_inventory(request.user),
@@ -121,6 +146,102 @@ def equipo_form_error_message(form):
 @user_passes_test(can_view_inventory)
 def inventario_list(request):
     return render(request, 'inventario/inventario_list.html', get_inventario_context(request))
+
+
+@login_required
+@user_passes_test(can_view_inventory)
+def inventario_export_excel(request):
+    equipos = get_filtered_equipos_queryset(request)
+    excel_file = generate_excel_inventario(equipos)
+    filename = f"inventario_equipos_{timezone.now().strftime('%Y%m%d')}.xlsx"
+    registrar_auditoria(
+        request,
+        "Inventario",
+        "descargó Excel de inventario",
+        f"El usuario {request.user.get_full_name() or request.user.username} descargó un Excel del inventario con filtros aplicados.",
+        None,
+    )
+    return FileResponse(excel_file, as_attachment=True, filename=filename)
+
+
+@login_required
+@user_passes_test(can_view_inventory)
+def inventario_export_pdf(request):
+    equipos = get_filtered_equipos_queryset(request)
+    equipos_list = list(equipos[:60])
+    stats = equipos.aggregate(
+        total=Count('id'),
+        operativos=Count('id', filter=Q(estado_tecnico__nombre='Operativo')),
+        en_revision=Count('id', filter=Q(estado_tecnico__nombre='En revisión')),
+        reparacion=Count('id', filter=Q(estado_tecnico__nombre='En reparación')),
+        inoperativos=Count('id', filter=Q(estado_tecnico__nombre='Inoperativo')),
+        baja=Count('id', filter=Q(estado_tecnico__nombre='Dado de baja')),
+        libres=Count('id', filter=Q(disponibilidad=Equipo.DISPONIBILIDAD_LIBRE)),
+        en_uso=Count('id', filter=Q(disponibilidad=Equipo.DISPONIBILIDAD_EN_USO)),
+        no_disponibles=Count('id', filter=Q(disponibilidad=Equipo.DISPONIBILIDAD_NO_DISPONIBLE)),
+    )
+    area_id = request.GET.get('area') or ''
+    tipo_id = request.GET.get('tipo') or ''
+    marca_id = request.GET.get('marca') or ''
+    context = {
+        'equipos': equipos_list,
+        'stats': stats,
+        'vista_selected': request.GET.get('vista', 'activos'),
+        'query': request.GET.get('q') or 'Sin búsqueda',
+        'area_label': Area.objects.filter(pk=area_id).first() if area_id.isdigit() else 'Todas',
+        'estado_label': request.GET.get('estado') or 'Todos',
+        'disponibilidad_label': dict(Equipo.DISPONIBILIDAD_CHOICES).get(request.GET.get('disponibilidad'), 'Todas'),
+        'tipo_label': TipoEquipo.objects.filter(pk=tipo_id).first() if tipo_id.isdigit() else 'Todos',
+        'marca_label': Marca.objects.filter(pk=marca_id).first() if marca_id.isdigit() else 'Todas',
+        'generado_por': request.user,
+        'generado_por_nombre': request.user.get_full_name() or request.user.username,
+        'generado_en': timezone.localtime(timezone.now()),
+    }
+    pdf_file = generate_pdf('inventario/exports/reporte_inventario.html', context)
+    if pdf_file:
+        registrar_auditoria(
+            request,
+            "Inventario",
+            "descargó PDF de inventario",
+            f"El usuario {request.user.get_full_name() or request.user.username} descargó un PDF del inventario con filtros aplicados.",
+            None,
+        )
+        filename = f"inventario_equipos_{timezone.now().strftime('%Y%m%d')}.pdf"
+        return FileResponse(pdf_file, content_type='application/pdf', filename=filename)
+    raise Http404("Error al generar el PDF de inventario")
+
+
+@login_required
+@user_passes_test(can_view_inventory)
+def equipo_export_pdf(request, pk):
+    equipo = get_object_or_404(
+        Equipo.objects.select_related('area', 'marca', 'tipo_equipo', 'estado', 'estado_tecnico')
+        .prefetch_related('historial_estado__usuario_que_cambio'),
+        pk=pk,
+    )
+    incidencias_relacionadas = (
+        equipo.incidencia_set.select_related('creador', 'tecnico_asignado', 'estado')
+        .order_by('-fecha_creacion')[:12]
+    )
+    context = {
+        'equipo': equipo,
+        'incidencias_relacionadas': incidencias_relacionadas,
+        'generado_por': request.user,
+        'generado_por_nombre': request.user.get_full_name() or request.user.username,
+        'generado_en': timezone.localtime(timezone.now()),
+    }
+    pdf_file = generate_pdf('inventario/exports/ficha_equipo.html', context)
+    if pdf_file:
+        registrar_auditoria(
+            request,
+            "Inventario",
+            "descargó PDF de equipo",
+            f"El usuario {request.user.get_full_name() or request.user.username} descargó la ficha PDF del equipo {equipo.codigo_equipo}.",
+            equipo.id,
+        )
+        filename = f"equipo_{equipo.codigo_equipo}_{timezone.now().strftime('%Y%m%d')}.pdf"
+        return FileResponse(pdf_file, content_type='application/pdf', filename=filename)
+    raise Http404("Error al generar el PDF del equipo")
 
 @login_required
 @user_passes_test(can_manage_inventory)

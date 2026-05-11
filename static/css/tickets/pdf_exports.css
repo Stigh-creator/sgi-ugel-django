@@ -1,0 +1,268 @@
+@page {
+    size: a4;
+    margin: 2cm;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    font-size: 11pt;
+    color: #333;
+}
+
+.pdf-landscape {
+    font-size: 9pt;
+}
+
+.header {
+    text-align: center;
+    border-bottom: 2px solid #0D6EFD;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.header h1 {
+    color: #0D6EFD;
+    margin: 0;
+    font-size: 20pt;
+}
+
+.pdf-landscape .header {
+    border-bottom: 0;
+}
+
+.pdf-landscape .header h1 {
+    font-size: 16pt;
+}
+
+.section-title {
+    background-color: #f8f9fa;
+    padding: 5px 10px;
+    font-weight: bold;
+    border-left: 4px solid #0D6EFD;
+    margin-top: 15px;
+    margin-bottom: 10px;
+}
+
+.info-grid,
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.info-grid td {
+    padding: 5px;
+    vertical-align: top;
+}
+
+.label {
+    font-weight: bold;
+    width: 30%;
+}
+
+.text-box {
+    padding: 5px 10px;
+    border: 1px solid #eee;
+    min-height: 50px;
+}
+
+.solution-box {
+    margin-top: 10px;
+    min-height: 80px;
+}
+
+.report-table th {
+    background-color: #0D6EFD;
+    color: white;
+    padding: 8px;
+    text-align: left;
+}
+
+.report-table td {
+    border-bottom: 1px solid #eee;
+    padding: 8px;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 8pt;
+    color: #777;
+    border-top: 1px solid #eee;
+    padding-top: 5px;
+}
+
+.pdf-landscape .footer {
+    font-size: 7pt;
+    color: #999;
+    border-top: 0;
+}
+
+.summary {
+    margin-bottom: 12px;
+    font-size: 9pt;
+    color: #555;
+}
+
+.signature,
+.signature-box {
+    margin-top: 16px;
+    border: 1px solid #ddd;
+    padding: 8px;
+    background: #fafafa;
+    font-size: 8pt;
+}
+
+.signature-box {
+    margin-top: 22px;
+    padding: 10px;
+    font-size: 9pt;
+}
+
+.note {
+    font-size: 8pt;
+    color: #666;
+}
+
+.evidence-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+}
+
+.evidence-cell {
+    width: 50%;
+    border: 1px solid #e5e5e5;
+    padding: 8px;
+    vertical-align: top;
+}
+
+.evidence-img {
+    width: 220px;
+    height: 150px;
+    object-fit: cover;
+    border: 1px solid #ddd;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.equipment-photo {
+    border: 1px solid #ddd;
+    display: block;
+    height: 150px;
+    object-fit: cover;
+    width: 220px;
+}
+
+.evidence-caption {
+    font-size: 8pt;
+    color: #555;
+    font-weight: bold;
+}
+
+.empty-evidence {
+    color: #777;
+    font-size: 9pt;
+    border: 1px dashed #ddd;
+    padding: 10px;
+}
+
+.dashboard-kpi-table td {
+    border: 1px solid #e5e7eb;
+    padding: 10px;
+    vertical-align: top;
+    width: 25%;
+}
+
+.kpi-label {
+    color: #64748b;
+    font-size: 8pt;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+.kpi-value {
+    color: #0f172a;
+    font-size: 20pt;
+    font-weight: bold;
+}
+
+.filter-box {
+    border: 1px solid #e5e7eb;
+    background: #f8fafc;
+    padding: 8px;
+    font-size: 8pt;
+    margin-bottom: 12px;
+}
+
+.bar-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+}
+
+.bar-table td {
+    border-bottom: 1px solid #eef2f7;
+    padding: 6px;
+    vertical-align: middle;
+}
+
+.bar-label {
+    width: 28%;
+    font-weight: bold;
+}
+
+.bar-wrap {
+    width: 55%;
+    background: #eef2f7;
+    height: 12px;
+}
+
+.bar-fill {
+    height: 12px;
+    background: #0D6EFD;
+}
+
+.bar-fill-danger {
+    background: #dc3545;
+}
+
+.bar-fill-warning {
+    background: #f59e0b;
+}
+
+.bar-fill-success {
+    background: #16a34a;
+}
+
+.bar-number {
+    width: 12%;
+    text-align: right;
+}
+
+.bar-width-0 { width: 0%; }
+.bar-width-5 { width: 5%; }
+.bar-width-10 { width: 10%; }
+.bar-width-15 { width: 15%; }
+.bar-width-20 { width: 20%; }
+.bar-width-25 { width: 25%; }
+.bar-width-30 { width: 30%; }
+.bar-width-35 { width: 35%; }
+.bar-width-40 { width: 40%; }
+.bar-width-45 { width: 45%; }
+.bar-width-50 { width: 50%; }
+.bar-width-55 { width: 55%; }
+.bar-width-60 { width: 60%; }
+.bar-width-65 { width: 65%; }
+.bar-width-70 { width: 70%; }
+.bar-width-75 { width: 75%; }
+.bar-width-80 { width: 80%; }
+.bar-width-85 { width: 85%; }
+.bar-width-90 { width: 90%; }
+.bar-width-95 { width: 95%; }
+.bar-width-100 { width: 100%; }

@@ -10,7 +10,8 @@ from .views.views_incidencias import (
     gestionar_incidencia, marcar_escribiendo
 )
 from .views.views_exports import (
-    export_inventario_excel, export_ticket_pdf, export_reporte_incidencias_pdf
+    export_inventario_excel, export_ticket_pdf, export_reporte_incidencias_pdf,
+    export_dashboard_incidencias_pdf, export_dashboard_inventario_pdf,
 )
 
 urlpatterns = [
@@ -18,6 +19,8 @@ urlpatterns = [
     path('exportar/inventario/excel/', export_inventario_excel, name='export_inventario_excel'),
     path('exportar/incidencia/<int:pk>/pdf/', export_ticket_pdf, name='export_ticket_pdf'),
     path('exportar/incidencias/reporte/pdf/', export_reporte_incidencias_pdf, name='export_reporte_pdf'),
+    path('exportar/incidencias/dashboard/pdf/', export_dashboard_incidencias_pdf, name='export_dashboard_pdf'),
+    path('exportar/inventario/dashboard/pdf/', export_dashboard_inventario_pdf, name='export_dashboard_inventario_pdf'),
     # Ruta raíz redirige según el index que ya programaste
     path('', index, name='index'),
     

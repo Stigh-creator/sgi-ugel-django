@@ -1,0 +1,46 @@
+/* Import de Fuentes Globales */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
+
+/* ===============================
+   VARIABLES
+================================= */
+:root {
+    --ink: #0f172a;
+    --ink-soft: #475569;
+    --ink-muted: #94a3b8;
+    --surface: #ffffff;
+    --surface-2: #f8fafc;
+    --border: #e2e8f0;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.09);
+
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 14px;
+
+    --estado-en-proceso-bg: #eff6ff;
+    --estado-en-proceso-rail: #2563eb;
+
+    --gradient-primary: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    --gradient-success: linear-gradient(135deg, #22c55e 0%, #15803d 100%);
+    --gradient-danger: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+
+    --primary-color: #2563eb;
+    --success-color: #16a34a;
+    --warning-color: #f59e0b;
+    --danger-color: #dc3545;
+    --secondary-color: #64748b;
+}
+
+/* ===============================
+   BASE
+================================= */
+body {
+    display: flex;
+    min-height: 100vh;
+    background-color: var(--surface-2);
+    font-family: var(--font-body);
+}

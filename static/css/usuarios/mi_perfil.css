@@ -1,0 +1,406 @@
+:root {
+    --primary-soft: #e7f1ff;
+    --warning-soft: #fff7e6;
+    --primary-main: #0d6efd;
+    --text-muted: #6c757d;
+}
+
+/* ===============================
+   CARD PERFIL (sin romper global)
+================================= */
+.profile-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    box-shadow: none;
+    transition: all 0.25s ease;
+}
+
+.profile-card:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* ===============================
+   AVATAR PERFIL
+================================= */
+.profile-avatar-container {
+    position: relative;
+    display: inline-block;
+    padding: 6px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-main), #2563eb);
+}
+
+.img-main-profile {
+    width: 115px;
+    height: 115px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 4px solid white;
+}
+
+/* Botón cámara */
+.btn-camera-upload {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: white;
+    color: var(--primary-main);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.btn-camera-upload:hover {
+    background: var(--primary-main);
+    color: white;
+    transform: scale(1.05);
+}
+
+/* ===============================
+   TEXTOS PERFIL
+================================= */
+.profile-name {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--ink);
+    letter-spacing: -0.2px;
+}
+
+.profile-username {
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+}
+
+/* ===============================
+   ÁREA
+================================= */
+.profile-area {
+    background-color: var(--warning-soft);
+    border-radius: 14px;
+    border: 1px solid #fde68a;
+}
+
+/* ===============================
+   FORMULARIOS (ESTILO MODERNO)
+================================= */
+.profile-form {
+    padding: 10px;
+}
+
+.form-label-custom {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #4b5563;
+    margin-bottom: 8px;
+    display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Contenedor del Input */
+.input-group-custom {
+    display: flex;
+    align-items: center;
+    background: #f9fafb;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 12px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden;
+}
+
+.input-group-custom:focus-within {
+    border-color: #0D6EFD !important;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+}
+
+/* Caja de Icono */
+.icon-box {
+    padding: 12px 15px;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid #f3f4f6;
+}
+
+.input-group-custom:focus-within .icon-box {
+    color: var(--primary-main);
+}
+
+/* Input real */
+.form-control-custom {
+    border: none;
+    background: transparent;
+    padding: 12px 15px;
+    width: 100%;
+    font-size: 0.95rem;
+    color: #1f2937;
+    outline: none;
+}
+
+/* ESTADO BLOQUEADO (Readonly) */
+.input-group-custom.is-readonly {
+    background-color: #f9fafb !important;
+    border-style: dashed;
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+.input-group-custom.is-readonly .form-control-custom {
+    color: #9ca3af;
+    cursor: not-allowed;
+}
+
+/* BANNER DE AVISO ADMIN */
+.admin-lock-banner {
+    background: var(--primary-soft);
+    padding: 10px 15px;
+    border-radius: 10px;
+    border-left: 4px solid var(--primary-main);
+}
+
+.admin-lock-note {
+    color: #1e40af;
+    font-size: 0.85rem;
+}
+
+.admin-lock-note i {
+    margin-right: 5px;
+}
+
+/* BOTÓN GUARDAR */
+.btn-primary-custom {
+    padding: 12px 30px;
+    font-size: 0.95rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--primary-main), #2563eb);
+    border: none;
+    color: white;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary-custom:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+}
+/* ===============================
+   BADGE ROL
+================================= */
+.badge-role {
+    font-size: 0.65rem;
+    padding: 5px 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ===============================
+   ESTILOS DE CONTRASEÑA
+================================= */
+
+/* Botón de ojo (ver password) */
+.btn-toggle-view {
+    background: transparent;
+    border: none;
+    padding: 0 15px;
+    color: #9ca3af;
+    transition: color 0.2s;
+}
+
+.btn-toggle-view:hover {
+    color: var(--primary-main);
+}
+
+/* Caja contenedora de requisitos */
+.password-requirements-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 15px;
+}
+
+.req-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--primary-main);
+    font-weight: 800;
+}
+
+/* Items de requisitos como mini-cards */
+#password-requirements {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Dos columnas para ahorrar espacio */
+    gap: 8px;
+}
+
+/* ===============================
+   REQUISITOS (LISTA VERTICAL PURA)
+================================= */
+.requirements-container-vertical {
+    background-color: var(--primary-soft);
+    border-radius: 14px;
+    padding: 1.25rem;
+    border: 1px solid #e0eeff;
+    width: 100%; /* Asegura que ocupe el ancho del col-md-6 */
+}
+
+.req-title-simple {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--primary-main);
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    display: block;
+}
+
+/* Contenedor de la lista - EL SECRETO ESTÁ AQUÍ */
+.req-list {
+    display: flex !important;
+    flex-direction: column !important; /* Fuerza uno debajo de otro */
+    align-items: flex-start;
+    gap: 12px; 
+    width: 100%;
+}
+
+.req-item-v {
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    color: #4b5563;
+    width: 100%; /* Cada item ocupa toda la línea */
+    text-align: left;
+}
+
+.req-item-v i {
+    font-size: 0.8rem;
+    margin-right: 12px;
+    color: #94a3b8;
+    flex-shrink: 0; /* Evita que el icono se aplaste */
+}
+
+/* Estado Válido */
+.req-item-v.is-valid {
+    color: #059669;
+    font-weight: 600;
+}
+
+.req-item-v.is-valid i::before {
+    content: "\f26b"; /* Check circle fill */
+    color: #10b981;
+}
+
+/* Botón de cambio de clave */
+.btn-update-password {
+    background: #ffc107;
+    color: #000;
+    border: none;
+    padding: 12px 25px;
+    font-weight: 700;
+    border-radius: 999px;
+    transition: all 0.3s ease;
+}
+
+.btn-update-password:hover {
+    background: #ffca2c;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 193, 7, 0.3);
+}
+
+/* Mensajes de error/éxito en confirmación */
+#match-message.text-danger { color: #ef4444 !important; }
+#match-message.text-success { color: #22c55e !important; }
+
+/* ===============================
+   LOGOUT LINK
+================================= */
+.logout-link {
+    font-size: 0.85rem;
+    padding: 8px 12px;
+    border-radius: 8px;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.logout-link:hover {
+    background-color: rgba(220, 53, 69, 0.08);
+    color: #dc3545;
+}
+
+/* ===============================
+   AVISO DE EDICIÓN (ADMIN ONLY)
+================================= */
+.admin-lock-container {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.admin-lock-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background-color: var(--primary-soft); /* El azul claro de tu root */
+    color: #1e40af; /* Un azul más oscuro para contraste */
+    border-radius: 10px;
+    border: 1px dashed #bfdbfe;
+    font-size: 0.78rem;
+    font-weight: 500;
+}
+
+.admin-lock-note i {
+    font-size: 0.9rem;
+    color: var(--primary-main);
+}
+
+.admin-lock-note strong {
+    font-weight: 700;
+    margin-left: 2px;
+}
+
+/* ==============================================
+   FIX: ELIMINAR ICONOS NATIVOS DEL NAVEGADOR 
+   (Evita que salgan dos ojos en la contraseña)
+================================================= */
+
+/* Ocultar el ojo nativo en navegadores basados en Edge/Chrome */
+input::-ms-reveal,
+input::-ms-clear {
+    display: none;
+}
+
+/* Ocultar en otros navegadores si apareciera */
+input::-webkit-contacts-auto-fill-button, 
+input::-webkit-credentials-auto-fill-button {
+    visibility: hidden;
+    pointer-events: none;
+    position: absolute;
+    right: 0;
+}
+
+/* ==========================================================================
+   CONTENEDOR DE RECORTE DE IMAGEN (CROPPER JS)
+   ========================================================================== */
+.cropper-container-wrapper {
+    max-height: 500px;
+    overflow: hidden;
+    border-radius: 12px;
+    background: #f8f9fa;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+@media (max-width: 767px) { .btn-primary-custom, .btn-update-password { width: 100%; display: flex; justify-content: center; align-items: center; } }

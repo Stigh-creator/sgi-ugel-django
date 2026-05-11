@@ -98,16 +98,17 @@
     </div>
 
     <!-- Filters -->
-    <div class="filter-section">
-        <form method="GET" class="row g-3 align-items-end">
-            <div class="col-md-4">
+    <div class="filter-section inventory-filter-section">
+        <form method="GET" class="inventory-filter-grid">
+            <input type="hidden" name="vista" value="{{ vista_selected }}">
+            <div class="inventory-filter-field inventory-filter-search">
                 <label class="form-label small fw-bold text-muted">Buscador</label>
                 <div class="input-group">
                     <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
                     <input type="text" name="q" class="form-control bg-light border-start-0" placeholder="Código, nombre, modelo..." value="{{ query|default:'' }}">
                 </div>
             </div>
-            <div class="col-md-2">
+            <div class="inventory-filter-field">
                 <label class="form-label small fw-bold text-muted">Área</label>
                 <select name="area" class="form-select bg-light">
                     <option value="">Todas</option>
@@ -116,7 +117,7 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="inventory-filter-field">
                 <label class="form-label small fw-bold text-muted">Estado</label>
                 <div class="filter-select-wrap w-100" id="estadoFilterWrap">
                     <span class="filter-state-dot is-hidden" id="estadoFilterDot" aria-hidden="true"></span>
@@ -152,7 +153,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-2">
+            <div class="inventory-filter-field">
                 <label class="form-label small fw-bold text-muted">Disponibilidad</label>
                 <select name="disponibilidad" class="form-select bg-light">
                     <option value="">Todas</option>
@@ -162,7 +163,7 @@
                     <option value="NO_DISPONIBLE" {% if disponibilidad_selected == 'NO_DISPONIBLE' %}selected{% endif %}>No disponible</option>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="inventory-filter-field">
                 <label class="form-label small fw-bold text-muted">Tipo</label>
                 <select name="tipo" class="form-select bg-light">
                     <option value="">Todos</option>
@@ -171,7 +172,7 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="inventory-filter-field">
                 <label class="form-label small fw-bold text-muted">Marca</label>
                 <select name="marca" class="form-select bg-light">
                     <option value="">Todas</option>
@@ -180,14 +181,39 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+            <div class="inventory-filter-field inventory-filter-action">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-funnel me-2"></i>Filtrar
+                </button>
             </div>
-            <div class="col-md-2">
-                <a href="{% url 'inventario_list' %}" class="btn btn-light border w-100">Limpiar filtros</a>
+            <div class="inventory-filter-field inventory-filter-action">
+                <a href="{% url 'inventario_list' %}?vista={{ vista_selected }}" class="btn btn-light border w-100">
+                    <i class="bi bi-x-circle me-2"></i>Limpiar
+                </a>
             </div>
         </form>
     </div>
+
+    <section class="inventory-report-panel">
+        <div class="inventory-report-info">
+            <div class="inventory-report-icon">
+                <i class="bi bi-file-earmark-arrow-down"></i>
+            </div>
+            <div>
+                <p class="text-uppercase text-primary fw-bold small mb-1">Reportes</p>
+                <h3 class="h6 fw-bold mb-1">Exportar inventario filtrado</h3>
+                <p class="text-muted small mb-0">Descarga el resultado actual en Excel para análisis o en PDF para presentación.</p>
+            </div>
+        </div>
+        <div class="inventory-report-actions">
+            <a href="/inventario/exportar/excel/{{ export_querystring }}" class="btn btn-success rounded-pill fw-semibold" target="_blank" rel="noopener">
+                <i class="bi bi-file-earmark-excel me-2"></i>Excel
+            </a>
+            <a href="/inventario/exportar/pdf/{{ export_querystring }}" class="btn btn-danger rounded-pill fw-semibold" target="_blank" rel="noopener">
+                <i class="bi bi-file-earmark-pdf me-2"></i>PDF
+            </a>
+        </div>
+    </section>
 
     <!-- Table -->
     <div class="equipos-table shadow-sm">
@@ -250,12 +276,15 @@
                             </span>
                         </td>
                         <td class="text-center">
-                            <div class="d-flex justify-content-center gap-2">
-                                <a href="{% url 'equipo_detalle' equipo.pk %}" class="btn btn-sm btn-outline-info rounded-pill px-3" title="Ver detalle">
+                            <div class="inventory-action-group">
+                                <a href="{% url 'equipo_detalle' equipo.pk %}" class="inventory-action-btn inventory-action-view" title="Ver detalle" aria-label="Ver detalle">
                                     <i class="bi bi-eye"></i>
                                 </a>
+                                <a href="{% url 'equipo_export_pdf' equipo.pk %}" class="inventory-action-btn inventory-action-pdf" target="_blank" rel="noopener" title="Abrir PDF" aria-label="Abrir PDF">
+                                    <i class="bi bi-file-earmark-pdf"></i>
+                                </a>
                                 {% if can_manage_inventory and vista_selected != 'bajas' %}
-                                <button class="btn btn-sm btn-outline-primary rounded-pill px-3" 
+                                <button class="inventory-action-btn inventory-action-edit" title="Editar equipo" aria-label="Editar equipo"
                                     data-bs-toggle="modal" data-bs-target="#modalEditarEquipo"
                                     data-id="{{ equipo.pk }}"
                                     data-codigo="{{ equipo.codigo_equipo }}"
@@ -273,7 +302,7 @@
                                 </button>
                                 <form action="{% url 'equipo_eliminar' equipo.pk %}" method="POST" class="d-inline js-confirm-delete">
                                     {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                                    <button type="submit" class="inventory-action-btn inventory-action-delete" title="Dar de baja" aria-label="Dar de baja">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>

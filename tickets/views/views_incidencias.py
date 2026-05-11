@@ -2,7 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -90,6 +90,21 @@ def format_timedelta_humano(delta):
     return " y ".join(parts[:2]) or "menos de 1 minuto"
 
 
+def build_compact_bar_rows(items, label_key, total):
+    rows = []
+    for item in items:
+        count = item["total"]
+        percent = int(round((count / total) * 100)) if total else 0
+        width_step = min(100, max(0, int(round(percent / 10) * 10)))
+        rows.append({
+            "label": item.get(label_key) or "Sin registrar",
+            "total": count,
+            "percent": percent,
+            "width_class": f"dash-width-{width_step}",
+        })
+    return rows
+
+
 def build_sla_notice(incidencia, user):
     if incidencia.tecnico_asignado_id != user.id:
         return None
@@ -162,6 +177,24 @@ def dashboard_admin(request):
         tecnico_asignado__isnull=True,
         estado__name=Incidencia.ESTADO_PENDIENTE,
     ).count()
+    equipos_base = Equipo.objects.select_related("estado_tecnico", "area", "tipo_equipo", "marca")
+    equipos_total = equipos_base.count()
+    equipos_operativos = equipos_base.filter(estado_tecnico__nombre__iexact="Operativo").count()
+    equipos_revision = equipos_base.filter(
+        Q(estado_tecnico__nombre__iexact="En revisión")
+        | Q(estado_tecnico__nombre__iexact="En reparacion")
+        | Q(estado_tecnico__nombre__iexact="En reparación")
+    ).count()
+    equipos_observados = equipos_base.filter(
+        Q(estado_tecnico__nombre__iexact="Inoperativo")
+        | Q(estado_tecnico__nombre__iexact="Dado de baja")
+    ).count()
+    equipos_estado_items = equipos_base.values("estado_tecnico__nombre").annotate(
+        total=Count("id")
+    ).order_by("-total", "estado_tecnico__nombre")[:5]
+    equipos_tipo_items = equipos_base.values("tipo_equipo__nombre").annotate(
+        total=Count("id")
+    ).order_by("-total", "tipo_equipo__nombre")[:5]
 
     return render(request, 'tickets/dashboard_admin.html', {
         'stats': {
@@ -174,9 +207,26 @@ def dashboard_admin(request):
             'sla_vencidas': sla_vencidas,
             'sin_asignar': sin_asignar,
         },
+        'inventario_stats': {
+            'total': equipos_total,
+            'operativos': equipos_operativos,
+            'revision': equipos_revision,
+            'observados': equipos_observados,
+        },
+        'inventario_estado_rows': build_compact_bar_rows(equipos_estado_items, "estado_tecnico__nombre", equipos_total),
+        'inventario_tipo_rows': build_compact_bar_rows(equipos_tipo_items, "tipo_equipo__nombre", equipos_total),
         'incidencias_hoy_lista': lista_hoy[:6],
         'estados_lista': Estado.objects.all(),
         'tecnicos_lista': CustomUser.objects.filter(role=CustomUser.ROL_TECNICO, is_active=True),
+        'areas_lista': Area.objects.all(),
+        'prioridades_lista': Incidencia.PRIORIDAD_CHOICES,
+        'dashboard_pdf_start': hoy.replace(day=1),
+        'dashboard_pdf_end': hoy,
+        'inventario_tipos_lista': TipoEquipo.objects.all(),
+        'inventario_marcas_lista': Marca.objects.all(),
+        'inventario_estados_lista': EstadoEquipo.objects.all(),
+        'inventario_pdf_start': hoy.replace(day=1),
+        'inventario_pdf_end': hoy,
     })
 
 @login_required

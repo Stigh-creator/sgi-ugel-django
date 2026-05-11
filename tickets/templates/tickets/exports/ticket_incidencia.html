@@ -2,99 +2,8 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <style>
-        @page {
-            size: a4;
-            margin: 2cm;
-        }
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 11pt;
-            color: #333;
-        }
-        .header {
-            text-align: center;
-            border-bottom: 2px solid #0D6EFD;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
-        .header h1 {
-            color: #0D6EFD;
-            margin: 0;
-            font-size: 20pt;
-        }
-        .section-title {
-            background-color: #f8f9fa;
-            padding: 5px 10px;
-            font-weight: bold;
-            border-left: 4px solid #0D6EFD;
-            margin-top: 15px;
-            margin-bottom: 10px;
-        }
-        .info-grid {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .info-grid td {
-            padding: 5px;
-            vertical-align: top;
-        }
-        .label {
-            font-weight: bold;
-            width: 30%;
-        }
-        .footer {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            text-align: center;
-            font-size: 8pt;
-            color: #777;
-            border-top: 1px solid #eee;
-            padding-top: 5px;
-        }
-        .signature-box {
-            margin-top: 22px;
-            border: 1px solid #ddd;
-            padding: 10px;
-            font-size: 9pt;
-            background: #fafafa;
-        }
-        .note {
-            font-size: 8pt;
-            color: #666;
-        }
-        .evidence-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 8px;
-        }
-        .evidence-cell {
-            width: 50%;
-            border: 1px solid #e5e5e5;
-            padding: 8px;
-            vertical-align: top;
-        }
-        .evidence-img {
-            width: 220px;
-            height: 150px;
-            object-fit: cover;
-            border: 1px solid #ddd;
-            display: block;
-            margin-bottom: 5px;
-        }
-        .evidence-caption {
-            font-size: 8pt;
-            color: #555;
-            font-weight: bold;
-        }
-        .empty-evidence {
-            color: #777;
-            font-size: 9pt;
-            border: 1px dashed #ddd;
-            padding: 10px;
-        }
-    </style>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/tickets/pdf_exports.css' %}">
 </head>
 <body>
     <div class="header">
@@ -140,7 +49,7 @@
     </table>
 
     <div class="section-title">Descripción del Problema</div>
-    <div style="padding: 5px 10px; border: 1px solid #eee; min-height: 50px;">
+    <div class="text-box">
         {{ incidencia.descripcion|linebreaks }}
     </div>
 
@@ -149,6 +58,10 @@
         <tr>
             <td class="label">Técnico Asignado:</td>
             <td>{{ incidencia.tecnico_asignado.get_full_name|default:"Sin asignar" }}</td>
+        </tr>
+        <tr>
+            <td class="label">Fecha de Asignación:</td>
+            <td>{{ incidencia.fecha_asignacion|date:"d/m/Y H:i"|default:"Pendiente" }}</td>
         </tr>
         <tr>
             <td class="label">Fecha de Resolución:</td>
@@ -164,7 +77,7 @@
         </tr>
     </table>
     
-    <div style="margin-top: 10px; padding: 5px 10px; border: 1px solid #eee; min-height: 80px;">
+    <div class="text-box solution-box">
         <strong>Solución:</strong><br>
         {{ incidencia.solucion_aplicada|default:"Aún no se ha registrado una solución técnica."|linebreaks }}
     </div>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/tickets/pdf_exports.css' %}">
+    <link rel="stylesheet" href="{% static 'css/tickets/pdf_landscape.css' %}">
+</head>
+<body class="pdf-landscape">
+    <div class="header">
+        <h1>REPORTE DEL DASHBOARD DE INVENTARIO</h1>
+        <p>Resumen ejecutivo de equipos, distribución y filtros aplicados</p>
+    </div>
+
+    <div class="filter-box">
+        <strong>Filtros aplicados:</strong>
+        Desde: {{ filter_labels.fecha_inicio }} |
+        Hasta: {{ filter_labels.fecha_fin }} |
+        Área: {{ filter_labels.area }} |
+        Tipo: {{ filter_labels.tipo }} |
+        Marca: {{ filter_labels.marca }} |
+        Estado: {{ filter_labels.estado }}
+    </div>
+
+    <div class="section-title">Indicadores principales</div>
+    <table class="dashboard-kpi-table">
+        <tr>
+            <td><div class="kpi-label">Total equipos</div><div class="kpi-value">{{ kpis.total }}</div></td>
+            <td><div class="kpi-label">Operativos</div><div class="kpi-value">{{ kpis.operativos }}</div></td>
+            <td><div class="kpi-label">En revisión</div><div class="kpi-value">{{ kpis.revision }}</div></td>
+            <td><div class="kpi-label">Observados</div><div class="kpi-value">{{ kpis.observados }}</div></td>
+        </tr>
+    </table>
+
+    <div class="section-title">Distribución por estado técnico</div>
+    <table class="bar-table">
+        {% for row in estado_rows %}
+        <tr>
+            <td class="bar-label">{{ row.label }}</td>
+            <td><div class="bar-wrap"><div class="bar-fill {{ row.width_class }}"></div></div></td>
+            <td class="bar-number">{{ row.total }}</td>
+        </tr>
+        {% empty %}
+        <tr><td class="text-center">No hay datos para este filtro.</td></tr>
+        {% endfor %}
+    </table>
+
+    <div class="section-title">Distribución por tipo</div>
+    <table class="bar-table">
+        {% for row in tipo_rows %}
+        <tr>
+            <td class="bar-label">{{ row.label }}</td>
+            <td><div class="bar-wrap"><div class="bar-fill bar-fill-success {{ row.width_class }}"></div></div></td>
+            <td class="bar-number">{{ row.total }}</td>
+        </tr>
+        {% empty %}
+        <tr><td class="text-center">No hay datos por tipo.</td></tr>
+        {% endfor %}
+    </table>
+
+    <div class="section-title">Distribución por área</div>
+    <table class="bar-table">
+        {% for row in area_rows %}
+        <tr>
+            <td class="bar-label">{{ row.label }}</td>
+            <td><div class="bar-wrap"><div class="bar-fill bar-fill-warning {{ row.width_class }}"></div></div></td>
+            <td class="bar-number">{{ row.total }}</td>
+        </tr>
+        {% empty %}
+        <tr><td class="text-center">No hay datos por área.</td></tr>
+        {% endfor %}
+    </table>
+
+    <div class="section-title">Distribución por marca</div>
+    <table class="bar-table">
+        {% for row in marca_rows %}
+        <tr>
+            <td class="bar-label">{{ row.label }}</td>
+            <td><div class="bar-wrap"><div class="bar-fill bar-fill-danger {{ row.width_class }}"></div></div></td>
+            <td class="bar-number">{{ row.total }}</td>
+        </tr>
+        {% empty %}
+        <tr><td class="text-center">No hay datos por marca.</td></tr>
+        {% endfor %}
+    </table>
+
+    <div class="section-title">Equipos considerados</div>
+    <table class="report-table">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Equipo</th>
+                <th>Tipo</th>
+                <th>Marca / Modelo</th>
+                <th>Área</th>
+                <th>Estado</th>
+                <th>Registro</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for equipo in equipos %}
+            <tr>
+                <td>{{ equipo.codigo_equipo }}</td>
+                <td>{{ equipo.nombre_equipo }}</td>
+                <td>{{ equipo.tipo_equipo.nombre|default:"Sin tipo" }}</td>
+                <td>{{ equipo.marca.nombre|default:"Sin marca" }} {{ equipo.modelo|default:"" }}</td>
+                <td>{{ equipo.area.name|default:"Sin área" }}</td>
+                <td>{{ equipo.estado_tecnico.nombre|default:"Sin estado" }}</td>
+                <td>{{ equipo.fecha_register|date:"d/m/Y" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center">No se encontraron equipos para los filtros aplicados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="signature">
+        <strong>Constancia de generación del reporte</strong><br>
+        Generado por: {{ generado_por_nombre }} |
+        Usuario/DNI: {{ generado_por.username }} |
+        ID interno: {{ generado_por.id }} |
+        Rol: {{ generado_por.get_role_display }}<br>
+        Fecha y hora de descarga: {{ generado_en|date:"d/m/Y H:i" }}
+    </div>
+
+    <div class="footer">
+        Documento generado automáticamente por el Sistema de Gestión de Incidencias - UGEL Morropón
+    </div>
+</body>
+</html>

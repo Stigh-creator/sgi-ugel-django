@@ -2,62 +2,11 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <style>
-        @page {
-            size: a4 landscape;
-            margin: 1cm;
-        }
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 9pt;
-            color: #333;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .header h1 {
-            color: #0D6EFD;
-            margin: 0;
-            font-size: 16pt;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th {
-            background-color: #0D6EFD;
-            color: white;
-            padding: 8px;
-            text-align: left;
-        }
-        td {
-            border-bottom: 1px solid #eee;
-            padding: 8px;
-        }
-        .footer {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            text-align: center;
-            font-size: 7pt;
-            color: #999;
-        }
-        .summary {
-            margin-bottom: 12px;
-            font-size: 9pt;
-            color: #555;
-        }
-        .signature {
-            margin-top: 16px;
-            border: 1px solid #ddd;
-            padding: 8px;
-            background: #fafafa;
-            font-size: 8pt;
-        }
-    </style>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/tickets/pdf_exports.css' %}">
+    <link rel="stylesheet" href="{% static 'css/tickets/pdf_landscape.css' %}">
 </head>
-<body>
+<body class="pdf-landscape">
     <div class="header">
         <h1>REPORTE DE INCIDENCIAS</h1>
         <p>Periodo: {{ fecha_inicio|date:"d/m/Y" }} al {{ fecha_fin|date:"d/m/Y" }}</p>
@@ -67,7 +16,7 @@
         Total de incidencias incluidas: {{ incidencias|length }}
     </div>
 
-    <table>
+    <table class="report-table">
         <thead>
             <tr>
                 <th>Código</th>
@@ -94,7 +43,7 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="8" style="text-align: center;">No se encontraron incidencias en este rango de fechas.</td>
+                <td colspan="8" class="text-center">No se encontraron incidencias en este rango de fechas.</td>
             </tr>
             {% endfor %}
         </tbody>

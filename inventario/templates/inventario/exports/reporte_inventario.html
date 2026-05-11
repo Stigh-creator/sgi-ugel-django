@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/tickets/pdf_exports.css' %}">
+    <link rel="stylesheet" href="{% static 'css/tickets/pdf_landscape.css' %}">
+</head>
+<body class="pdf-landscape">
+    <div class="header">
+        <h1>REPORTE DE INVENTARIO DE EQUIPOS</h1>
+        <p>Listado filtrado de activos tecnológicos institucionales</p>
+    </div>
+
+    <div class="filter-box">
+        <strong>Filtros aplicados:</strong>
+        Vista: {{ vista_selected|title }} |
+        Búsqueda: {{ query }} |
+        Área: {{ area_label }} |
+        Estado: {{ estado_label }} |
+        Disponibilidad: {{ disponibilidad_label }} |
+        Tipo: {{ tipo_label }} |
+        Marca: {{ marca_label }}
+    </div>
+
+    <div class="section-title">Indicadores del resultado</div>
+    <table class="dashboard-kpi-table">
+        <tr>
+            <td><div class="kpi-label">Total</div><div class="kpi-value">{{ stats.total }}</div></td>
+            <td><div class="kpi-label">Operativos</div><div class="kpi-value">{{ stats.operativos }}</div></td>
+            <td><div class="kpi-label">En revisión</div><div class="kpi-value">{{ stats.en_revision }}</div></td>
+            <td><div class="kpi-label">En reparación</div><div class="kpi-value">{{ stats.reparacion }}</div></td>
+        </tr>
+        <tr>
+            <td><div class="kpi-label">Inoperativos</div><div class="kpi-value">{{ stats.inoperativos }}</div></td>
+            <td><div class="kpi-label">Baja</div><div class="kpi-value">{{ stats.baja }}</div></td>
+            <td><div class="kpi-label">Libres</div><div class="kpi-value">{{ stats.libres }}</div></td>
+            <td><div class="kpi-label">No disponibles</div><div class="kpi-value">{{ stats.no_disponibles }}</div></td>
+        </tr>
+    </table>
+
+    <div class="section-title">Equipos considerados</div>
+    <table class="report-table">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Equipo</th>
+                <th>Tipo</th>
+                <th>Marca / Modelo</th>
+                <th>Serie</th>
+                <th>Área</th>
+                <th>Estado</th>
+                <th>Disponibilidad</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for equipo in equipos %}
+            <tr>
+                <td>{{ equipo.codigo_equipo }}</td>
+                <td>{{ equipo.nombre_equipo }}</td>
+                <td>{{ equipo.tipo_equipo.nombre|default:"Sin tipo" }}</td>
+                <td>{{ equipo.marca.nombre|default:"Sin marca" }} {{ equipo.modelo|default:"" }}</td>
+                <td>{{ equipo.numero_serie|default:"S/N" }}</td>
+                <td>{{ equipo.area.name|default:"Sin área" }}</td>
+                <td>{{ equipo.estado_tecnico.nombre|default:equipo.estado.nombre }}</td>
+                <td>{{ equipo.get_disponibilidad_display }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" class="text-center">No se encontraron equipos para los filtros aplicados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <p class="note">El listado del PDF muestra hasta 60 equipos para mantener el documento legible. Para análisis completo se recomienda descargar Excel.</p>
+
+    <div class="signature">
+        <strong>Constancia de generación del reporte</strong><br>
+        Generado por: {{ generado_por_nombre }} |
+        Usuario/DNI: {{ generado_por.username }} |
+        ID interno: {{ generado_por.id }} |
+        Rol: {{ generado_por.get_role_display }}<br>
+        Fecha y hora de descarga: {{ generado_en|date:"d/m/Y H:i" }}
+    </div>
+
+    <div class="footer">
+        Documento generado automáticamente por el Sistema de Gestión de Incidencias - UGEL Morropón
+    </div>
+</body>
+</html>
