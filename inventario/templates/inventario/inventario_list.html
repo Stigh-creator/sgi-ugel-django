@@ -206,9 +206,11 @@
             </div>
         </div>
         <div class="inventory-report-actions">
+            {% if can_manage_inventory %}
             <a href="/inventario/exportar/excel/{{ export_querystring }}" class="btn btn-success rounded-pill fw-semibold" target="_blank" rel="noopener">
                 <i class="bi bi-file-earmark-excel me-2"></i>Excel
             </a>
+            {% endif %}
             <a href="/inventario/exportar/pdf/{{ export_querystring }}" class="btn btn-danger rounded-pill fw-semibold" target="_blank" rel="noopener">
                 <i class="bi bi-file-earmark-pdf me-2"></i>PDF
             </a>

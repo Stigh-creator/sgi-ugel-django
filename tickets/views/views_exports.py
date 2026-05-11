@@ -15,6 +15,13 @@ from auditoria.utils import registrar_auditoria
 def can_export_inventory(user):
     return user.is_authenticated and (
         user.is_superuser
+        or user.role == CustomUser.ROL_ALMACEN
+    )
+
+
+def can_view_inventory_reports(user):
+    return user.is_authenticated and (
+        user.is_superuser
         or user.role in {CustomUser.ROL_ADMIN, CustomUser.ROL_ALMACEN}
     )
 
@@ -363,7 +370,7 @@ def export_dashboard_incidencias_pdf(request):
 
 
 @login_required
-@user_passes_test(can_export_inventory)
+@user_passes_test(can_view_inventory_reports)
 def export_dashboard_inventario_pdf(request):
     queryset, filters = filtered_inventory_queryset(request)
     equipos = list(queryset.order_by("codigo_equipo")[:40])

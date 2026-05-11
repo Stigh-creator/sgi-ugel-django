@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/tickets/pdf_exports.css' %}">
+    <link rel="stylesheet" href="{% static 'css/tickets/pdf_landscape.css' %}">
+</head>
+<body class="pdf-landscape">
+    <div class="header">
+        <h1>REPORTE DE AUDITORÍA DEL SISTEMA</h1>
+        <p>Bitácora filtrada de acciones relevantes y trazabilidad institucional</p>
+    </div>
+
+    <div class="filter-box">
+        <strong>Filtros aplicados:</strong>
+        Módulo: {{ filter_labels.modulo }} |
+        Usuario: {{ filter_labels.usuario }} |
+        Desde: {{ filter_labels.desde }} |
+        Hasta: {{ filter_labels.hasta }} |
+        Búsqueda: {{ filter_labels.busqueda }}
+    </div>
+
+    <div class="section-title">Resumen del resultado</div>
+    <table class="dashboard-kpi-table">
+        <tr>
+            <td><div class="kpi-label">Total registros</div><div class="kpi-value">{{ total_logs }}</div></td>
+            <td><div class="kpi-label">Módulos encontrados</div><div class="kpi-value">{{ module_rows|length }}</div></td>
+            <td><div class="kpi-label">Registros en PDF</div><div class="kpi-value">{{ logs|length }}</div></td>
+            <td><div class="kpi-label">Tipo reporte</div><div class="kpi-value">PDF</div></td>
+        </tr>
+    </table>
+
+    <div class="section-title">Distribución por módulo</div>
+    <table class="report-table">
+        <thead>
+            <tr>
+                <th>Módulo</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in module_rows %}
+            <tr>
+                <td>{{ row.modulo }}</td>
+                <td>{{ row.total }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="2" class="text-center">No hay registros por módulo.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="section-title">Usuarios con mayor actividad</div>
+    <table class="report-table">
+        <thead>
+            <tr>
+                <th>Usuario</th>
+                <th>DNI/Usuario</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in user_rows %}
+            <tr>
+                <td>{{ row.usuario__first_name }} {{ row.usuario__last_name }}</td>
+                <td>{{ row.usuario__username|default:"Sistema" }}</td>
+                <td>{{ row.total }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center">No hay actividad por usuario.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="section-title">Bitácora considerada</div>
+    <table class="report-table">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Usuario</th>
+                <th>Módulo</th>
+                <th>Acción</th>
+                <th>Detalle</th>
+                <th>IP</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.fecha_hora|date:"d/m/Y H:i" }}</td>
+                <td>
+                    {% if log.usuario %}
+                    {{ log.usuario.get_full_name|default:log.usuario.username }}
+                    {% else %}
+                    Sistema
+                    {% endif %}
+                </td>
+                <td>{{ log.modulo }}</td>
+                <td>{{ log.accion }}</td>
+                <td>{{ log.descripcion|truncatechars:160 }}</td>
+                <td>{{ log.ip|default:"-" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center">No se encontraron registros para los filtros aplicados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <p class="note">El PDF muestra hasta 80 registros para mantener legibilidad del documento.</p>
+
+    <div class="signature">
+        <strong>Constancia de generación del reporte</strong><br>
+        Generado por: {{ generado_por_nombre }} |
+        Usuario/DNI: {{ generado_por.username }} |
+        ID interno: {{ generado_por.id }} |
+        Rol: {{ generado_por.get_role_display }}<br>
+        Fecha y hora de descarga: {{ generado_en|date:"d/m/Y H:i" }}
+    </div>
+
+    <div class="footer">
+        Documento generado automáticamente por el Sistema de Gestión de Incidencias - UGEL Morropón
+    </div>
+</body>
+</html>

@@ -6,11 +6,64 @@ from django.db.models import Q, Count
 from django.utils import timezone
 from datetime import timedelta
 from django.core.paginator import Paginator
+from django.http import FileResponse, Http404
+from tickets.utils.exports import generate_pdf
 
 User = get_user_model()
 
 def is_admin(user):
     return user.is_authenticated and (user.is_staff or user.role == "administrador")
+
+
+def auditoria_export_querystring(request):
+    querydict = request.GET.copy()
+    querydict.pop("page", None)
+    encoded = querydict.urlencode()
+    return f"?{encoded}" if encoded else ""
+
+
+def get_filtered_auditoria_queryset(request):
+    modulo_f = request.GET.get('modulo', '')
+    usuario_f = request.GET.get('usuario', '')
+    desde_f = request.GET.get('desde', '')
+    hasta_f = request.GET.get('hasta', '')
+    q_f = request.GET.get('q', '')
+
+    logs = Auditoria.objects.all().select_related('usuario')
+
+    if modulo_f:
+        logs = logs.filter(modulo=modulo_f)
+    if usuario_f:
+        logs = logs.filter(usuario_id=usuario_f)
+    if desde_f:
+        logs = logs.filter(fecha_hora__date__gte=desde_f)
+    if hasta_f:
+        logs = logs.filter(fecha_hora__date__lte=hasta_f)
+    if q_f:
+        logs = logs.filter(
+            Q(accion__icontains=q_f) |
+            Q(descripcion__icontains=q_f) |
+            Q(usuario__username__icontains=q_f) |
+            Q(usuario__first_name__icontains=q_f) |
+            Q(usuario__last_name__icontains=q_f)
+        )
+    return logs
+
+
+def audit_filter_labels(request):
+    usuario_label = "Todos"
+    usuario_id = request.GET.get('usuario', '')
+    if usuario_id.isdigit():
+        usuario = User.objects.filter(pk=usuario_id).first()
+        if usuario:
+            usuario_label = usuario.get_full_name() or usuario.username
+    return {
+        "modulo": request.GET.get('modulo') or "Todos",
+        "usuario": usuario_label,
+        "desde": request.GET.get('desde') or "Sin inicio",
+        "hasta": request.GET.get('hasta') or "Sin fin",
+        "busqueda": request.GET.get('q') or "Sin búsqueda",
+    }
 
 @login_required
 @user_passes_test(is_admin)
@@ -47,24 +100,7 @@ def auditoria_dashboard(request):
     hasta_f = request.GET.get('hasta', '')
     q_f = request.GET.get('q', '')
 
-    logs = Auditoria.objects.all().select_related('usuario')
-
-    if modulo_f:
-        logs = logs.filter(modulo=modulo_f)
-    if usuario_f:
-        logs = logs.filter(usuario_id=usuario_f)
-    if desde_f:
-        logs = logs.filter(fecha_hora__date__gte=desde_f)
-    if hasta_f:
-        logs = logs.filter(fecha_hora__date__lte=hasta_f)
-    if q_f:
-        logs = logs.filter(
-            Q(accion__icontains=q_f) | 
-            Q(descripcion__icontains=q_f) |
-            Q(usuario__username__icontains=q_f) |
-            Q(usuario__first_name__icontains=q_f) |
-            Q(usuario__last_name__icontains=q_f)
-        )
+    logs = get_filtered_auditoria_queryset(request)
 
     # --- NIVEL 2: RESUMEN POR MÓDULOS (Data para las cards) ---
     def get_module_data(module_name):
@@ -109,6 +145,35 @@ def auditoria_dashboard(request):
         'desde_selected': desde_f or '',
         'hasta_selected': hasta_f or '',
         'q_selected': q_f or '',
+        'export_querystring': auditoria_export_querystring(request),
     }
 
     return render(request, 'auditoria/auditoria_dashboard.html', context)
+
+
+@login_required
+@user_passes_test(is_admin)
+def auditoria_export_pdf(request):
+    logs = get_filtered_auditoria_queryset(request)
+    logs_list = list(logs[:80])
+    module_rows = logs.values("modulo").annotate(total=Count("id")).order_by("-total", "modulo")
+    user_rows = (
+        logs.values("usuario__first_name", "usuario__last_name", "usuario__username")
+        .annotate(total=Count("id"))
+        .order_by("-total", "usuario__username")[:8]
+    )
+    context = {
+        "logs": logs_list,
+        "total_logs": logs.count(),
+        "module_rows": module_rows,
+        "user_rows": user_rows,
+        "filter_labels": audit_filter_labels(request),
+        "generado_por": request.user,
+        "generado_por_nombre": request.user.get_full_name() or request.user.username,
+        "generado_en": timezone.localtime(timezone.now()),
+    }
+    pdf_file = generate_pdf("auditoria/exports/reporte_auditoria.html", context)
+    if pdf_file:
+        filename = f"auditoria_logs_{timezone.now().strftime('%Y%m%d')}.pdf"
+        return FileResponse(pdf_file, content_type="application/pdf", filename=filename)
+    raise Http404("Error al generar el PDF de auditoría")

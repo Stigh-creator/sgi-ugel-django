@@ -27,6 +27,15 @@ class InventarioRulesTests(TestCase):
             area=self.area,
             telefono="999111333",
         )
+        self.superuser = CustomUser.objects.create_superuser(
+            username="11112222",
+            password="Super1234!",
+            first_name="Sonia",
+            last_name="Super",
+            role=CustomUser.ROL_ADMIN,
+            area=self.area,
+            telefono="999111444",
+        )
         self.marca = Marca.objects.create(nombre="HP")
         self.tipo = TipoEquipo.objects.create(nombre="Laptop")
         self.estado_operativo, _ = EstadoEquipo.objects.get_or_create(nombre="Operativo")
@@ -50,6 +59,8 @@ class InventarioRulesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.equipo.codigo_equipo)
         self.assertNotContains(response, "Registrar Equipo")
+        self.assertNotContains(response, "/inventario/exportar/excel/")
+        self.assertContains(response, "/inventario/exportar/pdf/")
 
         response = self.client.get(reverse("equipo_detalle", args=[self.equipo.pk]))
         self.assertEqual(response.status_code, 200)
@@ -133,3 +144,57 @@ class InventarioRulesTests(TestCase):
         self.equipo.refresh_from_db()
         self.assertEqual(self.equipo.estado, self.estado_operativo)
         self.assertEqual(self.equipo.disponibilidad, Equipo.DISPONIBILIDAD_EN_USO)
+
+    def test_excel_de_inventario_solo_almacen_y_superusuario(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("inventario_export_excel"))
+        self.assertEqual(response.status_code, 302)
+
+        self.client.force_login(self.almacen)
+        response = self.client.get(reverse("inventario_export_excel"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse("inventario_export_excel"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+    def test_pdf_de_inventario_disponible_para_roles_con_acceso(self):
+        for usuario in (self.admin, self.almacen, self.superuser):
+            with self.subTest(usuario=usuario.username):
+                self.client.force_login(usuario)
+                response = self.client.get(reverse("inventario_export_pdf"))
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response["Content-Type"], "application/pdf")
+
+                response = self.client.get(reverse("equipo_export_pdf", args=[self.equipo.pk]))
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response["Content-Type"], "application/pdf")
+
+    def test_excel_legacy_de_inventario_bloquea_admin_y_permite_superusuario(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("export_inventario_excel"))
+        self.assertEqual(response.status_code, 302)
+
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse("export_inventario_excel"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+    def test_pdf_dashboard_inventario_permite_admin_almacen_y_superusuario(self):
+        for usuario in (self.admin, self.almacen, self.superuser):
+            with self.subTest(usuario=usuario.username):
+                self.client.force_login(usuario)
+                response = self.client.get(reverse("export_dashboard_inventario_pdf"))
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response["Content-Type"], "application/pdf")

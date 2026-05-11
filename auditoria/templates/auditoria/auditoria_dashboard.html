@@ -148,6 +148,24 @@
         </div>
     </div>
 
+    <section class="audit-report-panel">
+        <div class="audit-report-info">
+            <div class="audit-report-icon">
+                <i class="bi bi-file-earmark-lock"></i>
+            </div>
+            <div>
+                <p class="text-uppercase text-primary fw-bold small mb-1">Reportes</p>
+                <h3 class="h6 fw-bold mb-1">Exportar bitácora filtrada</h3>
+                <p class="text-muted small mb-0">Descarga los registros actuales en PDF para sustento y revisión administrativa.</p>
+            </div>
+        </div>
+        <div class="audit-report-actions">
+            <a href="/auditoria/exportar/pdf/{{ export_querystring }}" class="btn btn-danger rounded-pill fw-semibold" target="_blank" rel="noopener">
+                <i class="bi bi-file-earmark-pdf me-2"></i>PDF
+            </a>
+        </div>
+    </section>
+
     <!-- NIVEL 3: HISTORIAL DETALLADO -->
     <div id="historial" class="card border-0 shadow-sm rounded-4 overflow-hidden mb-5">
         <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between">

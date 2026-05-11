@@ -149,7 +149,7 @@ def inventario_list(request):
 
 
 @login_required
-@user_passes_test(can_view_inventory)
+@user_passes_test(can_manage_inventory)
 def inventario_export_excel(request):
     equipos = get_filtered_equipos_queryset(request)
     excel_file = generate_excel_inventario(equipos)
