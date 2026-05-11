@@ -60,3 +60,7 @@ docker-compose.override.yml
 # PostgreSQL (Configuración futura)
 # Si usas archivos de volumen locales para Postgres
 # pgdata/
+
+# Private Documents
+documentacion/
+scratch/
