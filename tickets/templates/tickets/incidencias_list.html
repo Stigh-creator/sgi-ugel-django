@@ -51,18 +51,19 @@
                 <p class="text-muted small mb-0">Genera reportes por día, semana, mes o rango personalizado. Cada descarga registra el usuario que genera el documento.</p>
             </div>
             <div class="d-flex flex-wrap gap-2">
-                <a class="btn btn-light border rounded-pill fw-semibold" href="{% url 'export_reporte_pdf' %}?start_date={{ pdf_today_start|date:'Y-m-d' }}&end_date={{ pdf_today_end|date:'Y-m-d' }}" target="_blank" rel="noopener">
+                <a class="btn btn-light border rounded-pill fw-semibold pdf-quick-link" href="{% url 'export_reporte_pdf' %}?start_date={{ pdf_today_start|date:'Y-m-d' }}&end_date={{ pdf_today_end|date:'Y-m-d' }}&tab={{ active_tab }}" data-base-href="{% url 'export_reporte_pdf' %}?start_date={{ pdf_today_start|date:'Y-m-d' }}&end_date={{ pdf_today_end|date:'Y-m-d' }}" target="_blank" rel="noopener">
                     <i class="bi bi-file-earmark-pdf me-2 text-danger"></i>Hoy
                 </a>
-                <a class="btn btn-light border rounded-pill fw-semibold" href="{% url 'export_reporte_pdf' %}?start_date={{ pdf_week_start|date:'Y-m-d' }}&end_date={{ pdf_week_end|date:'Y-m-d' }}" target="_blank" rel="noopener">
+                <a class="btn btn-light border rounded-pill fw-semibold pdf-quick-link" href="{% url 'export_reporte_pdf' %}?start_date={{ pdf_week_start|date:'Y-m-d' }}&end_date={{ pdf_week_end|date:'Y-m-d' }}&tab={{ active_tab }}" data-base-href="{% url 'export_reporte_pdf' %}?start_date={{ pdf_week_start|date:'Y-m-d' }}&end_date={{ pdf_week_end|date:'Y-m-d' }}" target="_blank" rel="noopener">
                     <i class="bi bi-calendar-week me-2 text-danger"></i>Semana
                 </a>
-                <a class="btn btn-light border rounded-pill fw-semibold" href="{% url 'export_reporte_pdf' %}?start_date={{ pdf_month_start|date:'Y-m-d' }}&end_date={{ pdf_month_end|date:'Y-m-d' }}" target="_blank" rel="noopener">
+                <a class="btn btn-light border rounded-pill fw-semibold pdf-quick-link" href="{% url 'export_reporte_pdf' %}?start_date={{ pdf_month_start|date:'Y-m-d' }}&end_date={{ pdf_month_end|date:'Y-m-d' }}&tab={{ active_tab }}" data-base-href="{% url 'export_reporte_pdf' %}?start_date={{ pdf_month_start|date:'Y-m-d' }}&end_date={{ pdf_month_end|date:'Y-m-d' }}" target="_blank" rel="noopener">
                     <i class="bi bi-calendar3 me-2 text-danger"></i>Mes
                 </a>
             </div>
         </div>
-        <form class="pdf-range-form mt-3" method="get" action="{% url 'export_reporte_pdf' %}" target="_blank">
+        <form class="pdf-range-form mt-3 no-loading" method="get" action="{% url 'export_reporte_pdf' %}" target="_blank" data-local-submit-guard="true">
+            <input type="hidden" name="tab" id="pdfCurrentTabInput" value="{{ active_tab }}">
             <div class="d-flex flex-column flex-md-row gap-2 align-items-md-end">
                 <div>
                     <label class="form-label small fw-semibold mb-1">Desde</label>
@@ -300,11 +301,20 @@
 
     function syncTicketTabs(nextValue) {
         const currentTabInput = document.getElementById('currentTabInput');
+        const pdfCurrentTabInput = document.getElementById('pdfCurrentTabInput');
         const activeValue = nextValue || currentTabInput?.value || 'asignadas';
 
         if (currentTabInput) {
             currentTabInput.value = activeValue;
         }
+        if (pdfCurrentTabInput) {
+            pdfCurrentTabInput.value = activeValue;
+        }
+
+        document.querySelectorAll('.pdf-quick-link').forEach(link => {
+            const baseHref = link.dataset.baseHref || link.href.split('&tab=')[0];
+            link.href = `${baseHref}&tab=${encodeURIComponent(activeValue)}`;
+        });
 
         document.querySelectorAll('.ticket-tab-switcher .ticket-tab-btn').forEach(label => {
             label.classList.toggle('is-active', label.dataset.tabValue === activeValue);

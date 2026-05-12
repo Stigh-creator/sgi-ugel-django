@@ -25,7 +25,7 @@
     </div>
 
     <section class="dashboard-panel dashboard-panel-incidencias">
-        <form class="dashboard-export-panel card shadow-sm border-0 rounded-4 mb-4" method="get" action="{% url 'export_dashboard_pdf' %}" target="_blank">
+        <form class="dashboard-export-panel card shadow-sm border-0 rounded-4 mb-4 no-loading" method="get" action="{% url 'export_dashboard_pdf' %}" target="_blank" data-local-submit-guard="true">
             <div class="dashboard-export-header">
                 <div class="dashboard-export-title">
                     <div class="dashboard-export-icon">
@@ -247,7 +247,7 @@
             </a>
         </div>
 
-        <form class="dashboard-export-panel dashboard-export-panel-compact card shadow-sm border-0 rounded-4 mt-3 mb-4" method="get" action="{% url 'export_dashboard_inventario_pdf' %}" target="_blank">
+        <form class="dashboard-export-panel dashboard-export-panel-compact card shadow-sm border-0 rounded-4 mt-3 mb-4 no-loading" method="get" action="{% url 'export_dashboard_inventario_pdf' %}" target="_blank" data-local-submit-guard="true">
             <div class="dashboard-export-header">
                 <div class="dashboard-export-title">
                     <div class="dashboard-export-icon dashboard-export-icon-inventory">

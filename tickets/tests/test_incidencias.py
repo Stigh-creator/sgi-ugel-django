@@ -24,6 +24,7 @@ from tickets.services import (
     resolver_incidencia_service,
     emitir_evento_incidencia,
 )
+from tickets.views.views_exports import incidencias_exportables_por_tab
 
 
 class IncidenciasBusinessRulesTests(TestCase):
@@ -1664,6 +1665,62 @@ class IncidenciasBusinessRulesTests(TestCase):
         self.assertIn(encontrada, incidencias)
         self.assertNotIn(no_encontrada, incidencias)
         self.assertEqual(response.context["query"], "SIGA")
+
+    def test_export_reporte_admin_respeta_tab_reportadas(self):
+        creada_por_admin = Incidencia.objects.create(
+            creador=self.admin,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Incidencia creada por administración para reporte propio.",
+            tecnico_asignado=self.tecnico,
+            estado=get_estado(Incidencia.ESTADO_ASIGNADO),
+        )
+        creada_por_otro = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="hardware",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Incidencia de otro usuario que no debe entrar al reporte propio.",
+            tecnico_asignado=self.tecnico,
+            estado=get_estado(Incidencia.ESTADO_ASIGNADO),
+        )
+
+        queryset, active_tab = incidencias_exportables_por_tab(self.admin, "reportadas")
+
+        self.assertEqual(active_tab, "reportadas")
+        self.assertIn(creada_por_admin, queryset)
+        self.assertNotIn(creada_por_otro, queryset)
+
+    def test_export_reporte_tecnico_respeta_tabs_asignadas_y_reportadas(self):
+        creada_por_tecnico = Incidencia.objects.create(
+            creador=self.tecnico,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Incidencia creada por el técnico para su reporte propio.",
+            tecnico_asignado=self.tecnico_2,
+            estado=get_estado(Incidencia.ESTADO_ASIGNADO),
+        )
+        asignada_al_tecnico = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="hardware",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Incidencia asignada al técnico por otro usuario.",
+            tecnico_asignado=self.tecnico,
+            estado=get_estado(Incidencia.ESTADO_ASIGNADO),
+        )
+
+        reportadas, reportadas_tab = incidencias_exportables_por_tab(self.tecnico, "reportadas")
+        asignadas, asignadas_tab = incidencias_exportables_por_tab(self.tecnico, "asignadas")
+
+        self.assertEqual(reportadas_tab, "reportadas")
+        self.assertIn(creada_por_tecnico, reportadas)
+        self.assertNotIn(asignada_al_tecnico, reportadas)
+        self.assertEqual(asignadas_tab, "asignadas")
+        self.assertIn(asignada_al_tecnico, asignadas)
+        self.assertNotIn(creada_por_tecnico, asignadas)
 
     def test_snapshot_metricas_guarda_historico_diario(self):
         call_command("snapshot_metricas")

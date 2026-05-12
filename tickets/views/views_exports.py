@@ -9,7 +9,11 @@ from django.db.models import Count, F, Q
 from ..models import Area, CustomUser, Estado, Incidencia
 from inventario.models import Equipo, EstadoEquipo, Marca, TipoEquipo
 from ..utils.exports import generate_pdf, generate_excel_inventario
-from ..services import get_sla_dashboard_counts
+from ..services import (
+    get_sla_dashboard_counts,
+    get_visible_incidencias_queryset,
+    resolve_active_tab_for_user,
+)
 from auditoria.utils import registrar_auditoria
 
 
@@ -44,6 +48,12 @@ def incidencias_exportables_para(user):
     if user.role == CustomUser.ROL_TECNICO:
         return queryset.filter(Q(tecnico_asignado=user) | Q(creador=user))
     return queryset.filter(creador=user)
+
+
+def incidencias_exportables_por_tab(user, requested_tab=None):
+    active_tab = resolve_active_tab_for_user(user, requested_tab)
+    queryset, active_tab = get_visible_incidencias_queryset(user, active_tab)
+    return queryset.select_related("creador", "area", "estado", "tecnico_asignado"), active_tab
 
 
 def nombre_usuario(user):
@@ -225,7 +235,10 @@ def export_reporte_incidencias_pdf(request):
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
     
-    incidencias = incidencias_exportables_para(request.user)
+    incidencias, active_tab = incidencias_exportables_por_tab(
+        request.user,
+        request.GET.get("tab"),
+    )
     
     if start_date_str:
         start_date = parse_date(start_date_str)
@@ -247,6 +260,7 @@ def export_reporte_incidencias_pdf(request):
         'generado_por': request.user,
         'generado_por_nombre': nombre_usuario(request.user),
         'generado_en': timezone.localtime(timezone.now()),
+        'active_tab': active_tab,
     }
     
     pdf_file = generate_pdf('tickets/exports/reporte_incidencias.html', context)
