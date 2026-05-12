@@ -432,7 +432,10 @@ class Incidencia(models.Model):
 
     @property
     def prioridad_editable(self):
-        return self.estado_actual == self.ESTADO_PENDIENTE
+        return (
+            self.estado_actual == self.ESTADO_PENDIENTE
+            or (self.estado_actual == self.ESTADO_RECHAZADO and not self.tecnico_asignado_id)
+        )
 
     @property
     def prioridad_texto_plano(self):
@@ -484,13 +487,25 @@ class Incidencia(models.Model):
         return f"INC-{year}-{self.pk:04d}"
 
     def save(self, *args, **kwargs):
+        is_new = self.pk is None
         previous = None
         if self.pk:
-            previous = Incidencia.objects.filter(pk=self.pk).values("prioridad", "estado__name").first()
-            if previous and previous["estado__name"] != self.ESTADO_PENDIENTE:
+            previous = Incidencia.objects.filter(pk=self.pk).values(
+                "prioridad",
+                "estado__name",
+                "tecnico_asignado_id",
+            ).first()
+            previous_priority_editable = previous and (
+                previous["estado__name"] == self.ESTADO_PENDIENTE
+                or (
+                    previous["estado__name"] == self.ESTADO_RECHAZADO
+                    and not previous["tecnico_asignado_id"]
+                )
+            )
+            if previous and not previous_priority_editable:
                 self.prioridad = previous["prioridad"]
 
-        if self.creador_id and getattr(self, 'creador', None) and self.creador.es_usuario:
+        if is_new and self.creador_id and getattr(self, 'creador', None) and self.creador.es_usuario:
             self.prioridad = self.PRIORIDAD_MEDIA
 
         super().save(*args, **kwargs)

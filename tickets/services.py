@@ -6,8 +6,8 @@ from datetime import timedelta
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import DatabaseError, transaction
-from django.db.models import F, Prefetch, Q, Value
-from django.db.models.functions import Lower, Replace
+from django.db.models import CharField, F, Prefetch, Q, Value
+from django.db.models.functions import Cast, Lower, Replace
 from django.utils.module_loading import import_string
 from django.urls import reverse
 from django.utils import timezone
@@ -43,6 +43,13 @@ SLA_EVENTOS = {
     "incidencia.sla_por_vencer",
     "incidencia.sla_respuesta_vencido",
     "incidencia.sla_resolucion_vencido",
+}
+SLA_ESTADOS_ACTIVOS = {
+    Incidencia.ESTADO_PENDIENTE,
+    Incidencia.ESTADO_ASIGNADO,
+    Incidencia.ESTADO_EN_PROCESO,
+    Incidencia.ESTADO_RECHAZADO,
+    Incidencia.ESTADO_REABIERTO,
 }
 
 
@@ -104,6 +111,51 @@ def aplicar_sla_inicial(incidencia):
     incidencia.fecha_limite_resolucion = base + timedelta(minutes=config.tiempo_resolucion_minutos)
     incidencia.estado_sla = EstadoSLA.EN_TIEMPO
     return incidencia
+
+
+def get_sla_dashboard_counts(queryset=None, now=None):
+    now = now or timezone.now()
+    base_queryset = queryset if queryset is not None else Incidencia.objects.all()
+    incidencias = base_queryset.filter(
+        estado__name__in=SLA_ESTADOS_ACTIVOS,
+    ).exclude(
+        estado_sla__in=[EstadoSLA.CUMPLIDO, EstadoSLA.NO_APLICA],
+    ).values(
+        "fecha_creacion",
+        "fecha_limite_respuesta",
+        "fecha_limite_resolucion",
+        "estado_sla",
+    )
+
+    vencidas = 0
+    por_vencer = 0
+    for incidencia in incidencias:
+        limites = [limite for limite in (
+            incidencia["fecha_limite_respuesta"],
+            incidencia["fecha_limite_resolucion"],
+        ) if limite]
+        if not limites:
+            continue
+        if any(limite <= now for limite in limites):
+            vencidas += 1
+            continue
+        if incidencia["estado_sla"] == EstadoSLA.POR_VENCER:
+            por_vencer += 1
+            continue
+        base = incidencia["fecha_creacion"]
+        if not base:
+            continue
+        for limite in limites:
+            total = (limite - base).total_seconds()
+            transcurrido = (now - base).total_seconds()
+            if total > 0 and transcurrido >= (total * POR_VENCER_UMBRAL):
+                por_vencer += 1
+                break
+
+    return {
+        "por_vencer": por_vencer,
+        "vencidas": vencidas,
+    }
 
 
 def calcular_fecha_auto_cierre(incidencia):
@@ -293,7 +345,7 @@ def normalize_text(value):
 
 
 def normalize_expression(expression):
-    normalized = Lower(expression)
+    normalized = Lower(Cast(expression, CharField()))
     replacements = (
         ("á", "a"),
         ("é", "e"),
@@ -303,7 +355,12 @@ def normalize_expression(expression):
         ("ñ", "n"),
     )
     for source, target in replacements:
-        normalized = Replace(normalized, Value(source), Value(target))
+        normalized = Replace(
+            normalized,
+            Value(source, output_field=CharField()),
+            Value(target, output_field=CharField()),
+            output_field=CharField(),
+        )
     return normalized
 
 

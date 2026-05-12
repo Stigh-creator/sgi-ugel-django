@@ -95,10 +95,10 @@
 }
 
 .inventory-filter-grid {
-    align-items: end;
+    align-items: center;
     display: grid;
     gap: 0.85rem;
-    grid-template-columns: minmax(260px, 2fr) repeat(5, minmax(145px, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .inventory-filter-field {
@@ -134,10 +134,142 @@
     border-radius: 0 0.65rem 0.65rem 0;
 }
 
+.inventory-filter-search {
+    grid-column: 1 / span 3;
+}
+
+.inventory-filter-submit {
+    grid-column: 4;
+}
+
+.inventory-filter-clear {
+    grid-column: 5;
+}
+
+.inventory-search-control {
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #dbe3ef;
+    border-radius: 0.65rem;
+    display: flex;
+    gap: 0.55rem;
+    min-height: 42px;
+    padding: 0 0.8rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.inventory-search-control:focus-within {
+    background: #fff;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.inventory-search-control i {
+    color: #64748b;
+    flex: 0 0 auto;
+    font-size: 0.95rem;
+}
+
+.inventory-search-control input {
+    background: transparent;
+    border: 0;
+    color: #0f172a;
+    font-size: 0.86rem;
+    min-width: 0;
+    outline: 0;
+    width: 100%;
+}
+
+.inventory-search-control input::placeholder {
+    color: #94a3b8;
+}
+
 .inventory-filter-action .btn {
-    min-height: 38px;
+    min-height: 42px;
     border-radius: 0.65rem;
     font-weight: 700;
+    padding-left: 0.9rem;
+    padding-right: 0.9rem;
+    white-space: nowrap;
+}
+
+.inventory-filter-field .filter-select-wrap {
+    width: 100%;
+}
+
+.inventory-clear-btn {
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #dbe3ef;
+    color: #0f172a;
+    display: inline-flex;
+    justify-content: center;
+    text-decoration: none;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.inventory-clear-btn:hover {
+    background: #fff;
+    border-color: #2563eb;
+    color: #2563eb;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+}
+
+.filter-state-dot.state-area,
+.filter-option-dot.state-area { background: #14b8a6; }
+.filter-state-dot.state-libre,
+.filter-option-dot.state-libre { background: #16a34a; }
+.filter-state-dot.state-en-uso,
+.filter-option-dot.state-en-uso { background: #64748b; }
+.filter-state-dot.state-reemplazo-temporal,
+.filter-option-dot.state-reemplazo-temporal { background: #8b5cf6; }
+.filter-state-dot.state-no-disponible,
+.filter-option-dot.state-no-disponible { background: #dc3545; }
+.filter-state-dot.state-tipo,
+.filter-option-dot.state-tipo { background: #2563eb; }
+.filter-state-dot.state-marca,
+.filter-option-dot.state-marca { background: #f59e0b; }
+
+.filter-select-menu-searchable {
+    min-width: 280px;
+}
+
+.filter-menu-search {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem;
+    background: #fff;
+    border-bottom: 1px solid #dbe3ef;
+}
+
+.filter-menu-search input {
+    width: 100%;
+    border: 1px solid #dbe3ef;
+    border-radius: 999px;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.82rem;
+    outline: none;
+}
+
+.filter-menu-search input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.filter-menu-options {
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.filter-menu-empty {
+    padding: 0.8rem 1rem;
+    color: #64748b;
+    font-size: 0.82rem;
+    text-align: center;
 }
 
 .inventory-action-group {
@@ -218,6 +350,12 @@
         grid-template-columns: 1fr;
     }
 
+    .inventory-filter-search,
+    .inventory-filter-submit,
+    .inventory-filter-clear {
+        grid-column: auto;
+    }
+
     .inventory-report-panel {
         align-items: stretch;
         flex-direction: column;
@@ -235,7 +373,15 @@
     }
 
     .inventory-filter-search {
-        grid-column: span 2;
+        grid-column: 1;
+    }
+
+    .inventory-filter-submit {
+        grid-column: 2;
+    }
+
+    .inventory-filter-clear {
+        grid-column: 3;
     }
 }
 

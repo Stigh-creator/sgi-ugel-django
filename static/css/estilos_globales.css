@@ -585,6 +585,12 @@ th.sortable.desc .sort-icon::after { content: "\f128"; }
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
 }
 
+.filter-select-wrap > i {
+    color: var(--ink-muted);
+    flex: 0 0 auto;
+    margin-right: 0.75rem;
+}
+
 .filter-state-dot {
     width: 10px;
     height: 10px;

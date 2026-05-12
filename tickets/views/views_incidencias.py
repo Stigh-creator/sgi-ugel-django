@@ -14,7 +14,7 @@ from auditoria.utils import registrar_auditoria
 from .views_utils import (
     is_admin, is_fetch_request, add_form_errors_to_messages, HttpResponseClientRefresh, page_querystring
 )
-from ..models import Area, Comentario, CustomUser, Incidencia, IncidenciaImagen, Estado, EstadoSLA
+from ..models import Area, Comentario, CustomUser, Incidencia, IncidenciaImagen, Estado
 from ..forms.forms_incidencias import (
     IncidenciaAdminForm,
     IncidenciaForm,
@@ -31,6 +31,7 @@ from ..services import (
     cerrar_incidencia_service,
     create_incidencia_service,
     get_active_ticket_load_for_user,
+    get_sla_dashboard_counts,
     get_visible_incidencias_queryset,
     optimized_incidencias_queryset,
     rechazar_incidencia_service,
@@ -167,12 +168,7 @@ def dashboard_admin(request):
 
     lista_hoy = incidencias_base.filter(fecha_creacion__date=hoy).order_by('-fecha_creacion')
     count_hoy = lista_hoy.count()
-    sla_por_vencer = incidencias_base.filter(estado_sla=EstadoSLA.POR_VENCER).exclude(
-        estado__name=Incidencia.ESTADO_CERRADO
-    ).count()
-    sla_vencidas = incidencias_base.filter(
-        estado_sla__in=[EstadoSLA.RESPUESTA_VENCIDA, EstadoSLA.RESOLUCION_VENCIDA]
-    ).exclude(estado__name=Incidencia.ESTADO_CERRADO).count()
+    sla_counts = get_sla_dashboard_counts(incidencias_base)
     sin_asignar = incidencias_base.filter(
         tecnico_asignado__isnull=True,
         estado__name=Incidencia.ESTADO_PENDIENTE,
@@ -203,8 +199,8 @@ def dashboard_admin(request):
             'total_resueltos': count_resueltas,
             'total_cerrados': count_cerrados,
             'total_hoy': count_hoy,
-            'sla_por_vencer': sla_por_vencer,
-            'sla_vencidas': sla_vencidas,
+            'sla_por_vencer': sla_counts["por_vencer"],
+            'sla_vencidas': sla_counts["vencidas"],
             'sin_asignar': sin_asignar,
         },
         'inventario_stats': {
@@ -244,9 +240,8 @@ def dashboard_tecnico(request):
     count_finalizados = tickets_base.filter(estado__name__in=[Incidencia.ESTADO_RESUELTO, Incidencia.ESTADO_CERRADO]).count()
     count_en_proceso = tickets_base.filter(estado__name=Incidencia.ESTADO_EN_PROCESO).count()
     count_por_validar = tickets_base.filter(estado__name=Incidencia.ESTADO_RESUELTO).count()
-    count_sla_alerta = tickets_base.filter(
-        estado_sla__in=[EstadoSLA.POR_VENCER, EstadoSLA.RESPUESTA_VENCIDA, EstadoSLA.RESOLUCION_VENCIDA]
-    ).exclude(estado__name=Incidencia.ESTADO_CERRADO).count()
+    sla_counts = get_sla_dashboard_counts(tickets_base)
+    count_sla_alerta = sla_counts["por_vencer"] + sla_counts["vencidas"]
     
     ultimas_incidencias = tickets_base.filter(fecha_creacion__date=hoy).select_related('area', 'estado', 'creador').order_by('-fecha_creacion')
 
@@ -273,6 +268,7 @@ def incidencias_list(request):
     estado_f = request.GET.get("estado", "")
     area_f = request.GET.get("area", "")
     prioridad_f = request.GET.get("prioridad", "")
+    sla_f = request.GET.get("sla", "")
     order_f = request.GET.get("order", "-fecha_creacion")
     
     active_tab = resolve_active_tab_for_user(user, request.GET.get("tab"))
@@ -284,6 +280,21 @@ def incidencias_list(request):
         queryset = queryset.filter(area_id=area_f)
     if prioridad_f:
         queryset = queryset.filter(prioridad=prioridad_f)
+    if sla_f == "vencidas":
+        now = timezone.now()
+        queryset = queryset.filter(
+            estado__name__in=[
+                Incidencia.ESTADO_PENDIENTE,
+                Incidencia.ESTADO_ASIGNADO,
+                Incidencia.ESTADO_EN_PROCESO,
+                Incidencia.ESTADO_RECHAZADO,
+                Incidencia.ESTADO_REABIERTO,
+            ],
+        ).exclude(
+            estado_sla__in=["cumplido", "no_aplica"],
+        ).filter(
+            Q(fecha_limite_respuesta__lte=now) | Q(fecha_limite_resolucion__lte=now)
+        )
 
     allowed_ordering = {
         "-fecha_creacion": "-fecha_creacion",
@@ -307,6 +318,7 @@ def incidencias_list(request):
         "estado_selected": estado_f,
         "area_selected": area_f,
         "prioridad_selected": prioridad_f,
+        "sla_selected": sla_f,
         "order_selected": order_f,
         "active_tab": active_tab,
         "now": timezone.localtime(timezone.now()),
@@ -796,12 +808,25 @@ def gestionar_incidencia(request, pk):
         return redirect('incidencias_list')
         
     incidencia = get_object_or_404(Incidencia, pk=pk)
-    if incidencia.estado_actual in {Incidencia.ESTADO_RESUELTO, Incidencia.ESTADO_CERRADO}:
-        lock_message = (
-            "Esta incidencia ya fue resuelta y está esperando la confirmación del creador o una reapertura."
-            if incidencia.estado_actual == Incidencia.ESTADO_RESUELTO
-            else "Esta incidencia ya está cerrada y no admite cambios de asignación o programación."
-        )
+    estados_gestion_bloqueada = {
+        Incidencia.ESTADO_EN_PROCESO,
+        Incidencia.ESTADO_RESUELTO,
+        Incidencia.ESTADO_CERRADO,
+    }
+    if incidencia.estado_actual in estados_gestion_bloqueada:
+        lock_messages = {
+            Incidencia.ESTADO_EN_PROCESO: (
+                "Esta incidencia ya fue aceptada por el especialista y está en atención. "
+                "No admite cambios de asignación, prioridad o programación."
+            ),
+            Incidencia.ESTADO_RESUELTO: (
+                "Esta incidencia ya fue resuelta y está esperando la confirmación del creador o una reapertura."
+            ),
+            Incidencia.ESTADO_CERRADO: (
+                "Esta incidencia ya está cerrada y no admite cambios de asignación o programación."
+            ),
+        }
+        lock_message = lock_messages[incidencia.estado_actual]
         if request.headers.get("HX-Request"):
             return HttpResponse(
                 f"""

@@ -167,9 +167,10 @@
 <script>
     function selectChip(el, selectId) {
         const root = el.closest('form, .modal-content, .container-fluid') || document;
-        root.querySelectorAll('#categoryChips .category-chip').forEach(c => c.classList.remove('selected'));
+        const group = el.closest('.category-chips') || root.querySelector('#categoryChips');
+        group?.querySelectorAll('.category-chip').forEach(c => c.classList.remove('selected'));
         el.classList.add('selected');
-        const input = root.querySelector(`#${selectId}`);
+        const input = root.querySelector(`#${selectId}`) || root.querySelector('[name="categoria"]');
         if(input) {
             input.value = el.dataset.value;
             input.dispatchEvent(new Event('change'));
@@ -178,9 +179,10 @@
 
     function selectPriority(el, selectId) {
         const root = el.closest('form, .modal-content, .container-fluid') || document;
-        root.querySelectorAll('#priorityCards .priority-card').forEach(c => c.classList.remove('selected'));
+        const group = el.closest('.priority-cards') || root.querySelector('#priorityCards');
+        group?.querySelectorAll('.priority-card').forEach(c => c.classList.remove('selected'));
         el.classList.add('selected');
-        const input = root.querySelector(`#${selectId}`);
+        const input = root.querySelector(`#${selectId}`) || root.querySelector('[name="prioridad"]');
         if(input) {
             input.value = el.dataset.value;
             input.dispatchEvent(new Event('change'));
@@ -347,6 +349,15 @@
             return selectEl.value || '';
         };
 
+        const syncVisualChoice = (selector, inputName) => {
+            const selectedCard = form.querySelector(`${selector} .selected[data-value]`);
+            const input = form.querySelector(`[name="${inputName}"]`);
+            if (selectedCard && input && input.value !== selectedCard.dataset.value) {
+                input.value = selectedCard.dataset.value;
+                input.dispatchEvent(new Event('change'));
+            }
+        };
+
         const refreshEquiposForArea = async () => {
             if (!areaSelect || !eqSelect || catSelect?.value !== 'hardware') return;
             const requestSeq = ++equiposRequestSeq;
@@ -435,6 +446,8 @@
                 e.preventDefault();
                 return;
             }
+            syncVisualChoice('#categoryChips', 'categoria');
+            syncVisualChoice('#priorityCards', 'prioridad');
             let valid = true;
             const requiredFields = [
                 { id: 'id_categoria', group: '#categoryChips' },

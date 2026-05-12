@@ -6,9 +6,10 @@ from django.utils import timezone
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, F, Q
 
-from ..models import Area, CustomUser, Estado, EstadoSLA, Incidencia
+from ..models import Area, CustomUser, Estado, Incidencia
 from inventario.models import Equipo, EstadoEquipo, Marca, TipoEquipo
 from ..utils.exports import generate_pdf, generate_excel_inventario
+from ..services import get_sla_dashboard_counts
 from auditoria.utils import registrar_auditoria
 
 
@@ -288,9 +289,7 @@ def export_dashboard_incidencias_pdf(request):
     cerradas = queryset.filter(estado__name=Incidencia.ESTADO_CERRADO).count()
     registradas_hoy = queryset.filter(fecha_creacion__date=hoy).count()
     sin_asignar = queryset.filter(tecnico_asignado__isnull=True, estado__name=Incidencia.ESTADO_PENDIENTE).count()
-    sla_vencidas = queryset.filter(
-        estado_sla__in=[EstadoSLA.RESPUESTA_VENCIDA, EstadoSLA.RESOLUCION_VENCIDA]
-    ).exclude(estado__name=Incidencia.ESTADO_CERRADO).count()
+    sla_counts = get_sla_dashboard_counts(queryset)
 
     estado_items = list(
         queryset.values(name=F("estado__name")).annotate(total=Count("id")).order_by("-total", "estado__name")
@@ -334,7 +333,7 @@ def export_dashboard_incidencias_pdf(request):
             "cerradas": cerradas,
             "registradas_hoy": registradas_hoy,
             "sin_asignar": sin_asignar,
-            "sla_vencidas": sla_vencidas,
+            "sla_vencidas": sla_counts["vencidas"],
         },
         "filters": filters,
         "filter_labels": {

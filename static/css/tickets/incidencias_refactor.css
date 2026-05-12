@@ -627,6 +627,52 @@
 .filter-option-dot.state-resuelto { background: var(--success-color); }
 .filter-state-dot.state-cerrado,
 .filter-option-dot.state-cerrado { background: var(--secondary-color); }
+.filter-state-dot.state-sla-vencidas,
+.filter-option-dot.state-sla-vencidas { background: var(--danger-color); }
+.filter-state-dot.state-area,
+.filter-option-dot.state-area { background: #14b8a6; }
+
+.filter-select-menu-searchable {
+    min-width: 280px;
+}
+
+.filter-menu-search {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+}
+
+.filter-menu-search input {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.82rem;
+    outline: none;
+}
+
+.filter-menu-search input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.filter-menu-options {
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.filter-menu-empty {
+    padding: 0.8rem 1rem;
+    color: var(--ink-muted);
+    font-size: 0.82rem;
+    text-align: center;
+}
 
 @media (max-width: 991px) {
     .toolbar-premium form {

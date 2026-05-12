@@ -84,6 +84,13 @@ class IncidenciasBusinessRulesTests(TestCase):
             activo=True,
         )
 
+    def _evidencia(self, name="evidencia.gif"):
+        return SimpleUploadedFile(
+            name,
+            b"GIF87a\x01\x00\x01\x00\x80\x01\x00\x00\x00\x00ccc,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;",
+            content_type="image/gif",
+        )
+
     def test_get_equipos_for_area_filtra_area_principal_para_admin_y_tecnico(self):
         area_planificacion = Area.objects.create(name="Planificación", sede_principal="UPDI")
         area_estadistica = Area.objects.create(name="Estadística", sede_principal="UPDI")
@@ -219,6 +226,70 @@ class IncidenciasBusinessRulesTests(TestCase):
         self.assertEqual(incidencia.codigo, f"INC-{incidencia.fecha_creacion.year}-{incidencia.pk:04d}")
         self.assertEqual(self.equipo.estado.nombre, "Observación")
         self.assertTrue(self.equipo.activo)
+
+    def test_admin_crea_incidencia_respetando_prioridad_critica(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.post(
+            reverse("crear_incidencia"),
+            {
+                "categoria": "software",
+                "prioridad": Incidencia.PRIORIDAD_CRITICA,
+                "area": self.area.pk,
+                "equipo": "",
+                "descripcion": "El sistema principal presenta una falla crítica que impide la atención normal.",
+                "imagen_adjunta": self._evidencia(),
+                "tecnico_asignado": self.tecnico.pk,
+                "fecha_programada_atencion": "",
+                "hora_programada_atencion": "",
+                "observaciones_internas": "",
+            },
+        )
+
+        incidencia = Incidencia.objects.latest("pk")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(incidencia.creador, self.admin)
+        self.assertEqual(incidencia.prioridad, Incidencia.PRIORIDAD_CRITICA)
+
+    def test_tecnico_crea_incidencia_respetando_prioridad_critica(self):
+        self.client.force_login(self.tecnico)
+
+        response = self.client.post(
+            reverse("crear_incidencia"),
+            {
+                "categoria": "software",
+                "prioridad": Incidencia.PRIORIDAD_CRITICA,
+                "area": self.area.pk,
+                "equipo": "",
+                "descripcion": "El servicio interno presenta una falla crítica reportada por soporte técnico.",
+                "imagen_adjunta": self._evidencia(),
+            },
+        )
+
+        incidencia = Incidencia.objects.latest("pk")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(incidencia.creador, self.tecnico)
+        self.assertEqual(incidencia.prioridad, Incidencia.PRIORIDAD_CRITICA)
+
+    def test_trabajador_crea_incidencia_siempre_con_prioridad_media(self):
+        self.client.force_login(self.usuario)
+
+        response = self.client.post(
+            reverse("crear_incidencia"),
+            {
+                "categoria": "software",
+                "prioridad": Incidencia.PRIORIDAD_CRITICA,
+                "area": self.area.pk,
+                "equipo": "",
+                "descripcion": "El usuario registra una falla del sistema para validación de prioridad automática.",
+                "imagen_adjunta": self._evidencia(),
+            },
+        )
+
+        incidencia = Incidencia.objects.latest("pk")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(incidencia.creador, self.usuario)
+        self.assertEqual(incidencia.prioridad, Incidencia.PRIORIDAD_MEDIA)
 
     def test_no_permite_crear_incidencia_si_equipo_ya_no_esta_operativo(self):
         self.equipo.estado = self.estado_reparacion
@@ -894,6 +965,56 @@ class IncidenciasBusinessRulesTests(TestCase):
         self.assertEqual(incidencia.estado_actual, Incidencia.ESTADO_RECHAZADO)
         self.assertIsNone(incidencia.tecnico_asignado)
 
+    def test_prioridad_se_desbloquea_en_ticket_rechazado_sin_tecnico(self):
+        incidencia = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Ticket rechazado que vuelve a evaluación administrativa.",
+            tecnico_asignado=None,
+            estado=get_estado(Incidencia.ESTADO_RECHAZADO),
+        )
+
+        form = IncidenciaAdminForm(instance=incidencia)
+
+        self.assertTrue(incidencia.prioridad_editable)
+        self.assertFalse(form.fields["prioridad"].disabled)
+
+    def test_admin_reasigna_ticket_rechazado_y_actualiza_prioridad(self):
+        incidencia = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Ticket rechazado listo para reasignación con ajuste de prioridad.",
+            imagen_adjunta="incidencias/evidencia.jpg",
+            tecnico_asignado=None,
+            estado=get_estado(Incidencia.ESTADO_RECHAZADO),
+        )
+        self.client.force_login(self.admin)
+
+        response = self.client.post(
+            reverse("gestionar_incidencia", args=[incidencia.pk]),
+            {
+                "categoria": incidencia.categoria,
+                "prioridad": Incidencia.PRIORIDAD_CRITICA,
+                "area": self.area.pk,
+                "equipo": "",
+                "descripcion": incidencia.descripcion,
+                "tecnico_asignado": self.tecnico_2.pk,
+                "fecha_programada_atencion": "",
+                "hora_programada_atencion": "",
+                "observaciones_internas": "Se reajusta prioridad antes de reasignar.",
+            },
+        )
+
+        incidencia.refresh_from_db()
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(incidencia.estado_actual, Incidencia.ESTADO_ASIGNADO)
+        self.assertEqual(incidencia.tecnico_asignado, self.tecnico_2)
+        self.assertEqual(incidencia.prioridad, Incidencia.PRIORIDAD_CRITICA)
+
     def test_usuario_no_asignado_no_puede_aceptar_ticket(self):
         incidencia = Incidencia.objects.create(
             creador=self.usuario,
@@ -982,13 +1103,13 @@ class IncidenciasBusinessRulesTests(TestCase):
         self.assertContains(response, "Tipo de resolución")
         self.assertContains(response, "Marcar como resuelto")
 
-    def test_reasignar_ticket_en_proceso_vuelve_a_asignado_y_muestra_botones_al_nuevo_tecnico(self):
+    def test_admin_no_puede_configurar_ticket_en_proceso(self):
         incidencia = Incidencia.objects.create(
             creador=self.admin,
             area=self.area,
             categoria="software",
             prioridad=Incidencia.PRIORIDAD_ALTA,
-            descripcion="Ticket en proceso que será reasignado.",
+            descripcion="Ticket en proceso que ya fue aceptado por el especialista.",
             imagen_adjunta="incidencias/evidencia.jpg",
             tecnico_asignado=self.tecnico,
             estado=get_estado(Incidencia.ESTADO_EN_PROCESO),
@@ -1012,21 +1133,29 @@ class IncidenciasBusinessRulesTests(TestCase):
 
         incidencia.refresh_from_db()
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(incidencia.tecnico_asignado, self.tecnico_2)
-        self.assertEqual(incidencia.estado_actual, Incidencia.ESTADO_ASIGNADO)
+        self.assertEqual(incidencia.tecnico_asignado, self.tecnico)
+        self.assertEqual(incidencia.estado_actual, Incidencia.ESTADO_EN_PROCESO)
         self.assertEqual(incidencia.prioridad, Incidencia.PRIORIDAD_ALTA)
+        self.assertFalse(Auditoria.objects.filter(referencia_id=incidencia.pk, accion="reasignó técnico").exists())
 
-        self.client.force_login(self.tecnico_2)
-        detalle = self.client.get(reverse("detalle_incidencia", args=[incidencia.pk]))
-        self.assertContains(detalle, "Aceptar atención")
-        self.assertContains(detalle, "Rechazar")
+    def test_detalle_admin_muestra_configuracion_bloqueada_en_ticket_en_proceso(self):
+        incidencia = Incidencia.objects.create(
+            creador=self.admin,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_ALTA,
+            descripcion="Ticket en proceso con gestión administrativa bloqueada.",
+            imagen_adjunta="incidencias/evidencia.jpg",
+            tecnico_asignado=self.tecnico,
+            estado=get_estado(Incidencia.ESTADO_EN_PROCESO),
+        )
+        self.client.force_login(self.admin)
 
-        auditoria = Auditoria.objects.filter(referencia_id=incidencia.pk, accion="reasignó técnico").first()
-        self.assertIsNotNone(auditoria)
-        self.assertIn(incidencia.codigo, auditoria.descripcion)
-        self.assertIn("Reasignado de", auditoria.descripcion)
-        self.assertIn("Carlos Soporte", auditoria.descripcion)
-        self.assertIn("por Ana Admin", auditoria.descripcion)
+        response = self.client.get(reverse("detalle_incidencia", args=[incidencia.pk]))
+
+        self.assertContains(response, "Configuración bloqueada")
+        self.assertContains(response, "ya fue aceptada por el especialista")
+        self.assertNotContains(response, "Configurar ticket")
 
     def test_form_usuario_filtra_equipos_por_sede_principal_sin_duplicados(self):
         area_origen = Area.objects.create(name="Mesa de Partes", sede_principal="DIRECCIÓN")
@@ -1414,6 +1543,127 @@ class IncidenciasBusinessRulesTests(TestCase):
         incidencia.refresh_from_db()
         self.assertEqual(incidencia.estado_sla, EstadoSLA.POR_VENCER)
         self.assertTrue(Auditoria.objects.filter(evento="incidencia.sla_por_vencer", referencia_id=incidencia.pk).exists())
+
+    def test_dashboard_admin_cuenta_sla_vencido_por_fecha_aunque_estado_sla_no_se_haya_procesado(self):
+        incidencia = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Ticket con SLA vencido pendiente de procesamiento automático.",
+            tecnico_asignado=self.tecnico,
+            estado=get_estado(Incidencia.ESTADO_EN_PROCESO),
+            estado_sla=EstadoSLA.EN_TIEMPO,
+        )
+        base = timezone.now() - timedelta(days=5)
+        Incidencia.objects.filter(pk=incidencia.pk).update(
+            fecha_creacion=base,
+            fecha_limite_respuesta=base + timedelta(hours=4),
+            fecha_limite_resolucion=base + timedelta(days=1),
+            estado_sla=EstadoSLA.EN_TIEMPO,
+        )
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("dashboard_admin"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["stats"]["sla_vencidas"], 1)
+
+    def test_dashboard_tecnico_cuenta_sla_vencido_por_fecha_aunque_estado_sla_no_se_haya_procesado(self):
+        incidencia = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Ticket asignado con SLA vencido visible para técnico.",
+            tecnico_asignado=self.tecnico,
+            estado=get_estado(Incidencia.ESTADO_EN_PROCESO),
+            estado_sla=EstadoSLA.EN_TIEMPO,
+        )
+        base = timezone.now() - timedelta(days=5)
+        Incidencia.objects.filter(pk=incidencia.pk).update(
+            fecha_creacion=base,
+            fecha_limite_respuesta=base + timedelta(hours=4),
+            fecha_limite_resolucion=base + timedelta(days=1),
+            estado_sla=EstadoSLA.EN_TIEMPO,
+        )
+        self.client.force_login(self.tecnico)
+
+        response = self.client.get(reverse("dashboard_tecnico"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["assigned_sla_alerta"], 1)
+
+    def test_listado_filtra_incidencias_sla_vencidas_por_fecha(self):
+        vencida = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Ticket vencido para filtro SLA.",
+            tecnico_asignado=self.tecnico,
+            estado=get_estado(Incidencia.ESTADO_EN_PROCESO),
+            estado_sla=EstadoSLA.EN_TIEMPO,
+        )
+        vigente = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Ticket vigente que no debe aparecer en filtro SLA.",
+            tecnico_asignado=self.tecnico,
+            estado=get_estado(Incidencia.ESTADO_EN_PROCESO),
+            estado_sla=EstadoSLA.EN_TIEMPO,
+        )
+        now = timezone.now()
+        Incidencia.objects.filter(pk=vencida.pk).update(
+            fecha_creacion=now - timedelta(days=5),
+            fecha_limite_respuesta=now - timedelta(days=4),
+            fecha_limite_resolucion=now - timedelta(days=3),
+        )
+        Incidencia.objects.filter(pk=vigente.pk).update(
+            fecha_creacion=now,
+            fecha_limite_respuesta=now + timedelta(hours=4),
+            fecha_limite_resolucion=now + timedelta(days=1),
+        )
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("incidencias_list"), {"sla": "vencidas"})
+
+        self.assertEqual(response.status_code, 200)
+        incidencias = list(response.context["incidencias"].object_list)
+        self.assertIn(vencida, incidencias)
+        self.assertNotIn(vigente, incidencias)
+        self.assertEqual(response.context["sla_selected"], "vencidas")
+
+    def test_listado_busca_incidencias_por_texto(self):
+        encontrada = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Falla exclusiva del sistema SIGA para búsqueda.",
+            tecnico_asignado=self.tecnico,
+            estado=get_estado(Incidencia.ESTADO_ASIGNADO),
+        )
+        no_encontrada = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="hardware",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Incidencia de impresora sin relación.",
+            tecnico_asignado=self.tecnico,
+            estado=get_estado(Incidencia.ESTADO_ASIGNADO),
+        )
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("incidencias_list"), {"q": "SIGA"})
+
+        self.assertEqual(response.status_code, 200)
+        incidencias = list(response.context["incidencias"].object_list)
+        self.assertIn(encontrada, incidencias)
+        self.assertNotIn(no_encontrada, incidencias)
+        self.assertEqual(response.context["query"], "SIGA")
 
     def test_snapshot_metricas_guarda_historico_diario(self):
         call_command("snapshot_metricas")

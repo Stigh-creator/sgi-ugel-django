@@ -84,7 +84,7 @@
         <form id="filterForm" class="d-flex align-items-center gap-3 w-100"
             hx-get="{% url 'incidencias_list' %}"
             hx-target="#incidenciasTableContainer"
-            hx-trigger="change, keyup delay:300ms from:input[name='q']">
+            hx-trigger="change, input delay:300ms from:input[name='q'], search from:input[name='q']">
             <input type="hidden" name="tab" id="currentTabInput" value="{{ active_tab }}">
 
             <div class="search-wrap-modern flex-grow-1" style="max-width: 400px;">
@@ -92,12 +92,39 @@
                 <input type="text" name="q" placeholder="Buscar por código, creador o descripción..." value="{{ query }}">
             </div>
 
-            <select name="area" class="form-select" style="max-width: 220px;">
-                <option value="">Todas las áreas</option>
-                {% for area in areas %}
-                <option value="{{ area.id }}" {% if area_selected == area.id|stringformat:"s" %}selected{% endif %}>{{ area.name }}</option>
-                {% endfor %}
-            </select>
+            <div class="filter-select-wrap" id="areaFilterWrap" style="min-width: 220px;">
+                <i class="bi bi-building"></i>
+                <span class="filter-state-dot is-hidden" id="areaFilterDot" aria-hidden="true"></span>
+                <input type="hidden" name="area" id="areaFilter" value="{{ area_selected|default:'' }}">
+                <button type="button" class="filter-select-button" id="areaFilterButton" aria-haspopup="listbox" aria-expanded="false">
+                    <span id="areaFilterLabel">Todas las áreas</span>
+                </button>
+                <div class="filter-select-menu filter-select-menu-searchable" id="areaFilterMenu" role="listbox" aria-label="Filtrar por área">
+                    <div class="filter-menu-search">
+                        <i class="bi bi-search"></i>
+                        <input type="search" id="areaFilterSearch" placeholder="Buscar área..." autocomplete="off">
+                    </div>
+                    <div class="filter-menu-options">
+                        <button type="button" class="filter-select-option" data-value="" data-label="Todas las áreas" data-state-name="">
+                            <span class="filter-option-dot is-hidden"></span>
+                            <span>Todas las áreas</span>
+                        </button>
+                        {% for area in areas %}
+                        <button
+                            type="button"
+                            class="filter-select-option"
+                            data-value="{{ area.id }}"
+                            data-label="{{ area.name }}"
+                            data-state-name="area"
+                        >
+                            <span class="filter-option-dot state-area"></span>
+                            <span>{{ area.name }}</span>
+                        </button>
+                        {% endfor %}
+                    </div>
+                    <div class="filter-menu-empty d-none">Sin coincidencias</div>
+                </div>
+            </div>
 
             <div class="filter-select-wrap" id="prioridadFilterWrap" style="min-width: 180px;">
                 <i class="bi bi-flag"></i>
@@ -153,9 +180,28 @@
                 </div>
             </div>
 
+            <div class="filter-select-wrap" id="slaFilterWrap" style="min-width: 170px;">
+                <i class="bi bi-clock-history"></i>
+                <span class="filter-state-dot is-hidden" id="slaFilterDot" aria-hidden="true"></span>
+                <input type="hidden" name="sla" id="slaFilter" value="{{ sla_selected|default:'' }}">
+                <button type="button" class="filter-select-button" id="slaFilterButton" aria-haspopup="listbox" aria-expanded="false">
+                    <span id="slaFilterLabel">SLA</span>
+                </button>
+                <div class="filter-select-menu" id="slaFilterMenu" role="listbox" aria-label="Filtrar por SLA">
+                    <button type="button" class="filter-select-option" data-value="" data-label="SLA" data-state-name="">
+                        <span class="filter-option-dot is-hidden"></span>
+                        <span>SLA</span>
+                    </button>
+                    <button type="button" class="filter-select-option" data-value="vencidas" data-label="Vencidas" data-state-name="sla-vencidas">
+                        <span class="filter-option-dot state-sla-vencidas"></span>
+                        <span>Vencidas</span>
+                    </button>
+                </div>
+            </div>
+
             <button
                 type="button"
-                class="filter-dropdown-btn {% if query or estado_selected or area_selected or prioridad_selected or active_tab == 'reportadas' %}active{% endif %}"
+                class="filter-dropdown-btn {% if query or estado_selected or area_selected or prioridad_selected or sla_selected or active_tab == 'reportadas' %}active{% endif %}"
                 onclick="clearFilters()"
                 title="Limpiar filtros">
                 <i class="bi bi-arrow-counterclockwise"></i>
@@ -234,7 +280,7 @@
     // Re-inicializar TomSelect y experiencia del modal cuando HTMX ya insertó el contenido
     document.body.addEventListener('htmx:afterSwap', function (evt) {
         if (evt.detail.target.id === 'incidenciasTableContainer') {
-            syncEstadoLabel();
+            syncAllFilters();
         }
         if (evt.detail.target.id === 'modalContent') {
             const selects = evt.detail.target.querySelectorAll('.live-search');
@@ -291,8 +337,10 @@
     }
 
     function syncAllFilters() {
+        syncFilterLabel('areaFilter', 'areaFilterWrap', 'areaFilterDot', 'areaFilterLabel', 'Todas las áreas');
         syncFilterLabel('estadoFilter', 'estadoFilterWrap', 'estadoFilterDot', 'estadoFilterLabel', 'Todos los estados');
         syncFilterLabel('prioridadFilter', 'prioridadFilterWrap', 'prioridadFilterDot', 'prioridadFilterLabel', 'Prioridad');
+        syncFilterLabel('slaFilter', 'slaFilterWrap', 'slaFilterDot', 'slaFilterLabel', 'SLA');
     }
 
     syncTicketTabs();
@@ -309,6 +357,11 @@
     });
 
     document.addEventListener('click', function (event) {
+        if (event.target.closest('.filter-menu-search')) {
+            event.stopPropagation();
+            return;
+        }
+
         const option = event.target.closest('.filter-select-option');
         if (option) {
             const wrap = option.closest('.filter-select-wrap');
@@ -333,6 +386,9 @@
             });
             if (wrap) {
                 wrap.classList.toggle('is-open', willOpen);
+                if (willOpen && wrap.id === 'areaFilterWrap') {
+                    window.setTimeout(() => document.getElementById('areaFilterSearch')?.focus(), 0);
+                }
             }
             btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
         } else {
@@ -342,6 +398,23 @@
             });
         }
     });
+
+    const areaFilterSearch = document.getElementById('areaFilterSearch');
+    if (areaFilterSearch) {
+        areaFilterSearch.addEventListener('input', function () {
+            const term = this.value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const menu = document.getElementById('areaFilterMenu');
+            const options = Array.from(menu?.querySelectorAll('.filter-select-option') || []);
+            let visibleCount = 0;
+            options.forEach((option, index) => {
+                const label = (option.dataset.label || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                const matches = index === 0 || label.includes(term);
+                option.classList.toggle('d-none', !matches);
+                if (matches && index !== 0) visibleCount += 1;
+            });
+            menu?.querySelector('.filter-menu-empty')?.classList.toggle('d-none', visibleCount > 0 || !term);
+        });
+    }
 
     // Lógica de Gestión de Tickets (Trabajador)
     function confirmarReabertura(url) {
@@ -389,10 +462,14 @@
         form.reset();
         // Limpiar inputs manualmente
         form.querySelectorAll('input[type="text"]').forEach(i => i.value = '');
+        const areaFilter = document.getElementById('areaFilter');
+        if (areaFilter) areaFilter.value = '';
         const estadoFilter = document.getElementById('estadoFilter');
         if (estadoFilter) estadoFilter.value = '';
         const prioridadFilter = document.getElementById('prioridadFilter');
         if (prioridadFilter) prioridadFilter.value = '';
+        const slaFilter = document.getElementById('slaFilter');
+        if (slaFilter) slaFilter.value = '';
         
         syncAllFilters();
         {% if user.role == 'usuario' %}

@@ -102,33 +102,62 @@
         <form method="GET" class="inventory-filter-grid">
             <input type="hidden" name="vista" value="{{ vista_selected }}">
             <div class="inventory-filter-field inventory-filter-search">
-                <label class="form-label small fw-bold text-muted">Buscador</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
-                    <input type="text" name="q" class="form-control bg-light border-start-0" placeholder="Código, nombre, modelo..." value="{{ query|default:'' }}">
+                <div class="inventory-search-control">
+                    <i class="bi bi-search"></i>
+                    <input type="text" name="q" aria-label="Buscar equipo" placeholder="Código, nombre, modelo..." value="{{ query|default:'' }}">
+                </div>
+            </div>
+            <div class="inventory-filter-field inventory-filter-action inventory-filter-submit">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-funnel me-2"></i>Filtrar
+                </button>
+            </div>
+            <div class="inventory-filter-field inventory-filter-action inventory-filter-clear">
+                <a href="{% url 'inventario_list' %}?vista={{ vista_selected }}" class="btn inventory-clear-btn w-100">
+                    <i class="bi bi-x-circle me-2"></i>Limpiar
+                </a>
+            </div>
+            <div class="inventory-filter-field">
+                <div class="filter-select-wrap w-100" id="areaFilterWrap">
+                    <i class="bi bi-building"></i>
+                    <span class="filter-state-dot is-hidden" id="areaFilterDot" aria-hidden="true"></span>
+                    <input type="hidden" name="area" id="areaFilter" value="{{ area_selected|default:'' }}">
+                    <button type="button" class="filter-select-button" id="areaFilterButton" aria-haspopup="listbox" aria-expanded="false">
+                        <span id="areaFilterLabel">Área</span>
+                    </button>
+                    <div class="filter-select-menu filter-select-menu-searchable" id="areaFilterMenu" role="listbox" aria-label="Filtrar por área">
+                        <div class="filter-menu-search">
+                            <i class="bi bi-search"></i>
+                            <input type="search" id="areaFilterSearch" placeholder="Buscar área..." autocomplete="off">
+                        </div>
+                        <div class="filter-menu-options">
+                            <button type="button" class="filter-select-option" data-value="" data-label="Área" data-state-name="">
+                                <span class="filter-option-dot is-hidden"></span>
+                                <span>Área</span>
+                            </button>
+                            {% for area in areas %}
+                            <button type="button" class="filter-select-option" data-value="{{ area.id }}" data-label="{{ area.name }}" data-state-name="area">
+                                <span class="filter-option-dot state-area"></span>
+                                <span>{{ area.name }}</span>
+                            </button>
+                            {% endfor %}
+                        </div>
+                        <div class="filter-menu-empty d-none">Sin coincidencias</div>
+                    </div>
                 </div>
             </div>
             <div class="inventory-filter-field">
-                <label class="form-label small fw-bold text-muted">Área</label>
-                <select name="area" class="form-select bg-light">
-                    <option value="">Todas</option>
-                    {% for area in areas %}
-                    <option value="{{ area.id }}" {% if area_selected == area.id|stringformat:"s" %}selected{% endif %}>{{ area.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="inventory-filter-field">
-                <label class="form-label small fw-bold text-muted">Estado</label>
                 <div class="filter-select-wrap w-100" id="estadoFilterWrap">
+                    <i class="bi bi-sliders2"></i>
                     <span class="filter-state-dot is-hidden" id="estadoFilterDot" aria-hidden="true"></span>
                     <input type="hidden" name="estado" id="estadoFilter" value="{{ estado_selected|default:'' }}">
                     <button type="button" class="filter-select-button" id="estadoFilterButton" aria-haspopup="listbox" aria-expanded="false">
-                        <span id="estadoFilterLabel">Todos</span>
+                        <span id="estadoFilterLabel">Estado</span>
                     </button>
                     <div class="filter-select-menu" id="estadoFilterMenu" role="listbox" aria-label="Filtrar por estado">
-                        <button type="button" class="filter-select-option" data-value="" data-label="Todos" data-state-name="">
+                        <button type="button" class="filter-select-option" data-value="" data-label="Estado" data-state-name="">
                             <span class="filter-option-dot is-hidden"></span>
-                            <span>Todos</span>
+                            <span>Estado</span>
                         </button>
                         <button type="button" class="filter-select-option" data-value="Operativo" data-label="Operativo" data-state-name="operativo">
                             <span class="filter-option-dot state-operativo"></span>
@@ -154,42 +183,94 @@
                 </div>
             </div>
             <div class="inventory-filter-field">
-                <label class="form-label small fw-bold text-muted">Disponibilidad</label>
-                <select name="disponibilidad" class="form-select bg-light">
-                    <option value="">Todas</option>
-                    <option value="LIBRE" {% if disponibilidad_selected == 'LIBRE' %}selected{% endif %}>Libre</option>
-                    <option value="EN_USO" {% if disponibilidad_selected == 'EN_USO' %}selected{% endif %}>En uso</option>
-                    <option value="REEMPLAZO_TEMPORAL" {% if disponibilidad_selected == 'REEMPLAZO_TEMPORAL' %}selected{% endif %}>Reemplazo temporal</option>
-                    <option value="NO_DISPONIBLE" {% if disponibilidad_selected == 'NO_DISPONIBLE' %}selected{% endif %}>No disponible</option>
-                </select>
+                <div class="filter-select-wrap w-100" id="disponibilidadFilterWrap">
+                    <i class="bi bi-box-seam"></i>
+                    <span class="filter-state-dot is-hidden" id="disponibilidadFilterDot" aria-hidden="true"></span>
+                    <input type="hidden" name="disponibilidad" id="disponibilidadFilter" value="{{ disponibilidad_selected|default:'' }}">
+                    <button type="button" class="filter-select-button" id="disponibilidadFilterButton" aria-haspopup="listbox" aria-expanded="false">
+                        <span id="disponibilidadFilterLabel">Disponibilidad</span>
+                    </button>
+                    <div class="filter-select-menu" id="disponibilidadFilterMenu" role="listbox" aria-label="Filtrar por disponibilidad">
+                        <button type="button" class="filter-select-option" data-value="" data-label="Disponibilidad" data-state-name="">
+                            <span class="filter-option-dot is-hidden"></span>
+                            <span>Disponibilidad</span>
+                        </button>
+                        <button type="button" class="filter-select-option" data-value="LIBRE" data-label="Libre" data-state-name="libre">
+                            <span class="filter-option-dot state-libre"></span>
+                            <span>Libre</span>
+                        </button>
+                        <button type="button" class="filter-select-option" data-value="EN_USO" data-label="En uso" data-state-name="en-uso">
+                            <span class="filter-option-dot state-en-uso"></span>
+                            <span>En uso</span>
+                        </button>
+                        <button type="button" class="filter-select-option" data-value="REEMPLAZO_TEMPORAL" data-label="Reemplazo temporal" data-state-name="reemplazo-temporal">
+                            <span class="filter-option-dot state-reemplazo-temporal"></span>
+                            <span>Reemplazo temporal</span>
+                        </button>
+                        <button type="button" class="filter-select-option" data-value="NO_DISPONIBLE" data-label="No disponible" data-state-name="no-disponible">
+                            <span class="filter-option-dot state-no-disponible"></span>
+                            <span>No disponible</span>
+                        </button>
+                    </div>
+                </div>
             </div>
             <div class="inventory-filter-field">
-                <label class="form-label small fw-bold text-muted">Tipo</label>
-                <select name="tipo" class="form-select bg-light">
-                    <option value="">Todos</option>
-                    {% for t in tipos %}
-                    <option value="{{ t.id }}" {% if tipo_selected == t.id|stringformat:"s" %}selected{% endif %}>{{ t.nombre }}</option>
-                    {% endfor %}
-                </select>
+                <div class="filter-select-wrap w-100" id="tipoFilterWrap">
+                    <i class="bi bi-pc-display"></i>
+                    <span class="filter-state-dot is-hidden" id="tipoFilterDot" aria-hidden="true"></span>
+                    <input type="hidden" name="tipo" id="tipoFilter" value="{{ tipo_selected|default:'' }}">
+                    <button type="button" class="filter-select-button" id="tipoFilterButton" aria-haspopup="listbox" aria-expanded="false">
+                        <span id="tipoFilterLabel">Tipo</span>
+                    </button>
+                    <div class="filter-select-menu filter-select-menu-searchable" id="tipoFilterMenu" role="listbox" aria-label="Filtrar por tipo">
+                        <div class="filter-menu-search">
+                            <i class="bi bi-search"></i>
+                            <input type="search" id="tipoFilterSearch" placeholder="Buscar tipo..." autocomplete="off">
+                        </div>
+                        <div class="filter-menu-options">
+                            <button type="button" class="filter-select-option" data-value="" data-label="Tipo" data-state-name="">
+                                <span class="filter-option-dot is-hidden"></span>
+                                <span>Tipo</span>
+                            </button>
+                            {% for t in tipos %}
+                            <button type="button" class="filter-select-option" data-value="{{ t.id }}" data-label="{{ t.nombre }}" data-state-name="tipo">
+                                <span class="filter-option-dot state-tipo"></span>
+                                <span>{{ t.nombre }}</span>
+                            </button>
+                            {% endfor %}
+                        </div>
+                        <div class="filter-menu-empty d-none">Sin coincidencias</div>
+                    </div>
+                </div>
             </div>
             <div class="inventory-filter-field">
-                <label class="form-label small fw-bold text-muted">Marca</label>
-                <select name="marca" class="form-select bg-light">
-                    <option value="">Todas</option>
-                    {% for m in marcas %}
-                    <option value="{{ m.id }}" {% if marca_selected == m.id|stringformat:"s" %}selected{% endif %}>{{ m.nombre }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="inventory-filter-field inventory-filter-action">
-                <button type="submit" class="btn btn-primary w-100">
-                    <i class="bi bi-funnel me-2"></i>Filtrar
-                </button>
-            </div>
-            <div class="inventory-filter-field inventory-filter-action">
-                <a href="{% url 'inventario_list' %}?vista={{ vista_selected }}" class="btn btn-light border w-100">
-                    <i class="bi bi-x-circle me-2"></i>Limpiar
-                </a>
+                <div class="filter-select-wrap w-100" id="marcaFilterWrap">
+                    <i class="bi bi-tags"></i>
+                    <span class="filter-state-dot is-hidden" id="marcaFilterDot" aria-hidden="true"></span>
+                    <input type="hidden" name="marca" id="marcaFilter" value="{{ marca_selected|default:'' }}">
+                    <button type="button" class="filter-select-button" id="marcaFilterButton" aria-haspopup="listbox" aria-expanded="false">
+                        <span id="marcaFilterLabel">Marca</span>
+                    </button>
+                    <div class="filter-select-menu filter-select-menu-searchable" id="marcaFilterMenu" role="listbox" aria-label="Filtrar por marca">
+                        <div class="filter-menu-search">
+                            <i class="bi bi-search"></i>
+                            <input type="search" id="marcaFilterSearch" placeholder="Buscar marca..." autocomplete="off">
+                        </div>
+                        <div class="filter-menu-options">
+                            <button type="button" class="filter-select-option" data-value="" data-label="Marca" data-state-name="">
+                                <span class="filter-option-dot is-hidden"></span>
+                                <span>Marca</span>
+                            </button>
+                            {% for m in marcas %}
+                            <button type="button" class="filter-select-option" data-value="{{ m.id }}" data-label="{{ m.nombre }}" data-state-name="marca">
+                                <span class="filter-option-dot state-marca"></span>
+                                <span>{{ m.nombre }}</span>
+                            </button>
+                            {% endfor %}
+                        </div>
+                        <div class="filter-menu-empty d-none">Sin coincidencias</div>
+                    </div>
+                </div>
             </div>
         </form>
     </div>
@@ -382,7 +463,11 @@
     }
 
     function syncAllFilters() {
-        syncFilterLabel('estadoFilter', 'estadoFilterWrap', 'estadoFilterDot', 'estadoFilterLabel', 'Todos');
+        syncFilterLabel('areaFilter', 'areaFilterWrap', 'areaFilterDot', 'areaFilterLabel', 'Área');
+        syncFilterLabel('estadoFilter', 'estadoFilterWrap', 'estadoFilterDot', 'estadoFilterLabel', 'Estado');
+        syncFilterLabel('disponibilidadFilter', 'disponibilidadFilterWrap', 'disponibilidadFilterDot', 'disponibilidadFilterLabel', 'Disponibilidad');
+        syncFilterLabel('tipoFilter', 'tipoFilterWrap', 'tipoFilterDot', 'tipoFilterLabel', 'Tipo');
+        syncFilterLabel('marcaFilter', 'marcaFilterWrap', 'marcaFilterDot', 'marcaFilterLabel', 'Marca');
     }
 
     function previewImage(input, previewId) {
@@ -405,6 +490,11 @@
         syncAllFilters();
         
         document.addEventListener('click', function (event) {
+            if (event.target.closest('.filter-menu-search')) {
+                event.stopPropagation();
+                return;
+            }
+
             const option = event.target.closest('.filter-select-option');
             if (option) {
                 const wrap = option.closest('.filter-select-wrap');
@@ -429,6 +519,10 @@
                 });
                 if (wrap) {
                     wrap.classList.toggle('is-open', willOpen);
+                    const searchInput = wrap.querySelector('.filter-menu-search input');
+                    if (willOpen && searchInput) {
+                        window.setTimeout(() => searchInput.focus(), 0);
+                    }
                 }
                 btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
             } else {
@@ -437,6 +531,22 @@
                     wrap.querySelector('.filter-select-button')?.setAttribute('aria-expanded', 'false');
                 });
             }
+        });
+
+        document.querySelectorAll('.filter-menu-search input').forEach(searchInput => {
+            searchInput.addEventListener('input', function () {
+                const term = this.value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                const menu = this.closest('.filter-select-menu');
+                const options = Array.from(menu?.querySelectorAll('.filter-select-option') || []);
+                let visibleCount = 0;
+                options.forEach((option, index) => {
+                    const label = (option.dataset.label || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                    const matches = index === 0 || label.includes(term);
+                    option.classList.toggle('d-none', !matches);
+                    if (matches && index !== 0) visibleCount += 1;
+                });
+                menu?.querySelector('.filter-menu-empty')?.classList.toggle('d-none', visibleCount > 0 || !term);
+            });
         });
 
         document.querySelectorAll('.js-disable-on-submit').forEach(form => {

@@ -387,7 +387,7 @@
 
         <div class="col-lg-4 col-xl-3">
             <aside class="detail-aside">
-                {% if user.es_admin and incidencia.estado_visual != 'Resuelto' and incidencia.estado_visual != 'Cerrado' %}
+                {% if user.es_admin and incidencia.estado_visual != 'En Proceso' and incidencia.estado_visual != 'Resuelto' and incidencia.estado_visual != 'Cerrado' %}
                 <div class="aside-group">
                     <div class="aside-title-row">
                         <h6 class="mb-0 fw-bold">Gestión</h6>
@@ -403,7 +403,9 @@
                         <h6 class="mb-0 fw-bold">Gestión</h6>
                     </div>
                     <p class="small text-muted mb-3">
-                        {% if incidencia.estado_visual == 'Resuelto' %}
+                        {% if incidencia.estado_visual == 'En Proceso' %}
+                        Esta incidencia ya fue aceptada por el especialista y está en atención. La configuración queda bloqueada para no alterar el trabajo en curso.
+                        {% elif incidencia.estado_visual == 'Resuelto' %}
                         Esta incidencia ya fue resuelta. Ahora queda esperando la confirmación del creador o una reapertura si el problema persiste.
                         {% else %}
                         Esta incidencia ya fue cerrada y no admite cambios de técnico ni reprogramación.
