@@ -14,14 +14,14 @@ Gestiona la autenticación y perfiles de usuario. Extiende de `AbstractUser` de 
 | `first_name` | CharField(150) | Not Null | Nombres del usuario. |
 | `last_name` | CharField(150) | Not Null | Apellidos del usuario. |
 | `email` | EmailField | Null, Blank | Correo institucional o personal. |
-| `role` | CharField(15) | Choice | Rol: `usuario`, `tecnico`, `administrador`. |
+| `role` | CharField(15) | Choice | Rol: `usuario`, `tecnico`, `administrador`, `almacen`. |
 | `telefono` | CharField(9) | Not Null | Teléfono de contacto (9 dígitos). |
 | `area` | ForeignKey | FK -> `Area` (Set Null) | Área a la que pertenece el trabajador. |
 | `foto` | ImageField | Null, Blank | Foto de perfil (almacenada en `perfiles/`). |
 | `last_password_change` | DateTimeField | Not Null | Fecha del último cambio de contraseña. |
 | `must_change_password` | BooleanField | Default: False | Obliga al cambio de clave tras reset. |
 | `last_seen` | DateTimeField | Null, Blank | Última actividad para estado "En línea". |
-| `capacidad_base` | PositiveIntegerField | Default: 4 | Capacidad operativa base para balanceo de carga. |
+| `capacidad_base` | PositiveIntegerField | Default: 4 | Capacidad operativa base para balanceo de carga de especialistas. |
 | `is_active` | BooleanField | Default: True | Habilita o bloquea el acceso del usuario. |
 | `is_staff` | BooleanField | Default: False | Acceso al panel administrativo de Django. |
 | `date_joined` | DateTimeField | Not Null | Fecha de creación del usuario. |
@@ -35,6 +35,8 @@ Dependencias administrativas de la UGEL.
 | `name` | CharField(100) | Not Null | Nombre del área (ej. Tesorería). |
 | `sede_principal` | CharField(20) | Null, Blank, Choice | Sede: DIRECCIÓN, AGP, ADMINISTRACIÓN, UPDI. |
 
+*Nota: Existe una restricción de unicidad combinada para `name` y `sede_principal`.*
+
 ### Tabla: `Estado` (tickets_estado)
 Catálogo maestro de estados de las incidencias.
 
@@ -42,8 +44,6 @@ Catálogo maestro de estados de las incidencias.
 | :--- | :--- | :--- | :--- |
 | `id` | BigAutoField | PK | Identificador único. |
 | `name` | CharField(50) | Unique, Not Null | Nombre del estado del ticket. |
-
-*Nota: Existe una restricción de unicidad combinada para `name` y `sede_principal`.*
 
 ### Tabla: `Incidencia` (tickets_incidencia)
 Entidad principal para el registro de tickets de soporte.
@@ -80,7 +80,7 @@ Entidad principal para el registro de tickets de soporte.
 | `fecha_limite_respuesta` | DateTimeField | Null, Blank | Deadline para la primera respuesta (SLA). |
 | `fecha_limite_resolucion` | DateTimeField | Null, Blank | Deadline para la resolución final (SLA). |
 | `fecha_auto_cierre` | DateTimeField | Null, Blank | Fecha programada para cierre automático tras resolución. |
-| `estado_sla` | CharField(30) | Choice | Estado SLA: en_tiempo, por_vencer, vencida, etc. |
+| `estado_sla` | CharField(30) | Choice | Estado SLA: `en_tiempo`, `por_vencer`, `respuesta_vencida`, `resolucion_vencida`, `escalado`, `cumplido`, `no_aplica`. |
 | `sla_respuesta_notificado` | BooleanField | Default: False | Flag de notificación de vencimiento de respuesta. |
 | `sla_resolucion_notificado` | BooleanField | Default: False | Flag de notificación de vencimiento de resolución. |
 | `auto_cerrado` | BooleanField | Default: False | Indica si el ticket fue cerrado por el sistema. |
@@ -177,12 +177,17 @@ Consolidado histórico de KPIs del sistema.
 | `tickets_abiertos` | PositiveIntegerField | Default: 0 | Total de tickets abiertos ese día. |
 | `tickets_cerrados` | PositiveIntegerField | Default: 0 | Total de tickets cerrados ese día. |
 | `sla_vencidos` | PositiveIntegerField | Default: 0 | Total de tickets con SLA vencido. |
+| `sla_por_vencer` | PositiveIntegerField | Default: 0 | Total de tickets próximos a vencer. |
+| `tickets_validacion_vencidos` | PositiveIntegerField | Default: 0 | Tickets resueltos pendientes de validación vencida. |
+| `equipos_reparacion_sin_ticket_activo` | PositiveIntegerField | Default: 0 | Equipos en reparación sin ticket activo asociado. |
 | `reemplazos_activos` | PositiveIntegerField | Default: 0 | Total de préstamos vigentes. |
 | `metadata` | JSONField | Default: {} | KPIs secundarios (por área, técnico, etc). |
 | `creado_en` | DateTimeField | Auto Add | Registro de creación. |
 | `actualizado_en` | DateTimeField | Auto Now | Última actualización del KPI. |
 
-*Nota: Existe una restricción de unicidad combinada para `usuario` y `notificacion`.*
+*Nota: `MetricaDiaria.fecha` es único para conservar un snapshot por día.*
+
+*Nota adicional: `NotificacionUsuario` posee restricción de unicidad combinada para `usuario` y `notificacion`.*
 
 ---
 
@@ -230,13 +235,15 @@ Registro de hardware y activos tecnológicos.
 | `fecha_register` | DateTimeField | Auto Add | Fecha y hora de registro del activo. |
 | `actualizado_en` | DateTimeField | Auto Now | Fecha y hora de última actualización. |
 | `activo` | BooleanField | Default: True | Control lógico para activos o bajas administrativas. |
-| `disponibilidad` | CharField(30) | Choice | Estado: `LIBRE`, `EN_USO`, `REEMPLAZO_TEMPORAL`. |
-| `origen_ocupacion` | CharField(20) | Choice | Manual, Incidencia, Reemplazo, etc. |
+| `disponibilidad` | CharField(30) | Choice | Estado: `LIBRE`, `EN_USO`, `REEMPLAZO_TEMPORAL`, `NO_DISPONIBLE`. |
+| `origen_ocupacion` | CharField(20) | Null, Blank, Choice | Manual, asignación directa, incidencia, reemplazo o mantenimiento. |
 | `foto_estado` | ImageField | Null, Blank | Evidencia fotográfica del estado del equipo. |
 | `area` | ForeignKey | FK -> `Area` (Set Null) | Ubicación física actual. |
 | `estado` | ForeignKey | FK -> `EstadoEquipo` | Estado funcional (Inventario). |
 | `estado_tecnico` | ForeignKey | FK -> `EstadoEquipo` | Estado técnico detallado. |
 | `ficha_tecnica` | FileField | Null, Blank | Manual o ficha en PDF (en `inventario_docs/`). |
+
+*Índices principales: `disponibilidad` y combinación `estado_tecnico` + `disponibilidad`.*
 
 ### Tabla: `HistorialEstadoEquipo` (inventario_historialestadoequipo)
 Bitácora de cambios de estado operativo por equipo.
@@ -260,13 +267,14 @@ Logs de acciones críticas para seguridad y cumplimiento.
 
 | Campo | Tipo | Restricciones | Descripción |
 | :--- | :--- | :--- | :--- |
-| `usuario` | ForeignKey | FK -> `CustomUser` | Quién realizó la acción. |
-| `modulo` | CharField(50) | Choice | Usuarios, Inventario, Incidencias. |
+| `id` | BigAutoField | PK | Identificador único. |
+| `usuario` | ForeignKey | FK -> `CustomUser` (Set Null, Null, Blank) | Quién realizó la acción. Puede ser nulo en eventos de sistema. |
+| `modulo` | CharField(50) | Choice | Usuarios, Inventario, Incidencias, Sistema. |
 | `accion` | CharField(100) | Not Null | Verbo de la acción (ej. Creó, Editó). |
 | `descripcion` | TextField | Not Null | Detalle legible de la actividad. |
 | `evento` | CharField(100) | Null | Identificador del tipo de evento técnico. |
 | `version_evento` | PositiveIntegerField | Default: 1 | Versión del esquema del evento. |
-| `hash_evento` | CharField(64) | Unique | Hash para evitar duplicidad de registros. |
+| `hash_evento` | CharField(64) | Null, Blank | Hash para evitar duplicidad de registros cuando existe evento estructurado. |
 | `metadata` | JSONField | Default: {} | Datos crudos del objeto auditado. |
 | `fecha_hora` | DateTimeField | Auto Add | Momento exacto del evento auditado. |
 | `referencia_id` | IntegerField | Null | ID del objeto afectado. |
@@ -281,11 +289,15 @@ Registro de auditorías que fallaron al procesarse (asíncronas).
 | :--- | :--- | :--- | :--- |
 | `id` | BigAutoField | PK | Identificador único. |
 | `evento` | CharField(100) | Not Null | Nombre del evento fallido. |
+| `version_evento` | PositiveIntegerField | Default: 1 | Versión del esquema del evento fallido. |
 | `payload` | JSONField | Default: {} | Datos que no pudieron guardarse. |
 | `error` | TextField | Not Null | Mensaje de excepción. |
-| `intentos` | PositiveSmallIntegerField| Default: 0 | Veces que se intentó re-procesar. |
 | `procesado` | BooleanField | Default: False | Indica si ya se recuperó con éxito. |
+| `intentos` | PositiveSmallIntegerField| Default: 0 | Veces que se intentó re-procesar. |
+| `ultimo_error` | TextField | Blank | Último error registrado durante el reprocesamiento. |
 | `fecha` | DateTimeField | Auto Add | Fecha del fallo original. |
+
+*Índices principales: `evento` + `procesado`, `procesado` + `intentos`, y `fecha`.*
 
 ---
 
@@ -293,17 +305,21 @@ Registro de auditorías que fallaron al procesarse (asíncronas).
 
 Tras analizar el esquema actual frente a los requerimientos futuros, se concluye lo siguiente:
 
-### A. Gestión de Inventario (Excel)
+### A. Gestión de Inventario (Excel y PDF)
 *   **Estado**: **Implementado**.
-*   **Análisis**: Se ha integrado un motor de exportación basado en `openpyxl` que permite generar reportes detallados del inventario en formato `.xlsx`, incluyendo datos de áreas, marcas y estados operativos.
+*   **Análisis**: Se ha integrado un motor de exportación basado en `openpyxl` para Excel de inventario y plantillas PDF filtradas para reportes generales e individuales por equipo. El Excel queda restringido a Almacén y superusuario; los PDF se habilitan para usuarios con acceso al módulo.
 
-### B. Gestión de Documentos (PDF)
+### B. Gestión de Documentos y Reportes PDF
 *   **Estado**: **Implementado**.
-*   **Análisis**: El sistema ya soporta la carga de documentos PDF mediante campos `FileField` en las tablas `Incidencia` (`documento_informe`) y `Equipo` (`ficha_tecnica`), permitiendo adjuntar informes técnicos y manuales de fabricante respectivamente.
+*   **Análisis**: El sistema soporta carga documental mediante `FileField` en `Incidencia` (`documento_informe`) y `Equipo` (`ficha_tecnica`). Además, genera PDF de incidencias, reportes filtrados, dashboard de incidencias, dashboard de inventario, ficha individual de equipo y reporte de auditoría.
 
-### C. Despliegue en Docker
+### C. Auditoría y Exportación de Logs
+*   **Estado**: **Implementado**.
+*   **Análisis**: La auditoría registra acciones críticas con datos estructurados en `metadata`, evita duplicidad mediante `evento` + `hash_evento`, conserva eventos fallidos para reprocesamiento y permite exportar la bitácora filtrada en PDF.
+
+### D. Despliegue en Docker
 *   **Estado**: **Soportado**.
 *   **Análisis**: El esquema utiliza relaciones estándar de Django y no depende de funciones específicas de motor que impidan la contenedorización. Es compatible con PostgreSQL y MariaDB en entornos Docker.
 
-### D. Recomendaciones de Integridad
+### E. Recomendaciones de Integridad
 *   Se observa que el campo `codigo` de la incidencia se genera tras el primer guardado. Para escalabilidad masiva, se recomienda asegurar la atomicidad de este proceso mediante transacciones si se migra a un entorno de alta concurrencia.
