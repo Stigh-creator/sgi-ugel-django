@@ -81,23 +81,23 @@
 
     <!-- Toolbar Premium -->
     <div class="toolbar-premium">
-        <form id="filterForm" class="d-flex align-items-center gap-3 w-100"
+        <form id="filterForm" class="ticket-filter-form"
             hx-get="{% url 'incidencias_list' %}"
             hx-target="#incidenciasTableContainer"
             hx-trigger="change, input delay:300ms from:input[name='q'], search from:input[name='q']">
             <input type="hidden" name="tab" id="currentTabInput" value="{{ active_tab }}">
 
-            <div class="search-wrap-modern flex-grow-1" style="max-width: 400px;">
+            <div class="search-wrap-modern ticket-filter-search">
                 <i class="bi bi-search me-2 text-muted"></i>
                 <input type="text" name="q" placeholder="Buscar por código, creador o descripción..." value="{{ query }}">
             </div>
 
-            <div class="filter-select-wrap" id="areaFilterWrap" style="min-width: 220px;">
+            <div class="filter-select-wrap ticket-filter-area" id="areaFilterWrap">
                 <i class="bi bi-building"></i>
                 <span class="filter-state-dot is-hidden" id="areaFilterDot" aria-hidden="true"></span>
                 <input type="hidden" name="area" id="areaFilter" value="{{ area_selected|default:'' }}">
                 <button type="button" class="filter-select-button" id="areaFilterButton" aria-haspopup="listbox" aria-expanded="false">
-                    <span id="areaFilterLabel">Todas las áreas</span>
+                    <span id="areaFilterLabel">Áreas</span>
                 </button>
                 <div class="filter-select-menu filter-select-menu-searchable" id="areaFilterMenu" role="listbox" aria-label="Filtrar por área">
                     <div class="filter-menu-search">
@@ -105,9 +105,9 @@
                         <input type="search" id="areaFilterSearch" placeholder="Buscar área..." autocomplete="off">
                     </div>
                     <div class="filter-menu-options">
-                        <button type="button" class="filter-select-option" data-value="" data-label="Todas las áreas" data-state-name="">
+                        <button type="button" class="filter-select-option" data-value="" data-label="Áreas" data-state-name="">
                             <span class="filter-option-dot is-hidden"></span>
-                            <span>Todas las áreas</span>
+                            <span>Áreas</span>
                         </button>
                         {% for area in areas %}
                         <button
@@ -126,7 +126,7 @@
                 </div>
             </div>
 
-            <div class="filter-select-wrap" id="prioridadFilterWrap" style="min-width: 180px;">
+            <div class="filter-select-wrap ticket-filter-priority" id="prioridadFilterWrap">
                 <i class="bi bi-flag"></i>
                 <span class="filter-state-dot is-hidden" id="prioridadFilterDot" aria-hidden="true"></span>
                 <input type="hidden" name="prioridad" id="prioridadFilter" value="{{ prioridad_selected|default:'' }}">
@@ -153,17 +153,17 @@
                 </div>
             </div>
 
-            <div class="filter-select-wrap" id="estadoFilterWrap">
+            <div class="filter-select-wrap ticket-filter-status" id="estadoFilterWrap">
                 <i class="bi bi-sliders2"></i>
                 <span class="filter-state-dot is-hidden" id="estadoFilterDot" aria-hidden="true"></span>
                 <input type="hidden" name="estado" id="estadoFilter" value="{{ estado_selected|default:'' }}">
                 <button type="button" class="filter-select-button" id="estadoFilterButton" aria-haspopup="listbox" aria-expanded="false">
-                    <span id="estadoFilterLabel">Todos los estados</span>
+                    <span id="estadoFilterLabel">Estados</span>
                 </button>
                 <div class="filter-select-menu" id="estadoFilterMenu" role="listbox" aria-label="Filtrar por estado">
-                    <button type="button" class="filter-select-option" data-value="" data-label="Todos los estados" data-state-name="">
+                    <button type="button" class="filter-select-option" data-value="" data-label="Estados" data-state-name="">
                         <span class="filter-option-dot is-hidden"></span>
-                        <span>Todos los estados</span>
+                        <span>Estados</span>
                     </button>
                     {% for e in estados %}
                     <button
@@ -180,7 +180,7 @@
                 </div>
             </div>
 
-            <div class="filter-select-wrap" id="slaFilterWrap" style="min-width: 170px;">
+            <div class="filter-select-wrap ticket-filter-sla" id="slaFilterWrap">
                 <i class="bi bi-clock-history"></i>
                 <span class="filter-state-dot is-hidden" id="slaFilterDot" aria-hidden="true"></span>
                 <input type="hidden" name="sla" id="slaFilter" value="{{ sla_selected|default:'' }}">
@@ -201,7 +201,7 @@
 
             <button
                 type="button"
-                class="filter-dropdown-btn {% if query or estado_selected or area_selected or prioridad_selected or sla_selected or active_tab == 'reportadas' %}active{% endif %}"
+                class="filter-dropdown-btn ticket-filter-clear {% if query or estado_selected or area_selected or prioridad_selected or sla_selected or active_tab == 'reportadas' %}active{% endif %}"
                 onclick="clearFilters()"
                 title="Limpiar filtros">
                 <i class="bi bi-arrow-counterclockwise"></i>
@@ -337,8 +337,8 @@
     }
 
     function syncAllFilters() {
-        syncFilterLabel('areaFilter', 'areaFilterWrap', 'areaFilterDot', 'areaFilterLabel', 'Todas las áreas');
-        syncFilterLabel('estadoFilter', 'estadoFilterWrap', 'estadoFilterDot', 'estadoFilterLabel', 'Todos los estados');
+        syncFilterLabel('areaFilter', 'areaFilterWrap', 'areaFilterDot', 'areaFilterLabel', 'Áreas');
+        syncFilterLabel('estadoFilter', 'estadoFilterWrap', 'estadoFilterDot', 'estadoFilterLabel', 'Estados');
         syncFilterLabel('prioridadFilter', 'prioridadFilterWrap', 'prioridadFilterDot', 'prioridadFilterLabel', 'Prioridad');
         syncFilterLabel('slaFilter', 'slaFilterWrap', 'slaFilterDot', 'slaFilterLabel', 'SLA');
     }
