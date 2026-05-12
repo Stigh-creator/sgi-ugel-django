@@ -32,8 +32,14 @@ Gestión de perfiles basada en el DNI como identificador único.
 
 ### D. Auditoría y Reportes
 Registro de acciones críticas y generación de documentos.
-*   **Acciones clave:** Log de auditoría para cambios en inventario y usuarios, exportación Excel de incidencias/inventario, y generación de PDF de atención.
+*   **Acciones clave:** Log de auditoría para cambios en incidencias, inventario y usuarios; generación de PDF individual y por rango de incidencias; PDF del dashboard; PDF de inventario; PDF de auditoría; y exportación Excel únicamente para inventario.
 *   **Entidades:** `Auditoria`.
+
+### E. Dashboard Operativo
+Permite visualizar información resumida sin sobrecargar los módulos operativos.
+*   **Incidencias:** KPIs de críticas/alta prioridad, pendientes o activas, resueltas, cerradas, incidencias del día, SLA por vencer/vencidas y métricas por técnico.
+*   **Inventario:** Vista separada del dashboard de incidencias, con indicadores y gráficas de equipos por estado, disponibilidad, tipo, marca y área.
+*   **Exportación:** El dashboard de incidencias e inventario puede exportarse a PDF con filtros por fecha y criterios principales.
 
 ---
 
@@ -106,6 +112,8 @@ Registro de acciones críticas y generación de documentos.
 *   **Protección Admin:** Django Admin es de consulta/control administrativo limitado para entidades críticas. Los cambios de estado, resolución, SLA, disponibilidad y origen de ocupación deben ejecutarse mediante servicios del sistema.
 *   **Auto-cierre:** Las incidencias resueltas reciben `fecha_auto_cierre`. El comando `autocerrar_incidencias_resueltas` cierra tickets vencidos de forma idempotente.
 *   **SLA:** `SLAConfiguracion` define tiempos de respuesta, resolución y auto-cierre por prioridad/categoría. El comando `procesar_sla_incidencias` marca zona preventiva "Por vencer" al 80%, vencimientos y escalamiento.
+*   **Edición de Prioridad:** La prioridad queda editable para administrador/técnico al crear o configurar tickets pendientes. Si un ticket fue rechazado y queda sin técnico asignado, la prioridad se desbloquea para reajuste antes de reasignarlo. Si el ticket ya fue aceptado por el técnico y está "En Proceso", la configuración administrativa se bloquea para evitar cambios fuera de flujo.
+*   **PDF por Sección:** Los reportes PDF de incidencias respetan la pestaña activa del módulo. Para administrador, la vista "Creadas" exporta solo las creadas por él. Para técnico, "Asignadas" exporta solo sus tickets asignados y "Creadas" exporta solo las incidencias creadas por él.
 
 ---
 
@@ -113,9 +121,15 @@ Registro de acciones críticas y generación de documentos.
 
 | Rol | Permisos Principales |
 | :--- | :--- |
-| **Trabajador** | Crear incidencias, ver sus propios tickets, comentar (chat), cerrar/reabrir sus tickets. |
-| **Técnico** | Ver tickets asignados, aceptar/rechazar tickets, registrar soluciones con hasta 3 fotos, ver inventario. |
-| **Admin** | Gestión total (CRUD) de usuarios, áreas y equipos. Asignación manual de tickets, edición de incidencias, reportes Excel/PDF, auditoría. |
+| **Trabajador** | Crear incidencias, ver sus propios tickets, comentar (chat), descargar PDF de sus incidencias, cerrar/reabrir sus tickets. |
+| **Técnico** | Ver tickets asignados y creados por él, aceptar/rechazar tickets, registrar soluciones con hasta 3 fotos, descargar PDF de incidencias permitidas, ver inventario. |
+| **Admin** | Gestión total de usuarios, áreas y equipos. Asignación manual de tickets, edición controlada de incidencias, dashboard, reportes PDF y auditoría. |
+| **Almacén** | Gestión operativa del inventario y exportación Excel del inventario. |
+| **Superusuario** | Acceso técnico total, incluida exportación Excel del inventario. |
+
+Regla de seguridad de reportes:
+*   Los PDF son accesibles para usuarios que tengan permiso de ver el módulo o registro correspondiente.
+*   El Excel de inventario queda restringido a Almacén y Superusuario. El Administrador no descarga Excel de inventario para reducir riesgos de modificación externa no controlada.
 
 ---
 
@@ -134,6 +148,7 @@ Registro de acciones críticas y generación de documentos.
 ### Para el Administrador
 *   **Carga de Trabajo:** Si un técnico no aparece en la lista de asignación, verifica si ya tiene 4 tickets activos.
 *   **Auditoría:** Cualquier cambio manual en el estado de un equipo queda registrado con el motivo y el usuario que lo hizo en el módulo de Inventario.
+*   **Reportes PDF:** Al exportar incidencias por rango, selecciona primero la pestaña correcta: "Asignadas" o "Creadas". El PDF conserva esa selección.
 
 ---
 
@@ -144,7 +159,7 @@ Registro de acciones críticas y generación de documentos.
 *   **Trazabilidad:** La tabla `HistorialEstadoEquipo` registra: `estado_anterior`, `estado_nuevo`, `usuario`, `motivo` y `fecha`.
 *   **Reemplazos:** `ReemplazoEquipoIncidencia` registra incidencia, equipo original, equipo temporal, áreas origen/destino, responsable, fechas, estado activo y metadata.
 *   **Auditoría Estructurada:** `Auditoria.metadata` almacena datos explotables en JSON: ids, código de ticket, estados anteriores/nuevos, origen y usuario.
-*   **Notificaciones:** Basadas en WebSockets para alertas instantáneas de asignación y cambios de estado.
+*   **Notificaciones:** Basadas en eventos del sistema para asignación, cambios de estado, comentarios, SLA e inventario. La integración visual final de notificaciones en interfaz queda como mejora pendiente.
 
 ---
 
@@ -203,14 +218,24 @@ Reglas:
 ## 11. Funcionalidades Implementadas
 *   [x] Autenticación DNI y Perfiles con foto procesada.
 *   [x] Chat de seguimiento con miniaturas de imágenes.
-*   [x] Filtros inteligentes de incidencias (Código, Usuario, Área, Estado).
-*   [x] Gestión de inventario con Fichas Técnicas PDF.
-*   [x] Exportación a Excel y PDF con firmas.
+*   [x] Filtros inteligentes de incidencias por buscador, área, prioridad, estado y SLA vencidas.
+*   [x] Filtros personalizados de inventario por buscador, área, estado, disponibilidad, tipo y marca.
+*   [x] Gestión de inventario con PDF individual de equipo, imagen del equipo y reportes PDF/Excel filtrados.
+*   [x] Exportación PDF de incidencias individuales con solicitante, técnico, solución, evidencias iniciales/finales y fechas clave.
+*   [x] Exportación PDF por rango de incidencias respetando la pestaña activa: todas/asignadas o creadas por el usuario.
+*   [x] Exportación PDF de dashboard de incidencias e inventario.
+*   [x] Exportación Excel de inventario restringida a Almacén y Superusuario.
 *   [x] Auditoría de cambios críticos.
-*   [x] Sistema de notificaciones en tiempo real.
+*   [x] Eventos base para notificaciones, auditoría y comentarios automáticos.
 *   [x] Previsualización de imágenes antes de subir (UX).
+*   [x] Dashboard de incidencias con KPIs y métricas SLA conectadas a fechas reales.
+*   [x] Dashboard separado de inventario dentro del módulo Dashboard.
+*   [x] PDF de auditoría.
 
 ## 12. Pendientes y Mejoras
-*   [ ] Dashboard con KPIs (Tiempo promedio de respuesta).
+*   [ ] Integración visual completa de notificaciones para administrador, técnico, almacén y trabajador.
 *   [ ] Gestión de stock de repuestos mínimos (Pilas, Mouse, Teclados).
 *   [ ] Módulo de mantenimiento preventivo programado.
+*   [ ] Migración planificada a PostgreSQL para publicación.
+*   [ ] Dockerización para despliegue reproducible.
+*   [ ] Configuración de entorno productivo: variables de entorno, servidor WSGI/ASGI, archivos estáticos, backups y monitoreo.
