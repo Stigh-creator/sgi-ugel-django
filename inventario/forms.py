@@ -36,7 +36,19 @@ class EquipoForm(forms.ModelForm):
             'area': forms.Select(attrs={'class': 'form-select'}),
             'estado': forms.Select(attrs={'class': 'form-select'}),
             'disponibilidad': forms.Select(attrs={'class': 'form-select'}),
-            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Ej: Color negro, tapa lateral con rayón leve, base genérica del monitor, etiquetas institucionales visibles.'}),
+            'observaciones': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 5,
+                'placeholder': (
+                    'Ejemplo:\n'
+                    'CPU: HP ProDesk 400 G5, serie XXXXXX, estado operativo.\n'
+                    'Monitor: HP 19", serie XXXXX, pantalla con leve mancha en borde inferior.\n'
+                    'Teclado: Logitech USB, teclas completas.\n'
+                    'Mouse: Logitech USB, funcionamiento normal.\n'
+                    'Cables: incluye cable de poder y cable VGA/HDMI.\n'
+                    'Observación física: carcasa con rayones leves, sin golpes visibles.'
+                ),
+            }),
             'foto_estado': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': IMAGE_INPUT_ACCEPT, 'capture': 'camera'}),
         }
 
@@ -48,7 +60,11 @@ class EquipoForm(forms.ModelForm):
         self.fields['estado'].empty_label = "-- Seleccione Estado --"
         self.fields['disponibilidad'].label = "Disponibilidad"
         self.fields['observaciones'].label = "Descripción física / estado estético"
-        self.fields['observaciones'].help_text = "Usa este campo solo para rasgos físicos, cosméticos o accesorios del equipo."
+        self.fields['observaciones'].help_text = (
+            "Si el equipo es una PC de escritorio, descríbala como conjunto operativo: CPU, monitor, "
+            "teclado, mouse, cables, números de serie o códigos patrimoniales cuando correspondan, "
+            "además del estado físico visible de cada componente."
+        )
 
     def clean_codigo_equipo(self):
         codigo = self.cleaned_data.get('codigo_equipo')
