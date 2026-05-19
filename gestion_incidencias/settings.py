@@ -1,9 +1,12 @@
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # 1. Rutas básicas del proyecto
 # Define la ruta raíz del proyecto para localizar archivos de manera absoluta
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 # Clave secreta para la seguridad de los datos (debe mantenerse privada en producción)
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-only-change-me')
@@ -69,11 +72,23 @@ TEMPLATES = [
 # Punto de entrada para servidores web compatibles con WSGI
 WSGI_APPLICATION = 'gestion_incidencias.wsgi.application'
 
-# 6. Motor de Base de Datos 
-# Configuración de SQLite3 como base de datos local para el almacenamiento de la información
+# 6. Motor de Base de Datos
+# Por defecto usa SQLite para desarrollo local. PostgreSQL se activa solo por variables de entorno.
 DB_ENGINE = os.environ.get("DB_ENGINE", "django.db.backends.sqlite3")
 
-if DB_ENGINE == "django.db.backends.mysql":
+if DB_ENGINE == "django.db.backends.postgresql":
+    DATABASES = {
+        "default": {
+            "ENGINE": DB_ENGINE,
+            "NAME": os.environ.get("DB_NAME", "gestion_incidencias"),
+            "USER": os.environ.get("DB_USER", "postgres"),
+            "PASSWORD": os.environ.get("DB_PASSWORD", ""),
+            "HOST": os.environ.get("DB_HOST", "127.0.0.1"),
+            "PORT": os.environ.get("DB_PORT", "5432"),
+            "CONN_MAX_AGE": int(os.environ.get("DB_CONN_MAX_AGE", "60")),
+        }
+    }
+elif DB_ENGINE == "django.db.backends.mysql":
     DATABASES = {
         "default": {
             "ENGINE": DB_ENGINE,
