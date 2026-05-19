@@ -92,6 +92,10 @@
                 <a class="nav-card" href="{% url 'incidencias_asignadas' %}">
                     <i class="fas fa-clipboard-list"></i> Mis Tareas
                 </a>
+                <a class="nav-card {% if request.resolver_match.url_name == 'inventario_list' or request.resolver_match.url_name == 'equipo_detalle' %}active{% endif %}"
+                    href="{% url 'inventario_list' %}">
+                    <i class="fas fa-boxes"></i> Inventario
+                </a>
 
                 {% else %}
                 <a class="nav-card {% if request.resolver_match.url_name == 'mis_incidencias' %}active{% endif %}"

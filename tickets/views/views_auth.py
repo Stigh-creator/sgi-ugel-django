@@ -30,6 +30,8 @@ def custom_login_view(request):
                 redirect_url = "dashboard_admin"
             elif user.role == "tecnico":
                 redirect_url = "dashboard_tecnico"
+            elif user.role == "almacen":
+                redirect_url = "inventario_list"
                 
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 'fetch' in request.headers.get('Sec-Fetch-Mode', ''):
                 return JsonResponse({"success": True, "redirect_url": reverse(redirect_url)})

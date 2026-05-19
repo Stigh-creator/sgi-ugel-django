@@ -30,6 +30,15 @@ class InventarioRulesTests(TestCase):
             area=self.area,
             telefono="999111333",
         )
+        self.tecnico = CustomUser.objects.create_user(
+            username="22223333",
+            password="Tecnico1234!",
+            first_name="Teo",
+            last_name="Tecnico",
+            role=CustomUser.ROL_TECNICO,
+            area=self.area,
+            telefono="999111555",
+        )
         self.superuser = CustomUser.objects.create_superuser(
             username="11112222",
             password="Super1234!",
@@ -69,6 +78,19 @@ class InventarioRulesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.equipo.codigo_equipo)
         self.assertNotContains(response, "Actualización manual de estado")
+
+    def test_tecnico_puede_consultar_inventario_sin_control_operativo(self):
+        self.client.force_login(self.tecnico)
+
+        response = self.client.get(reverse("inventario_list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.equipo.codigo_equipo)
+        self.assertNotContains(response, "Registrar Equipo")
+        self.assertNotContains(response, "/inventario/exportar/excel/")
+        self.assertContains(response, "/inventario/exportar/pdf/")
+
+        response = self.client.get(reverse("inventario_control_operativo"))
+        self.assertEqual(response.status_code, 302)
 
     def test_almacen_ingresa_directo_a_inventario(self):
         self.client.force_login(self.almacen)

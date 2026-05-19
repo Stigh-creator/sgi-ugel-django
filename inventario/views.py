@@ -28,6 +28,13 @@ from auditoria.utils import registrar_auditoria
 def can_view_inventory(user):
     return user.is_authenticated and (
         user.is_superuser
+        or user.role in {CustomUser.ROL_ADMIN, CustomUser.ROL_ALMACEN, CustomUser.ROL_TECNICO}
+    )
+
+
+def can_view_inventory_control(user):
+    return user.is_authenticated and (
+        user.is_superuser
         or user.role in {CustomUser.ROL_ADMIN, CustomUser.ROL_ALMACEN}
     )
 
@@ -193,7 +200,7 @@ def inventario_list(request):
 
 
 @login_required
-@user_passes_test(can_view_inventory)
+@user_passes_test(can_view_inventory_control)
 def inventario_control_operativo(request):
     today = timezone.localdate()
     q_repuesto = request.GET.get("q_repuesto", "").strip()

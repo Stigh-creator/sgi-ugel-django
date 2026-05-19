@@ -179,6 +179,8 @@ class MantenimientoPreventivoForm(forms.ModelForm):
         if usuarios_queryset is not None:
             self.fields["responsable"].queryset = usuarios_queryset
         self.fields["responsable"].empty_label = "-- Responsable opcional --"
+        self.fields["frecuencia_dias"].label = "Frecuencia en días"
+        self.fields["descripcion"].label = "Descripción"
 
 
 class MantenimientoCompletarForm(forms.Form):

@@ -35,6 +35,15 @@ class LoginModuleTests(TestCase):
             area=self.area,
             telefono="933333333",
         )
+        self.almacen = CustomUser.objects.create_user(
+            username="45678901",
+            password="Almacen123!",
+            first_name="Luis",
+            last_name="Almacen",
+            role=CustomUser.ROL_ALMACEN,
+            area=self.area,
+            telefono="944444444",
+        )
 
     def test_login_redirige_admin_a_dashboard_admin(self):
         response = self.client.post(
@@ -56,6 +65,13 @@ class LoginModuleTests(TestCase):
             {"username": self.trabajador.username, "password": "Trabajador123!"},
         )
         self.assertRedirects(response, reverse("mis_incidencias"))
+
+    def test_login_redirige_almacen_a_inventario(self):
+        response = self.client.post(
+            reverse("login"),
+            {"username": self.almacen.username, "password": "Almacen123!"},
+        )
+        self.assertRedirects(response, reverse("inventario_list"))
 
     def test_login_redirige_a_cambio_obligatorio_si_aplica(self):
         self.trabajador.must_change_password = True
