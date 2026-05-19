@@ -1,5 +1,7 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.utils import timezone
+from datetime import timedelta
 from tickets.models import Area
 from tickets.utils.images import process_image
 import uuid
@@ -194,3 +196,98 @@ class HistorialEstadoEquipo(models.Model):
 
     def __str__(self):
         return f"{self.equipo.codigo_equipo}: {self.estado_anterior} -> {self.estado_nuevo}"
+
+
+class Repuesto(models.Model):
+    UNIDAD_CHOICES = (
+        ("unidad", "Unidad"),
+        ("paquete", "Paquete"),
+        ("metro", "Metro"),
+        ("kit", "Kit"),
+    )
+
+    nombre = models.CharField(max_length=120, unique=True)
+    categoria = models.CharField(max_length=80, blank=True)
+    unidad = models.CharField(max_length=20, choices=UNIDAD_CHOICES, default="unidad")
+    stock_actual = models.PositiveIntegerField(default=0)
+    stock_minimo = models.PositiveIntegerField(default=1)
+    ubicacion = models.CharField(max_length=120, blank=True)
+    observaciones = models.TextField(blank=True)
+    activo = models.BooleanField(default=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Repuesto"
+        verbose_name_plural = "Repuestos"
+        ordering = ["nombre"]
+
+    def clean(self):
+        super().clean()
+        if self.stock_minimo < 1:
+            raise ValidationError({"stock_minimo": "El stock mínimo debe ser mayor a cero."})
+
+    @property
+    def bajo_minimo(self):
+        return self.activo and self.stock_actual <= self.stock_minimo
+
+    def __str__(self):
+        return self.nombre
+
+
+class MantenimientoPreventivo(models.Model):
+    ESTADO_PROGRAMADO = "programado"
+    ESTADO_REALIZADO = "realizado"
+    ESTADO_VENCIDO = "vencido"
+    ESTADO_CANCELADO = "cancelado"
+    ESTADO_CHOICES = (
+        (ESTADO_PROGRAMADO, "Programado"),
+        (ESTADO_REALIZADO, "Realizado"),
+        (ESTADO_VENCIDO, "Vencido"),
+        (ESTADO_CANCELADO, "Cancelado"),
+    )
+
+    equipo = models.ForeignKey(Equipo, on_delete=models.CASCADE, related_name="mantenimientos_preventivos")
+    fecha_programada = models.DateField()
+    frecuencia_dias = models.PositiveIntegerField(default=90)
+    responsable = models.ForeignKey(
+        "tickets.CustomUser",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mantenimientos_preventivos",
+    )
+    descripcion = models.TextField()
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default=ESTADO_PROGRAMADO)
+    resultado = models.TextField(blank=True)
+    fecha_realizado = models.DateField(null=True, blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Mantenimiento preventivo"
+        verbose_name_plural = "Mantenimientos preventivos"
+        ordering = ["fecha_programada", "equipo__codigo_equipo"]
+        indexes = [
+            models.Index(fields=["estado", "fecha_programada"], name="idx_mant_estado_fecha"),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.frecuencia_dias < 1:
+            raise ValidationError({"frecuencia_dias": "La frecuencia debe ser mayor a cero."})
+        if self.estado == self.ESTADO_REALIZADO and not self.fecha_realizado:
+            self.fecha_realizado = timezone.localdate()
+        if self.estado == self.ESTADO_REALIZADO and not self.resultado.strip():
+            raise ValidationError({"resultado": "Debe registrar el resultado del mantenimiento realizado."})
+
+    @property
+    def esta_vencido(self):
+        return self.estado == self.ESTADO_PROGRAMADO and self.fecha_programada < timezone.localdate()
+
+    @property
+    def proximo(self):
+        today = timezone.localdate()
+        return self.estado == self.ESTADO_PROGRAMADO and today <= self.fecha_programada <= today + timedelta(days=7)
+
+    def __str__(self):
+        return f"{self.equipo.codigo_equipo} - {self.get_estado_display()} ({self.fecha_programada})"

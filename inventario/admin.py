@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.utils.html import format_html
-from .models import Equipo, Marca, TipoEquipo, EstadoEquipo
+from .models import Equipo, Marca, TipoEquipo, EstadoEquipo, MantenimientoPreventivo, Repuesto
 
 @admin.register(Marca)
 class MarcaAdmin(admin.ModelAdmin):
@@ -51,3 +51,19 @@ class EquipoAdmin(admin.ModelAdmin):
             return format_html('<img src="{}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;" />', obj.foto_estado.url)
         return "-"
     foto_preview.short_description = "Vista Previa"
+
+
+@admin.register(Repuesto)
+class RepuestoAdmin(admin.ModelAdmin):
+    list_display = ("nombre", "categoria", "stock_actual", "stock_minimo", "unidad", "activo", "actualizado_en")
+    list_filter = ("activo", "unidad", "categoria")
+    search_fields = ("nombre", "categoria", "ubicacion")
+    readonly_fields = ("actualizado_en",)
+
+
+@admin.register(MantenimientoPreventivo)
+class MantenimientoPreventivoAdmin(admin.ModelAdmin):
+    list_display = ("equipo", "fecha_programada", "estado", "responsable", "fecha_realizado")
+    list_filter = ("estado", "fecha_programada", "responsable")
+    search_fields = ("equipo__codigo_equipo", "equipo__nombre_equipo", "descripcion", "resultado")
+    readonly_fields = ("creado_en", "actualizado_en")

@@ -17,7 +17,7 @@ Su objetivo principal es eliminar los cuellos de botella en la atención al usua
   - 🔧 **Técnico:** Gestiona incidencias asignadas, registra soluciones con evidencias y consulta sus tickets creados.
   - 👨‍💼 **Administrador:** Supervisa incidencias, usuarios, dashboard, inventario, reportes PDF y auditoría.
   - 📦 **Almacén:** Gestiona inventario y exporta Excel de inventario.
-- **Inventario:** Registro de equipos, estados técnicos, disponibilidad, historial y relación con incidencias.
+- **Inventario:** Registro de equipos, estados técnicos, disponibilidad, historial, relación con incidencias, stock mínimo de repuestos y mantenimiento preventivo programado.
 - **Dashboard de KPIs:** Vista separada de incidencias e inventario con métricas operativas y exportación PDF.
 - **Reportes:** PDF individual y por rango de incidencias, PDF de dashboard, PDF/Excel de inventario y PDF de auditoría.
 - **Seguridad:** Autenticación por DNI, permisos por rol, auditoría y control de acciones críticas mediante servicios de dominio.
@@ -60,6 +60,17 @@ Disponibilidades soportadas:
 - `LIBRE`
 - `EN_USO`
 - `REEMPLAZO_TEMPORAL`
+
+### Repuestos y mantenimiento preventivo
+
+El módulo de inventario incluye controles operativos menores para Almacén y Superusuario:
+
+- Registro de repuestos con categoría, unidad, stock actual, stock mínimo, ubicación y observaciones.
+- Alerta visual cuando el stock actual queda igual o por debajo del mínimo configurado.
+- Ajuste rápido de stock desde el panel de inventario con auditoría.
+- Programación de mantenimiento preventivo por equipo, fecha, frecuencia, responsable y descripción.
+- Alertas de mantenimientos vencidos o próximos a 7 días.
+- Registro de resultado técnico al marcar un mantenimiento como realizado.
 
 ### SLA
 

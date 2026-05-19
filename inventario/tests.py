@@ -1,9 +1,12 @@
+from datetime import timedelta
+
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from tickets.models import Area, CustomUser
 
-from .models import Equipo, EstadoEquipo, Marca, TipoEquipo
+from .models import Equipo, EstadoEquipo, Marca, MantenimientoPreventivo, Repuesto, TipoEquipo
 
 
 class InventarioRulesTests(TestCase):
@@ -198,3 +201,134 @@ class InventarioRulesTests(TestCase):
                 response = self.client.get(reverse("export_dashboard_inventario_pdf"))
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response["Content-Type"], "application/pdf")
+
+    def test_stock_minimo_de_repuesto_aparece_en_inventario(self):
+        repuesto = Repuesto.objects.create(
+            nombre="Mouse USB",
+            categoria="Periféricos",
+            stock_actual=1,
+            stock_minimo=3,
+        )
+
+        response = self.client.get(reverse("inventario_control_operativo"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Control de stock mínimo")
+        self.assertContains(response, repuesto.nombre)
+
+    def test_almacen_actualiza_stock_de_repuesto(self):
+        repuesto = Repuesto.objects.create(
+            nombre="Teclado USB",
+            categoria="Periféricos",
+            stock_actual=1,
+            stock_minimo=3,
+        )
+
+        response = self.client.post(
+            reverse("repuesto_actualizar_stock", args=[repuesto.pk]),
+            {"stock_actual": 8, "observacion": "Ingreso de compra institucional."},
+        )
+
+        self.assertRedirects(response, reverse("inventario_control_operativo"))
+        repuesto.refresh_from_db()
+        self.assertEqual(repuesto.stock_actual, 8)
+
+    def test_admin_no_puede_crear_repuesto(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.post(
+            reverse("repuesto_crear"),
+            {
+                "nombre": "Cable HDMI",
+                "categoria": "Cableado",
+                "unidad": "unidad",
+                "stock_actual": 5,
+                "stock_minimo": 2,
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Repuesto.objects.filter(nombre="Cable HDMI").exists())
+
+    def test_mantenimiento_preventivo_proximo_aparece_y_se_completa(self):
+        mantenimiento = MantenimientoPreventivo.objects.create(
+            equipo=self.equipo,
+            fecha_programada=timezone.localdate() + timedelta(days=2),
+            responsable=self.almacen,
+            descripcion="Limpieza interna y revisión general del equipo.",
+        )
+
+        response = self.client.get(reverse("inventario_control_operativo"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Programación preventiva")
+        self.assertContains(response, self.equipo.codigo_equipo)
+
+        response = self.client.post(
+            reverse("mantenimiento_completar", args=[mantenimiento.pk]),
+            {"resultado": "Se realizó limpieza interna y revisión operativa completa."},
+        )
+
+        self.assertRedirects(response, reverse("inventario_control_operativo"))
+        mantenimiento.refresh_from_db()
+        self.assertEqual(mantenimiento.estado, MantenimientoPreventivo.ESTADO_REALIZADO)
+        self.assertEqual(mantenimiento.fecha_realizado, timezone.localdate())
+
+    def test_inventario_principal_mantiene_control_operativo_separado(self):
+        Repuesto.objects.create(
+            nombre="Pila CMOS",
+            categoria="Repuestos",
+            stock_actual=0,
+            stock_minimo=2,
+        )
+
+        response = self.client.get(reverse("inventario_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Control operativo")
+        self.assertNotContains(response, "Control de stock mínimo")
+
+    def test_control_operativo_muestra_busqueda_y_nombres_legibles_en_mantenimiento(self):
+        response = self.client.get(reverse("inventario_control_operativo"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Seleccionar equipo")
+        self.assertContains(response, "Buscar equipo...")
+        self.assertContains(response, "Buscar por repuesto, categoría o ubicación")
+        self.assertContains(response, "Buscar por equipo, responsable o estado")
+        self.assertContains(response, "LP-001 - Laptop Dirección")
+        self.assertContains(response, "Luis Almacen - Almacén")
+        self.assertContains(response, "La frecuencia en días indica cada cuánto debería repetirse esa revisión")
+        self.assertNotContains(response, "Ejemplo: 90 indica que el equipo debería revisarse cada 90 días.")
+
+    def test_control_operativo_pagina_repuestos_y_mantenimientos_de_diez_en_diez(self):
+        for index in range(12):
+            Repuesto.objects.create(
+                nombre=f"Repuesto {index:02d}",
+                categoria="Prueba",
+                stock_actual=5,
+                stock_minimo=2,
+            )
+            Equipo.objects.create(
+                codigo_equipo=f"EQ-MANT-{index:02d}",
+                nombre_equipo=f"Equipo mantenimiento {index:02d}",
+                tipo_equipo=self.tipo,
+                marca=self.marca,
+                modelo="Modelo",
+                area=self.area,
+                estado=self.estado_operativo,
+                activo=True,
+            )
+        for equipo in Equipo.objects.filter(codigo_equipo__startswith="EQ-MANT-"):
+            MantenimientoPreventivo.objects.create(
+                equipo=equipo,
+                fecha_programada=timezone.localdate() + timedelta(days=1),
+                responsable=self.almacen,
+                descripcion="Revisión preventiva programada.",
+            )
+
+        response = self.client.get(reverse("inventario_control_operativo"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Página 1 de 2", count=2)
+        self.assertContains(response, "repuestos_page=2")
+        self.assertContains(response, "mantenimientos_page=2")

@@ -1,0 +1,434 @@
+{% extends 'tickets/base.html' %}
+{% load static %}
+
+{% block title %}Control Operativo de Inventario - UGEL Morropón{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/inventario/inventario.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+            <div class="header-icon">
+                <i class="bi bi-clipboard2-pulse"></i>
+            </div>
+            <div>
+                <h2 class="h4 mb-0 fw-bold">Control Operativo</h2>
+                <p class="text-muted mb-0">Repuestos mínimos y mantenimiento preventivo del inventario.</p>
+            </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap justify-content-end">
+            <a href="{% url 'inventario_list' %}" class="btn btn-light border rounded-pill fw-semibold">
+                <i class="bi bi-arrow-left me-2"></i>Equipos
+            </a>
+            {% if can_manage_inventory %}
+            <button type="button" class="btn btn-primary rounded-pill fw-semibold" data-bs-toggle="modal" data-bs-target="#modalNuevoRepuesto">
+                <i class="bi bi-plus-lg me-2"></i>Repuesto
+            </button>
+            <button type="button" class="btn btn-outline-primary rounded-pill fw-semibold" data-bs-toggle="modal" data-bs-target="#modalNuevoMantenimiento">
+                <i class="bi bi-calendar-plus me-2"></i>Mantenimiento
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="stat-card">
+                <div class="stat-icon icon-inoperativo"><i class="bi bi-exclamation-triangle"></i></div>
+                <h3 class="h2 fw-bold mb-0 text-danger">{{ repuestos_bajo_minimo_count }}</h3>
+                <p class="text-muted small mb-0">Repuestos bajo mínimo</p>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="stat-card">
+                <div class="stat-icon icon-reparacion"><i class="bi bi-calendar2-week"></i></div>
+                <h3 class="h2 fw-bold mb-0 text-warning">{{ mantenimientos_alerta_count }}</h3>
+                <p class="text-muted small mb-0">Mantenimientos próximos o vencidos</p>
+            </div>
+        </div>
+    </div>
+
+    <section class="inventory-submodule-grid">
+        <div class="inventory-submodule-panel">
+            <div class="inventory-ops-header inventory-section-header">
+                <div class="inventory-ops-title">
+                    <span class="inventory-ops-icon stock"><i class="bi bi-box2-heart"></i></span>
+                    <div>
+                        <p class="inventory-ops-kicker">Repuestos</p>
+                        <h3>Control de stock mínimo</h3>
+                    </div>
+                </div>
+            </div>
+            <form method="GET" class="inventory-list-search-form">
+                <input type="hidden" name="q_mantenimiento" value="{{ q_mantenimiento }}">
+                <div class="inventory-list-search">
+                    <i class="bi bi-search"></i>
+                    <input type="search" name="q_repuesto" value="{{ q_repuesto }}" placeholder="Buscar por repuesto, categoría o ubicación..." autocomplete="off">
+                </div>
+                <button type="submit" class="btn btn-primary rounded-pill fw-semibold">
+                    <i class="bi bi-search me-2"></i>Buscar
+                </button>
+                {% if q_repuesto %}
+                <a href="{% url 'inventario_control_operativo' %}?q_mantenimiento={{ q_mantenimiento|urlencode }}" class="btn inventory-clear-btn rounded-pill fw-semibold">
+                    <i class="bi bi-x-circle me-2"></i>Limpiar
+                </a>
+                {% endif %}
+            </form>
+            <div class="table-responsive">
+                <table class="table align-middle inventory-compact-table">
+                    <thead>
+                        <tr>
+                            <th>Repuesto</th>
+                            <th>Categoría</th>
+                            <th>Stock</th>
+                            <th>Mínimo</th>
+                            <th>Ubicación</th>
+                            <th class="text-end">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for repuesto in repuestos %}
+                        <tr class="{% if repuesto.bajo_minimo %}inventory-warning-row{% endif %}">
+                            <td>
+                                <strong>{{ repuesto.nombre }}</strong>
+                                <span class="d-block text-muted small">{{ repuesto.get_unidad_display }}</span>
+                            </td>
+                            <td>{{ repuesto.categoria|default:"Sin categoría" }}</td>
+                            <td><span class="inventory-stock-pill">{{ repuesto.stock_actual }}</span></td>
+                            <td>{{ repuesto.stock_minimo }}</td>
+                            <td>{{ repuesto.ubicacion|default:"No registrada" }}</td>
+                            <td class="text-end">
+                                {% if can_manage_inventory %}
+                                <form method="POST" action="{% url 'repuesto_actualizar_stock' repuesto.pk %}" class="inventory-stock-form justify-content-end">
+                                    {% csrf_token %}
+                                    <input type="number" name="stock_actual" value="{{ repuesto.stock_actual }}" min="0" aria-label="Stock actual de {{ repuesto.nombre }}">
+                                    <input type="hidden" name="observacion" value="Ajuste desde control operativo">
+                                    <button type="submit" title="Actualizar stock" aria-label="Actualizar stock">
+                                        <i class="bi bi-check2"></i>
+                                    </button>
+                                </form>
+                                {% else %}
+                                <span class="text-muted small">Consulta</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">No hay repuestos registrados.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if repuestos_page.has_other_pages %}
+            <div class="inventory-submodule-pagination">
+                <span class="small text-muted">Página {{ repuestos_page.number }} de {{ repuestos_page.paginator.num_pages }}</span>
+                <nav aria-label="Paginación de repuestos">
+                    <ul class="pagination pagination-sm mb-0">
+                        {% if repuestos_page.has_previous %}
+                        <li class="page-item"><a class="page-link" href="?repuestos_page={{ repuestos_page.previous_page_number }}{{ repuestos_page_querystring }}"><i class="bi bi-chevron-left"></i></a></li>
+                        {% endif %}
+                        {% for num in repuestos_page.paginator.page_range %}
+                        <li class="page-item {% if repuestos_page.number == num %}active{% endif %}"><a class="page-link" href="?repuestos_page={{ num }}{{ repuestos_page_querystring }}">{{ num }}</a></li>
+                        {% endfor %}
+                        {% if repuestos_page.has_next %}
+                        <li class="page-item"><a class="page-link" href="?repuestos_page={{ repuestos_page.next_page_number }}{{ repuestos_page_querystring }}"><i class="bi bi-chevron-right"></i></a></li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="inventory-submodule-panel">
+            <div class="inventory-ops-header inventory-section-header">
+                <div class="inventory-ops-title">
+                    <span class="inventory-ops-icon maintenance"><i class="bi bi-calendar2-check"></i></span>
+                    <div>
+                        <p class="inventory-ops-kicker">Mantenimiento</p>
+                        <h3>Programación preventiva</h3>
+                    </div>
+                </div>
+            </div>
+            <form method="GET" class="inventory-list-search-form">
+                <input type="hidden" name="q_repuesto" value="{{ q_repuesto }}">
+                <div class="inventory-list-search">
+                    <i class="bi bi-search"></i>
+                    <input type="search" name="q_mantenimiento" value="{{ q_mantenimiento }}" placeholder="Buscar por equipo, responsable o estado..." autocomplete="off">
+                </div>
+                <button type="submit" class="btn btn-primary rounded-pill fw-semibold">
+                    <i class="bi bi-search me-2"></i>Buscar
+                </button>
+                {% if q_mantenimiento %}
+                <a href="{% url 'inventario_control_operativo' %}?q_repuesto={{ q_repuesto|urlencode }}" class="btn inventory-clear-btn rounded-pill fw-semibold">
+                    <i class="bi bi-x-circle me-2"></i>Limpiar
+                </a>
+                {% endif %}
+            </form>
+            <div class="table-responsive">
+                <table class="table align-middle inventory-compact-table">
+                    <thead>
+                        <tr>
+                            <th>Equipo</th>
+                            <th>Fecha</th>
+                            <th>Responsable</th>
+                            <th>Estado</th>
+                            <th class="text-end">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for mantenimiento in mantenimientos %}
+                        <tr class="{% if mantenimiento.esta_vencido %}inventory-warning-row{% endif %}">
+                            <td>
+                                <strong>{{ mantenimiento.equipo.codigo_equipo }}</strong>
+                                <span class="d-block text-muted small">{{ mantenimiento.equipo.nombre_equipo }}</span>
+                            </td>
+                            <td>{{ mantenimiento.fecha_programada|date:"d/m/Y" }}</td>
+                            <td>{{ mantenimiento.responsable.get_full_name|default:"Sin responsable" }}</td>
+                            <td>
+                                <span class="inventory-maintenance-state {% if mantenimiento.esta_vencido %}is-overdue{% endif %}">
+                                    {% if mantenimiento.esta_vencido %}Vencido{% else %}Programado{% endif %}
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                {% if can_manage_inventory %}
+                                <button type="button" class="inventory-ops-mini-btn ms-auto"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#modalCompletarMantenimiento"
+                                    data-action="{% url 'mantenimiento_completar' mantenimiento.pk %}"
+                                    data-equipo="{{ mantenimiento.equipo.codigo_equipo }}">
+                                    <i class="bi bi-check2-circle"></i>
+                                </button>
+                                {% else %}
+                                <span class="text-muted small">Consulta</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">No hay mantenimientos programados.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if mantenimientos_page.has_other_pages %}
+            <div class="inventory-submodule-pagination">
+                <span class="small text-muted">Página {{ mantenimientos_page.number }} de {{ mantenimientos_page.paginator.num_pages }}</span>
+                <nav aria-label="Paginación de mantenimientos">
+                    <ul class="pagination pagination-sm mb-0">
+                        {% if mantenimientos_page.has_previous %}
+                        <li class="page-item"><a class="page-link" href="?mantenimientos_page={{ mantenimientos_page.previous_page_number }}{{ mantenimientos_page_querystring }}"><i class="bi bi-chevron-left"></i></a></li>
+                        {% endif %}
+                        {% for num in mantenimientos_page.paginator.page_range %}
+                        <li class="page-item {% if mantenimientos_page.number == num %}active{% endif %}"><a class="page-link" href="?mantenimientos_page={{ num }}{{ mantenimientos_page_querystring }}">{{ num }}</a></li>
+                        {% endfor %}
+                        {% if mantenimientos_page.has_next %}
+                        <li class="page-item"><a class="page-link" href="?mantenimientos_page={{ mantenimientos_page.next_page_number }}{{ mantenimientos_page_querystring }}"><i class="bi bi-chevron-right"></i></a></li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+</div>
+
+{% if can_manage_inventory %}
+<div class="modal fade" id="modalNuevoRepuesto" tabindex="-1" aria-labelledby="modalNuevoRepuestoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="{% url 'repuesto_crear' %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalNuevoRepuestoLabel">Registrar repuesto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">{{ repuesto_form.nombre.label_tag }}{{ repuesto_form.nombre }}</div>
+                        <div class="col-md-6">{{ repuesto_form.categoria.label_tag }}{{ repuesto_form.categoria }}</div>
+                        <div class="col-md-4">{{ repuesto_form.unidad.label_tag }}{{ repuesto_form.unidad }}</div>
+                        <div class="col-md-4">{{ repuesto_form.stock_actual.label_tag }}{{ repuesto_form.stock_actual }}</div>
+                        <div class="col-md-4">{{ repuesto_form.stock_minimo.label_tag }}{{ repuesto_form.stock_minimo }}</div>
+                        <div class="col-md-12">{{ repuesto_form.ubicacion.label_tag }}{{ repuesto_form.ubicacion }}</div>
+                        <div class="col-md-12">{{ repuesto_form.observaciones.label_tag }}{{ repuesto_form.observaciones }}</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar repuesto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalNuevoMantenimiento" tabindex="-1" aria-labelledby="modalNuevoMantenimientoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="{% url 'mantenimiento_crear' %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalNuevoMantenimientoLabel">Programar mantenimiento preventivo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="inventory-inline-note mb-3">
+                        <i class="bi bi-info-circle"></i>
+                        <span>El mantenimiento preventivo sirve para planificar revisiones periódicas antes de que un equipo falle. La frecuencia en días indica cada cuánto debería repetirse esa revisión, por ejemplo 30, 60 o 90 días.</span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            {{ mantenimiento_form.equipo.label_tag }}
+                            <div class="filter-select-wrap w-100 maintenance-equipment-filter" id="maintenanceEquipoWrap">
+                                <i class="bi bi-pc-display"></i>
+                                <span class="filter-state-dot is-hidden" id="maintenanceEquipoDot" aria-hidden="true"></span>
+                                <input type="hidden" name="equipo" id="maintenanceEquipoInput" required>
+                                <button type="button" class="filter-select-button" id="maintenanceEquipoButton" aria-haspopup="listbox" aria-expanded="false">
+                                    <span id="maintenanceEquipoLabel">Seleccionar equipo</span>
+                                </button>
+                                <div class="filter-select-menu filter-select-menu-searchable" id="maintenanceEquipoMenu" role="listbox" aria-label="Seleccionar equipo para mantenimiento">
+                                    <div class="filter-menu-search">
+                                        <i class="bi bi-search"></i>
+                                        <input type="search" id="maintenanceEquipoSearch" placeholder="Buscar equipo..." autocomplete="off">
+                                    </div>
+                                    <div class="filter-menu-options">
+                                        {% for equipo in equipos_mantenimiento %}
+                                        <button type="button" class="filter-select-option" data-value="{{ equipo.pk }}" data-label="{{ equipo.codigo_equipo }} - {{ equipo.nombre_equipo }}" data-state-name="tipo">
+                                            <span class="filter-option-dot state-tipo"></span>
+                                            <span>{{ equipo.codigo_equipo }} - {{ equipo.nombre_equipo }}{% if equipo.area %} · {{ equipo.area.name }}{% endif %}</span>
+                                        </button>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="filter-menu-empty d-none">Sin coincidencias</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">{{ mantenimiento_form.fecha_programada.label_tag }}{{ mantenimiento_form.fecha_programada }}</div>
+                        <div class="col-md-3">
+                            {{ mantenimiento_form.frecuencia_dias.label_tag }}{{ mantenimiento_form.frecuencia_dias }}
+                        </div>
+                        <div class="col-md-12">{{ mantenimiento_form.responsable.label_tag }}{{ mantenimiento_form.responsable }}</div>
+                        <div class="col-md-12">{{ mantenimiento_form.descripcion.label_tag }}{{ mantenimiento_form.descripcion }}</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Programar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalCompletarMantenimiento" tabindex="-1" aria-labelledby="modalCompletarMantenimientoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalCompletarMantenimientoLabel">Completar mantenimiento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-2">Equipo: <strong data-maintenance-equipo></strong></p>
+                    <label class="form-label" for="resultadoMantenimiento">Resultado técnico</label>
+                    <textarea class="form-control" id="resultadoMantenimiento" name="resultado" rows="4" minlength="10" required placeholder="Detalle las acciones realizadas y hallazgos."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Marcar realizado</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const normalizeText = value => (value || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim();
+
+        const equipoWrap = document.getElementById('maintenanceEquipoWrap');
+        const equipoInput = document.getElementById('maintenanceEquipoInput');
+        const equipoLabel = document.getElementById('maintenanceEquipoLabel');
+        const equipoDot = document.getElementById('maintenanceEquipoDot');
+        const equipoSearch = document.getElementById('maintenanceEquipoSearch');
+        const equipoEmpty = document.querySelector('#maintenanceEquipoMenu .filter-menu-empty');
+
+        if (equipoWrap && equipoInput) {
+            document.addEventListener('click', function(event) {
+                if (event.target.closest('#maintenanceEquipoMenu .filter-menu-search')) {
+                    event.stopPropagation();
+                    return;
+                }
+
+                const option = event.target.closest('#maintenanceEquipoMenu .filter-select-option');
+                if (option) {
+                    equipoInput.value = option.dataset.value || '';
+                    equipoLabel.textContent = option.dataset.label || 'Seleccionar equipo';
+                    equipoWrap.classList.toggle('is-active', Boolean(equipoInput.value));
+                    equipoDot.className = `filter-state-dot${equipoInput.value ? ' state-tipo' : ' is-hidden'}`;
+                    equipoWrap.querySelectorAll('.filter-select-option').forEach(item => {
+                        item.classList.toggle('is-active', item === option);
+                    });
+                    equipoWrap.classList.remove('is-open');
+                    equipoWrap.querySelector('.filter-select-button')?.setAttribute('aria-expanded', 'false');
+                    return;
+                }
+
+                const button = event.target.closest('#maintenanceEquipoButton');
+                if (button) {
+                    event.stopPropagation();
+                    const willOpen = !equipoWrap.classList.contains('is-open');
+                    document.querySelectorAll('.filter-select-wrap.is-open').forEach(wrap => {
+                        if (wrap !== equipoWrap) wrap.classList.remove('is-open');
+                    });
+                    equipoWrap.classList.toggle('is-open', willOpen);
+                    button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+                    if (willOpen && equipoSearch) {
+                        window.setTimeout(() => equipoSearch.focus(), 0);
+                    }
+                    return;
+                }
+
+                equipoWrap.classList.remove('is-open');
+                equipoWrap.querySelector('.filter-select-button')?.setAttribute('aria-expanded', 'false');
+            });
+
+            if (equipoSearch) {
+                equipoSearch.addEventListener('input', function() {
+                    const term = normalizeText(this.value);
+                    const options = Array.from(equipoWrap.querySelectorAll('.filter-select-option'));
+                    let visibleCount = 0;
+                    options.forEach(option => {
+                        const matches = normalizeText(option.textContent).includes(term);
+                        option.classList.toggle('d-none', !matches);
+                        if (matches) visibleCount += 1;
+                    });
+                    equipoEmpty?.classList.toggle('d-none', visibleCount > 0 || !term);
+                });
+            }
+        }
+
+        const modalCompletarMantenimiento = document.getElementById('modalCompletarMantenimiento');
+        if (modalCompletarMantenimiento) {
+            modalCompletarMantenimiento.addEventListener('show.bs.modal', event => {
+                const button = event.relatedTarget;
+                modalCompletarMantenimiento.querySelector('form').action = button.getAttribute('data-action');
+                modalCompletarMantenimiento.querySelector('[data-maintenance-equipo]').textContent = button.getAttribute('data-equipo');
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -21,11 +21,16 @@
                 <p class="text-muted mb-0">Gestión de activos tecnológicos institucionales.</p>
             </div>
         </div>
-        {% if can_manage_inventory %}
-        <button type="button" class="btn-new btn-hover-scale" data-bs-toggle="modal" data-bs-target="#modalNuevoEquipo">
-            <i class="bi bi-plus-lg"></i> Registrar Equipo
-        </button>
-        {% endif %}
+        <div class="d-flex gap-2 flex-wrap justify-content-end">
+            <a href="{% url 'inventario_control_operativo' %}" class="btn btn-light border rounded-pill fw-semibold">
+                <i class="bi bi-clipboard2-pulse me-2"></i>Control operativo
+            </a>
+            {% if can_manage_inventory %}
+            <button type="button" class="btn-new btn-hover-scale" data-bs-toggle="modal" data-bs-target="#modalNuevoEquipo">
+                <i class="bi bi-plus-lg"></i> Registrar Equipo
+            </button>
+            {% endif %}
+        </div>
     </div>
 
     <div class="d-flex gap-2 mb-4">

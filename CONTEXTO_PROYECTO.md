@@ -22,8 +22,8 @@ Permite el ciclo de vida completo de un ticket de soporte.
 
 ### B. Inventario de Equipos
 Control detallado de los bienes tecnológicos de la institución.
-*   **Acciones clave:** Registro de hardware, cambio manual de estado, trazabilidad de historial de estados por equipo, y vinculación dinámica con incidencias de hardware.
-*   **Entidades:** `Equipo`, `TipoEquipo`, `Marca`, `EstadoEquipo`, `HistorialEstadoEquipo`.
+*   **Acciones clave:** Registro de hardware, cambio manual de estado, trazabilidad de historial de estados por equipo, vinculación dinámica con incidencias de hardware, control de repuestos con stock mínimo y programación de mantenimiento preventivo.
+*   **Entidades:** `Equipo`, `TipoEquipo`, `Marca`, `EstadoEquipo`, `HistorialEstadoEquipo`, `Repuesto`, `MantenimientoPreventivo`.
 
 ### C. Usuarios y Seguridad
 Gestión de perfiles basada en el DNI como identificador único.
@@ -114,6 +114,8 @@ Permite visualizar información resumida sin sobrecargar los módulos operativos
 *   **SLA:** `SLAConfiguracion` define tiempos de respuesta, resolución y auto-cierre por prioridad/categoría. El comando `procesar_sla_incidencias` marca zona preventiva "Por vencer" al 80%, vencimientos y escalamiento.
 *   **Edición de Prioridad:** La prioridad queda editable para administrador/técnico al crear o configurar tickets pendientes. Si un ticket fue rechazado y queda sin técnico asignado, la prioridad se desbloquea para reajuste antes de reasignarlo. Si el ticket ya fue aceptado por el técnico y está "En Proceso", la configuración administrativa se bloquea para evitar cambios fuera de flujo.
 *   **PDF por Sección:** Los reportes PDF de incidencias respetan la pestaña activa del módulo. Para administrador, la vista "Creadas" exporta solo las creadas por él. Para técnico, "Asignadas" exporta solo sus tickets asignados y "Creadas" exporta solo las incidencias creadas por él.
+*   **Stock mínimo de repuestos:** Almacén y superusuario pueden registrar repuestos, definir stock mínimo y ajustar el stock real. El sistema muestra alertas cuando `stock_actual <= stock_minimo`.
+*   **Mantenimiento preventivo:** Almacén y superusuario pueden programar mantenimientos por equipo, fecha, frecuencia, responsable y descripción. Los mantenimientos programados para los próximos 7 días o vencidos aparecen como alerta operativa y pueden marcarse como realizados con resultado técnico.
 
 ---
 
@@ -157,9 +159,11 @@ Regla de seguridad de reportes:
 *   **Relación Usuario-Área:** Cada usuario pertenece a un área específica. Las incidencias se heredan del área del creador.
 *   **Relación Incidencia-Equipo:** Una incidencia de hardware apunta a un registro único en el inventario.
 *   **Trazabilidad:** La tabla `HistorialEstadoEquipo` registra: `estado_anterior`, `estado_nuevo`, `usuario`, `motivo` y `fecha`.
+*   **Stock de Repuestos:** `Repuesto` registra nombre, categoría, unidad, stock actual, stock mínimo, ubicación, observaciones y estado activo.
+*   **Mantenimiento Preventivo:** `MantenimientoPreventivo` registra equipo, fecha programada, frecuencia, responsable, descripción, estado, resultado y fecha de realización.
 *   **Reemplazos:** `ReemplazoEquipoIncidencia` registra incidencia, equipo original, equipo temporal, áreas origen/destino, responsable, fechas, estado activo y metadata.
 *   **Auditoría Estructurada:** `Auditoria.metadata` almacena datos explotables en JSON: ids, código de ticket, estados anteriores/nuevos, origen y usuario.
-*   **Notificaciones:** Basadas en eventos del sistema para asignación, cambios de estado, comentarios, SLA e inventario. La integración visual final de notificaciones en interfaz queda como mejora pendiente.
+*   **Notificaciones:** Basadas en eventos del sistema para asignación, cambios de estado, comentarios, SLA e inventario. La campana del header muestra contador, prioridad, tipo de evento y acciones de lectura.
 
 ---
 
@@ -221,6 +225,8 @@ Reglas:
 *   [x] Filtros inteligentes de incidencias por buscador, área, prioridad, estado y SLA vencidas.
 *   [x] Filtros personalizados de inventario por buscador, área, estado, disponibilidad, tipo y marca.
 *   [x] Gestión de inventario con PDF individual de equipo, imagen del equipo y reportes PDF/Excel filtrados.
+*   [x] Gestión de stock mínimo de repuestos con alertas y ajuste controlado por Almacén/Superusuario.
+*   [x] Mantenimiento preventivo programado por equipo con alertas de próximos/vencidos y registro de resultado.
 *   [x] Exportación PDF de incidencias individuales con solicitante, técnico, solución, evidencias iniciales/finales y fechas clave.
 *   [x] Exportación PDF por rango de incidencias respetando la pestaña activa: todas/asignadas o creadas por el usuario.
 *   [x] Exportación PDF de dashboard de incidencias e inventario.
@@ -231,11 +237,10 @@ Reglas:
 *   [x] Dashboard de incidencias con KPIs y métricas SLA conectadas a fechas reales.
 *   [x] Dashboard separado de inventario dentro del módulo Dashboard.
 *   [x] PDF de auditoría.
+*   [x] Campana de notificaciones priorizadas para administrador, técnico, almacén y trabajador.
 
 ## 12. Pendientes y Mejoras
-*   [ ] Integración visual completa de notificaciones para administrador, técnico, almacén y trabajador.
-*   [ ] Gestión de stock de repuestos mínimos (Pilas, Mouse, Teclados).
-*   [ ] Módulo de mantenimiento preventivo programado.
+*   [ ] Revisión final de manual académico, capturas y anexos antes de entrega.
 *   [ ] Migración planificada a PostgreSQL para publicación.
 *   [ ] Dockerización para despliegue reproducible.
 *   [ ] Configuración de entorno productivo: variables de entorno, servidor WSGI/ASGI, archivos estáticos, backups y monitoreo.

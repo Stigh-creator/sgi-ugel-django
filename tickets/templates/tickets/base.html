@@ -50,9 +50,13 @@
 
             <nav class="nav flex-column mt-3">
                 {% if user.role == 'almacen' %}
-                <a class="nav-card {% if 'inventario' in request.path %}active{% endif %}"
+                <a class="nav-card {% if request.resolver_match.url_name == 'inventario_list' or request.resolver_match.url_name == 'equipo_detalle' %}active{% endif %}"
                     href="{% url 'inventario_list' %}">
                     <i class="fas fa-boxes"></i> Inventario
+                </a>
+                <a class="nav-card {% if request.resolver_match.url_name == 'inventario_control_operativo' %}active{% endif %}"
+                    href="{% url 'inventario_control_operativo' %}">
+                    <i class="fas fa-clipboard-check"></i> Control operativo
                 </a>
 
                 {% elif user.role == 'administrador' or user.is_staff %}
@@ -67,9 +71,13 @@
                     href="{% url 'usuarios' %}">
                     <i class="fas fa-users"></i> Usuarios
                 </a>
-                <a class="nav-card {% if 'inventario' in request.path %}active{% endif %}"
+                <a class="nav-card {% if request.resolver_match.url_name == 'inventario_list' or request.resolver_match.url_name == 'equipo_detalle' %}active{% endif %}"
                     href="{% url 'inventario_list' %}">
                     <i class="fas fa-boxes"></i> Inventario
+                </a>
+                <a class="nav-card {% if request.resolver_match.url_name == 'inventario_control_operativo' %}active{% endif %}"
+                    href="{% url 'inventario_control_operativo' %}">
+                    <i class="fas fa-clipboard-check"></i> Control operativo
                 </a>
                 <a class="nav-card {% if 'auditoria' in request.path %}active{% endif %}"
                     href="{% url 'auditoria_index' %}">
