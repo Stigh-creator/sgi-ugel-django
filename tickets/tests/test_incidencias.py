@@ -12,7 +12,7 @@ from django.utils import timezone
 from auditoria.models import Auditoria, EventoFallido
 from inventario.models import Equipo, EstadoEquipo, HistorialEstadoEquipo, Marca, TipoEquipo
 from tickets.forms.forms_incidencias import IncidenciaAdminForm, IncidenciaCierreForm, IncidenciaForm
-from tickets.models import Area, Comentario, CustomUser, EstadoSLA, Incidencia, MetricaDiaria, Notificacion, ReemplazoEquipoIncidencia
+from tickets.models import Area, Comentario, CustomUser, EstadoSLA, Incidencia, MetricaDiaria, Notificacion, NotificacionUsuario, ReemplazoEquipoIncidencia
 from tickets.services import (
     aceptar_incidencia_service,
     assign_incidencia_service,
@@ -525,6 +525,101 @@ class IncidenciasBusinessRulesTests(TestCase):
 
         self.assertEqual(Auditoria.objects.filter(evento="incidencia.asignada", referencia_id=incidencia.id).count(), 1)
         self.assertEqual(Notificacion.objects.filter(incidencia=incidencia, tipo="asignacion").count(), 1)
+
+    def test_notificacion_clasifica_prioridad_critica_por_incidencia_critica(self):
+        incidencia = Incidencia.objects.create(
+            creador=self.admin,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_CRITICA,
+            descripcion="Validar prioridad crítica en notificaciones.",
+            estado=get_estado(Incidencia.ESTADO_PENDIENTE),
+        )
+
+        emitir_evento_incidencia("incidencia.creada", incidencia, actor=self.admin)
+
+        notificacion = Notificacion.objects.get(incidencia=incidencia, tipo="nueva_incidencia")
+        self.assertEqual(notificacion.prioridad, Notificacion.PRIORIDAD_CRITICA)
+
+    def test_notificacion_sla_vencido_llega_a_admin_y_tecnico_como_critica(self):
+        incidencia = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Validar notificación de SLA vencido.",
+            estado=get_estado(Incidencia.ESTADO_EN_PROCESO),
+            tecnico_asignado=self.tecnico,
+        )
+
+        emitir_evento_incidencia("incidencia.sla_resolucion_vencido", incidencia)
+
+        notificacion = Notificacion.objects.get(incidencia=incidencia, tipo="sla")
+        destinatarios = set(notificacion.usuarios.values_list("usuario_id", flat=True))
+        self.assertEqual(notificacion.prioridad, Notificacion.PRIORIDAD_CRITICA)
+        self.assertIn(self.admin.pk, destinatarios)
+        self.assertIn(self.tecnico.pk, destinatarios)
+
+    def test_notificacion_inventario_llega_a_almacen_como_alta(self):
+        almacen = CustomUser.objects.create_user(
+            username="55667788",
+            password="Almacen123!",
+            first_name="Rosa",
+            last_name="Almacen",
+            role=CustomUser.ROL_ALMACEN,
+            area=self.area,
+            telefono="900000005",
+        )
+        incidencia = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="hardware",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Validar notificación de inventario para almacén.",
+            estado=get_estado(Incidencia.ESTADO_ASIGNADO),
+            tecnico_asignado=self.tecnico,
+        )
+
+        emitir_evento_incidencia("inventario.estado_cambiado", incidencia, actor=self.tecnico)
+
+        notificacion = Notificacion.objects.get(incidencia=incidencia, tipo="inventario")
+        destinatarios = set(notificacion.usuarios.values_list("usuario_id", flat=True))
+        self.assertEqual(notificacion.prioridad, Notificacion.PRIORIDAD_ALTA)
+        self.assertIn(almacen.pk, destinatarios)
+        self.assertNotIn(self.tecnico.pk, destinatarios)
+
+    def test_campana_muestra_contador_y_prioridad(self):
+        notificacion = Notificacion.objects.create(
+            incidencia=None,
+            mensaje="Notificación de prueba visible en campana.",
+            tipo="estado",
+            prioridad=Notificacion.PRIORIDAD_ALTA,
+            link=reverse("index"),
+        )
+        NotificacionUsuario.objects.create(usuario=self.admin, notificacion=notificacion)
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("dashboard_admin"))
+
+        self.assertContains(response, "notification-badge")
+        self.assertContains(response, "priority-alta")
+        self.assertContains(response, "Notificación de prueba visible")
+
+    def test_leer_notificacion_marca_como_leida(self):
+        notificacion = Notificacion.objects.create(
+            mensaje="Notificación para marcar como leída.",
+            tipo="estado",
+            prioridad=Notificacion.PRIORIDAD_MEDIA,
+            link=reverse("dashboard_admin"),
+        )
+        relacion = NotificacionUsuario.objects.create(usuario=self.admin, notificacion=notificacion)
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("leer_notificacion", args=[relacion.pk]))
+
+        relacion.refresh_from_db()
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(relacion.leido)
 
     def test_equipo_ocupado_requiere_origen_ocupacion(self):
         self.equipo.disponibilidad = Equipo.DISPONIBILIDAD_EN_USO

@@ -1,10 +1,47 @@
-<div class="dropdown" id="notif-badge-container">
-    <button class="btn btn-link position-relative text-dark" type="button" data-bs-toggle="dropdown">
+<div class="dropdown notification-bell" id="notif-badge-container">
+    <button class="btn btn-link position-relative text-dark notification-bell-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Notificaciones">
         <i class="bi bi-bell fs-5"></i>
-        </button>
-    <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3" id="notifications-list" style="width: 300px;">
-        <li class="dropdown-header">Notificaciones</li>
-        <li><hr class="dropdown-divider"></li>
-        <li class="text-center py-3 text-muted">No hay notificaciones nuevas</li>
-    </ul>
+        {% if header_notificaciones_no_leidas %}
+        <span class="notification-badge">{{ header_notificaciones_no_leidas }}</span>
+        {% endif %}
+    </button>
+    <div class="dropdown-menu dropdown-menu-end shadow border-0 notification-menu" id="notifications-list">
+        <div class="notification-menu-header">
+            <div>
+                <span class="notification-title">Notificaciones</span>
+                <small>{{ header_notificaciones_no_leidas }} sin leer</small>
+            </div>
+            {% if header_notificaciones_no_leidas %}
+            <form method="post" action="{% url 'marcar_notificaciones_leidas' %}" class="m-0">
+                {% csrf_token %}
+                <button type="submit" class="notification-read-all no-loading">Leer todas</button>
+            </form>
+            {% endif %}
+        </div>
+
+        <div class="notification-list">
+            {% for item in header_notificaciones %}
+            <a
+                href="{% url 'leer_notificacion' item.pk %}"
+                class="notification-item {% if not item.leido %}is-unread{% endif %} priority-{{ item.notificacion.prioridad }}"
+            >
+                <span class="notification-icon">
+                    <i class="bi {{ item.notificacion.icon_class }}"></i>
+                </span>
+                <span class="notification-content">
+                    <span class="notification-meta">
+                        <span class="notification-priority">{{ item.notificacion.prioridad_label }}</span>
+                        <span>{{ item.fecha_recibida|timesince }} atrás</span>
+                    </span>
+                    <span class="notification-message">{{ item.notificacion.mensaje|truncatechars:105 }}</span>
+                </span>
+            </a>
+            {% empty %}
+            <div class="notification-empty">
+                <i class="bi bi-check2-circle"></i>
+                <span>No hay notificaciones nuevas</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
 </div>

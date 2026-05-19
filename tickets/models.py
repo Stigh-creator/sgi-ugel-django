@@ -617,16 +617,46 @@ class Notificacion(models.Model):
         ("nueva_incidencia", "Nueva Incidencia"), 
         ("incidencia_resuelta", "Incidencia Resuelta"), 
         ("desasignacion", "Desasignación"),
+        ("sla", "Alerta SLA"),
+        ("inventario", "Inventario"),
+    )
+    PRIORIDAD_BAJA = "baja"
+    PRIORIDAD_MEDIA = "media"
+    PRIORIDAD_ALTA = "alta"
+    PRIORIDAD_CRITICA = "critica"
+    PRIORIDAD_CHOICES = (
+        (PRIORIDAD_BAJA, "Baja"),
+        (PRIORIDAD_MEDIA, "Media"),
+        (PRIORIDAD_ALTA, "Alta"),
+        (PRIORIDAD_CRITICA, "Crítica"),
     )
 
     incidencia = models.ForeignKey(Incidencia, on_delete=models.CASCADE, null=True, blank=True)
     mensaje = models.TextField()
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES)
+    prioridad = models.CharField(max_length=20, choices=PRIORIDAD_CHOICES, default=PRIORIDAD_MEDIA)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     link = models.URLField(max_length=500, null=True, blank=True)
 
     def __str__(self):
         return f"Notificación: {self.tipo} - {self.mensaje[:30]}..."
+
+    @property
+    def icon_class(self):
+        return {
+            "asignacion": "bi-person-check",
+            "estado": "bi-arrow-repeat",
+            "comentario": "bi-chat-left-text",
+            "nueva_incidencia": "bi-ticket-perforated",
+            "incidencia_resuelta": "bi-check2-circle",
+            "desasignacion": "bi-person-dash",
+            "sla": "bi-clock-history",
+            "inventario": "bi-box-seam",
+        }.get(self.tipo, "bi-bell")
+
+    @property
+    def prioridad_label(self):
+        return dict(self.PRIORIDAD_CHOICES).get(self.prioridad, "Media")
 
     class Meta:
         ordering = ["-fecha_creacion"]
@@ -689,6 +719,7 @@ def send_notification_update(sender, instance, created, **kwargs):
                 "type": "send_notification",
                 "message": instance.notificacion.mensaje,
                 "tipo": instance.notificacion.tipo,
+                "prioridad": instance.notificacion.prioridad,
                 "unread_count": unread_count
             }
         )

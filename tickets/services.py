@@ -51,6 +51,22 @@ SLA_ESTADOS_ACTIVOS = {
     Incidencia.ESTADO_RECHAZADO,
     Incidencia.ESTADO_REABIERTO,
 }
+NOTIFICATION_TIPO_BY_EVENT = {
+    "incidencia.creada": "nueva_incidencia",
+    "incidencia.asignada": "asignacion",
+    "incidencia.reasignada": "asignacion",
+    "incidencia.aceptada": "estado",
+    "incidencia.rechazada": "desasignacion",
+    "incidencia.comentada": "comentario",
+    "incidencia.resuelta": "incidencia_resuelta",
+    "incidencia.reabierta": "estado",
+    "incidencia.cerrada": "estado",
+    "incidencia.sla_por_vencer": "sla",
+    "incidencia.sla_respuesta_vencido": "sla",
+    "incidencia.sla_resolucion_vencido": "sla",
+    "inventario.estado_cambiado": "inventario",
+    "inventario.reemplazo_registrado": "inventario",
+}
 
 
 def lock_queryset(queryset):
@@ -169,11 +185,23 @@ def recipients_for_event(evento, incidencia, actor=None):
     if evento in SLA_EVENTOS:
         if incidencia.tecnico_asignado_id and incidencia.tecnico_asignado and incidencia.tecnico_asignado.is_active:
             usuarios.add(incidencia.tecnico_asignado)
+        usuarios.update(CustomUser.objects.filter(role=CustomUser.ROL_ADMIN, is_active=True))
         if actor:
             usuarios.discard(actor)
         return [u for u in usuarios if u and u.is_active]
 
     admins = CustomUser.objects.filter(role=CustomUser.ROL_ADMIN, is_active=True)
+    almacen = CustomUser.objects.filter(role=CustomUser.ROL_ALMACEN, is_active=True)
+    if evento.startswith("inventario."):
+        usuarios.update(almacen)
+        if evento in {"inventario.reemplazo_registrado"}:
+            usuarios.update(admins)
+        if incidencia.tecnico_asignado_id:
+            usuarios.add(incidencia.tecnico_asignado)
+        if actor:
+            usuarios.discard(actor)
+        return [u for u in usuarios if u and u.is_active]
+
     if evento in {
         "incidencia.creada",
         "incidencia.rechazada",
@@ -188,6 +216,30 @@ def recipients_for_event(evento, incidencia, actor=None):
     if actor:
         usuarios.discard(actor)
     return [u for u in usuarios if u and u.is_active]
+
+
+def prioridad_notificacion_para_evento(evento, incidencia):
+    if evento in {"incidencia.sla_respuesta_vencido", "incidencia.sla_resolucion_vencido"}:
+        return Notificacion.PRIORIDAD_CRITICA
+    if evento in {"incidencia.rechazada", "incidencia.reabierta"}:
+        return Notificacion.PRIORIDAD_ALTA
+    if evento == "incidencia.creada" and incidencia.prioridad in {
+        Incidencia.PRIORIDAD_ALTA,
+        Incidencia.PRIORIDAD_CRITICA,
+    }:
+        return Notificacion.PRIORIDAD_ALTA if incidencia.prioridad == Incidencia.PRIORIDAD_ALTA else Notificacion.PRIORIDAD_CRITICA
+    if evento in {
+        "incidencia.asignada",
+        "incidencia.reasignada",
+        "incidencia.resuelta",
+        "incidencia.sla_por_vencer",
+        "inventario.estado_cambiado",
+        "inventario.reemplazo_registrado",
+    }:
+        return Notificacion.PRIORIDAD_ALTA
+    if evento == "incidencia.comentada":
+        return Notificacion.PRIORIDAD_MEDIA
+    return Notificacion.PRIORIDAD_BAJA
 
 
 EVENTO_ACCION = {
@@ -289,17 +341,12 @@ def _procesar_evento_incidencia(evento, incidencia, actor=None, metadata=None):
             texto=mensaje,
         )
 
-    tipo_notificacion = {
-        "incidencia.creada": "nueva_incidencia",
-        "incidencia.asignada": "asignacion",
-        "incidencia.reasignada": "asignacion",
-        "incidencia.comentada": "comentario",
-        "incidencia.resuelta": "incidencia_resuelta",
-    }.get(evento, "estado")
+    tipo_notificacion = NOTIFICATION_TIPO_BY_EVENT.get(evento, "estado")
     notificacion = Notificacion.objects.create(
         incidencia=incidencia,
         mensaje=mensaje,
         tipo=tipo_notificacion,
+        prioridad=prioridad_notificacion_para_evento(evento, incidencia),
         link=reverse("detalle_incidencia", kwargs={"pk": incidencia.pk}) if incidencia.pk else None,
     )
     for usuario in recipients_for_event(evento, incidencia, actor=actor):

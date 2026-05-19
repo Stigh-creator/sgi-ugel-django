@@ -13,6 +13,7 @@ from .views.views_exports import (
     export_inventario_excel, export_ticket_pdf, export_reporte_incidencias_pdf,
     export_dashboard_incidencias_pdf, export_dashboard_inventario_pdf,
 )
+from .views.views_notificaciones import leer_notificacion, marcar_notificaciones_leidas
 
 urlpatterns = [
     # Exportaciones
@@ -21,6 +22,8 @@ urlpatterns = [
     path('exportar/incidencias/reporte/pdf/', export_reporte_incidencias_pdf, name='export_reporte_pdf'),
     path('exportar/incidencias/dashboard/pdf/', export_dashboard_incidencias_pdf, name='export_dashboard_pdf'),
     path('exportar/inventario/dashboard/pdf/', export_dashboard_inventario_pdf, name='export_dashboard_inventario_pdf'),
+    path('notificaciones/<int:pk>/leer/', leer_notificacion, name='leer_notificacion'),
+    path('notificaciones/marcar-leidas/', marcar_notificaciones_leidas, name='marcar_notificaciones_leidas'),
     # Ruta raíz redirige según el index que ya programaste
     path('', index, name='index'),
     
