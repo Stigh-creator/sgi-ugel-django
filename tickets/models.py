@@ -717,9 +717,13 @@ def send_notification_update(sender, instance, created, **kwargs):
             f"user_{instance.usuario.id}_notifications",
             {
                 "type": "send_notification",
+                "notification_user_id": instance.id,
                 "message": instance.notificacion.mensaje,
                 "tipo": instance.notificacion.tipo,
                 "prioridad": instance.notificacion.prioridad,
+                "prioridad_label": instance.notificacion.prioridad_label,
+                "icon_class": instance.notificacion.icon_class,
+                "link": instance.notificacion.link or "",
                 "unread_count": unread_count
             }
         )

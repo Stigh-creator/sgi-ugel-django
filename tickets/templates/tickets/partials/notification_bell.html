@@ -1,4 +1,9 @@
-<div class="dropdown notification-bell" id="notif-badge-container">
+<div
+    class="dropdown notification-bell"
+    id="notif-badge-container"
+    data-mark-read-url="{% url 'marcar_notificaciones_leidas' %}"
+    data-csrf-token="{{ csrf_token }}"
+>
     <button class="btn btn-link position-relative text-dark notification-bell-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Notificaciones">
         <i class="bi bi-bell fs-5"></i>
         {% if header_notificaciones_no_leidas %}
@@ -33,7 +38,7 @@
                         <span class="notification-priority">{{ item.notificacion.prioridad_label }}</span>
                         <span>{{ item.fecha_recibida|timesince }} atrás</span>
                     </span>
-                    <span class="notification-message">{{ item.notificacion.mensaje|truncatechars:105 }}</span>
+                    <span class="notification-message">{{ item.notificacion.mensaje }}</span>
                 </span>
             </a>
             {% empty %}

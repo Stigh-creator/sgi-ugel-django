@@ -1,4 +1,5 @@
 import os
+from importlib.util import find_spec
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -28,6 +29,16 @@ INSTALLED_APPS = [
     'inventario',                  # Módulo de Inventario de equipos
     'auditoria',                   # Módulo de Auditoría del sistema
 ]
+
+if find_spec("daphne"):
+    INSTALLED_APPS.insert(0, "daphne")
+
+ASGI_APPLICATION = 'gestion_incidencias.asgi.application'
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    }
+}
 
 # 3. Usuario Personalizado y autenticación
 # Indica a Django que utilice el modelo CustomUser en lugar del modelo de usuario por defecto

@@ -30,8 +30,15 @@ def filtrar_equipos_por_area_principal(equipos_queryset, area):
     return equipos_queryset.filter(area__sede_principal=area.sede_principal).distinct()
 
 
+class EquipoOrOtherChoiceField(forms.ModelChoiceField):
+    def clean(self, value):
+        if value == "otro":
+            return None
+        return super().clean(value)
+
+
 class IncidenciaForm(forms.ModelForm):
-    equipo = forms.ModelChoiceField(
+    equipo = EquipoOrOtherChoiceField(
         queryset=Incidencia.objects.none(), 
         required=False,
         label="Equipo Afectado",

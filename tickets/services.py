@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import DatabaseError, transaction
+from django.db import DatabaseError, connection, transaction
 from django.db.models import CharField, F, Prefetch, Q, Value
 from django.db.models.functions import Cast, Lower, Replace
 from django.utils.module_loading import import_string
@@ -70,6 +70,8 @@ NOTIFICATION_TIPO_BY_EVENT = {
 
 
 def lock_queryset(queryset):
+    if connection.features.has_select_for_update_of:
+        return queryset.select_for_update(nowait=True, of=("self",))
     return queryset.select_for_update(nowait=True)
 
 

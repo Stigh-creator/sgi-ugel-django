@@ -23,6 +23,7 @@ from tickets.services import (
     reabrir_incidencia_service,
     resolver_incidencia_service,
     emitir_evento_incidencia,
+    IncidenciaService,
 )
 from tickets.views.views_exports import incidencias_exportables_por_tab
 
@@ -292,6 +293,32 @@ class IncidenciasBusinessRulesTests(TestCase):
         self.assertEqual(incidencia.creador, self.usuario)
         self.assertEqual(incidencia.prioridad, Incidencia.PRIORIDAD_MEDIA)
 
+    def test_trabajador_reporta_hardware_con_equipo_no_listado(self):
+        self.client.force_login(self.usuario)
+
+        response = self.client.post(
+            reverse("crear_incidencia"),
+            {
+                "categoria": "hardware",
+                "equipo": "otro",
+                "otro_tipo": "Mouse",
+                "otro_marca": "Logitech",
+                "otro_modelo": "M90",
+                "otro_serie": "",
+                "descripcion": "El usuario reporta un periférico no listado con fallas intermitentes.",
+                "imagen_adjunta": self._evidencia(),
+            },
+        )
+
+        incidencia = Incidencia.objects.latest("pk")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(incidencia.creador, self.usuario)
+        self.assertEqual(incidencia.equipo, None)
+        self.assertEqual(incidencia.otro_tipo, "Mouse")
+        self.assertEqual(incidencia.otro_marca, "Logitech")
+        self.assertEqual(incidencia.otro_modelo, "M90")
+        self.assertEqual(incidencia.prioridad, Incidencia.PRIORIDAD_MEDIA)
+
     def test_no_permite_crear_incidencia_si_equipo_ya_no_esta_operativo(self):
         self.equipo.estado = self.estado_reparacion
         self.equipo.save(update_fields=["estado", "actualizado_en"])
@@ -525,6 +552,24 @@ class IncidenciasBusinessRulesTests(TestCase):
 
         self.assertEqual(Auditoria.objects.filter(evento="incidencia.asignada", referencia_id=incidencia.id).count(), 1)
         self.assertEqual(Notificacion.objects.filter(incidencia=incidencia, tipo="asignacion").count(), 1)
+
+    def test_notificacion_asignacion_llega_a_trabajador_y_tecnico(self):
+        incidencia = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Validar destinatarios de asignación.",
+            estado=get_estado(Incidencia.ESTADO_PENDIENTE),
+        )
+
+        IncidenciaService.asignar(incidencia.pk, tecnico=self.tecnico, actor=self.admin)
+
+        notificacion = Notificacion.objects.get(incidencia_id=incidencia.pk, tipo="asignacion")
+        destinatarios = set(notificacion.usuarios.values_list("usuario_id", flat=True))
+        self.assertIn(self.usuario.pk, destinatarios)
+        self.assertIn(self.tecnico.pk, destinatarios)
+        self.assertNotIn(self.admin.pk, destinatarios)
 
     def test_notificacion_clasifica_prioridad_critica_por_incidencia_critica(self):
         incidencia = Incidencia.objects.create(

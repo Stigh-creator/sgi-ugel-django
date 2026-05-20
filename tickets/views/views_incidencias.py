@@ -877,16 +877,28 @@ def gestionar_incidencia(request, pk):
             if reassigned:
                 action = "reasignó técnico" if old_tecnico else "asignó técnico"
                 new_name = nombre_usuario(new_tecnico)
+                evento = "incidencia.reasignada" if old_tecnico else "incidencia.asignada"
+                emitir_evento_incidencia(
+                    evento,
+                    incidencia,
+                    actor=request.user,
+                    metadata={
+                        "tecnico_id": new_tecnico.id,
+                        "tecnico_nombre": new_name,
+                        "tecnico_anterior_id": getattr(old_tecnico, "id", None),
+                        "tecnico_anterior": nombre_usuario(old_tecnico) if old_tecnico else None,
+                    },
+                )
                 if old_tecnico:
                     old_name = nombre_usuario(old_tecnico)
                     detail = f"{ticket_label(incidencia)} Reasignado de {old_name} a {new_name} por {nombre_usuario(request.user)}."
                 else:
                     detail = f"{ticket_label(incidencia)} Asignación inicial de técnico: {new_name}. Acción realizada por {nombre_usuario(request.user)}."
+                registrar_auditoria(request, "Incidencias", action, detail, pk)
             else:
                 action = "gestionó ticket"
                 detail = f"{ticket_label(incidencia)} Configuración administrativa actualizada por {nombre_usuario(request.user)}."
-            
-            registrar_auditoria(request, "Incidencias", action, detail, pk)
+                registrar_auditoria(request, "Incidencias", action, detail, pk)
 
             if old_priority != final_priority:
                 registrar_auditoria(
