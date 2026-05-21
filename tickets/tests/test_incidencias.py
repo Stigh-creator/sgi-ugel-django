@@ -554,6 +554,15 @@ class IncidenciasBusinessRulesTests(TestCase):
         self.assertEqual(Notificacion.objects.filter(incidencia=incidencia, tipo="asignacion").count(), 1)
 
     def test_notificacion_asignacion_llega_a_trabajador_y_tecnico(self):
+        admin_observador = CustomUser.objects.create_user(
+            username="55667788",
+            password="Admin1234!",
+            first_name="Milton",
+            last_name="Admin",
+            role=CustomUser.ROL_ADMIN,
+            area=self.area,
+            telefono="900000005",
+        )
         incidencia = Incidencia.objects.create(
             creador=self.usuario,
             area=self.area,
@@ -569,6 +578,7 @@ class IncidenciasBusinessRulesTests(TestCase):
         destinatarios = set(notificacion.usuarios.values_list("usuario_id", flat=True))
         self.assertIn(self.usuario.pk, destinatarios)
         self.assertIn(self.tecnico.pk, destinatarios)
+        self.assertIn(admin_observador.pk, destinatarios)
         self.assertNotIn(self.admin.pk, destinatarios)
 
     def test_notificacion_clasifica_prioridad_critica_por_incidencia_critica(self):

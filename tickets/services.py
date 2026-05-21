@@ -184,15 +184,18 @@ def calcular_fecha_auto_cierre(incidencia):
 
 def recipients_for_event(evento, incidencia, actor=None):
     usuarios = set()
+    admins = CustomUser.objects.filter(
+        Q(role=CustomUser.ROL_ADMIN) | Q(is_superuser=True),
+        is_active=True,
+    )
     if evento in SLA_EVENTOS:
         if incidencia.tecnico_asignado_id and incidencia.tecnico_asignado and incidencia.tecnico_asignado.is_active:
             usuarios.add(incidencia.tecnico_asignado)
-        usuarios.update(CustomUser.objects.filter(role=CustomUser.ROL_ADMIN, is_active=True))
+        usuarios.update(admins)
         if actor:
             usuarios.discard(actor)
         return [u for u in usuarios if u and u.is_active]
 
-    admins = CustomUser.objects.filter(role=CustomUser.ROL_ADMIN, is_active=True)
     almacen = CustomUser.objects.filter(role=CustomUser.ROL_ALMACEN, is_active=True)
     if evento.startswith("inventario."):
         usuarios.update(almacen)
@@ -206,6 +209,8 @@ def recipients_for_event(evento, incidencia, actor=None):
 
     if evento in {
         "incidencia.creada",
+        "incidencia.asignada",
+        "incidencia.reasignada",
         "incidencia.rechazada",
         "incidencia.reabierta",
         "inventario.integridad_alerta",
