@@ -119,7 +119,8 @@ Eventos de notificación generados por cambios del sistema.
 | `id` | BigAutoField | PK | Identificador único. |
 | `incidencia` | ForeignKey | FK -> `Incidencia` (Null) | Incidencia relacionada, si aplica. |
 | `mensaje` | TextField | Not Null | Texto de la notificación. |
-| `tipo` | CharField(50) | Choice | asignacion, estado, comentario, nueva_incidencia, incidencia_resuelta, desasignacion. |
+| `tipo` | CharField(50) | Choice | asignacion, estado, comentario, nueva_incidencia, incidencia_resuelta, desasignacion, sla, inventario. |
+| `prioridad` | CharField(20) | Choice | Prioridad visual: baja, media, alta, critica. |
 | `fecha_creacion` | DateTimeField | Auto Add | Fecha y hora del evento. |
 | `link` | URLField(500) | Null, Blank | Enlace de destino asociado. |
 
@@ -188,6 +189,8 @@ Consolidado histórico de KPIs del sistema.
 *Nota: `MetricaDiaria.fecha` es único para conservar un snapshot por día.*
 
 *Nota adicional: `NotificacionUsuario` posee restricción de unicidad combinada para `usuario` y `notificacion`.*
+
+*Nota técnica: la persistencia de notificaciones se realiza en estas tablas, mientras que la entrega en tiempo real se ejecuta mediante Django Channels/Daphne sobre el WebSocket `/ws/notificaciones/`.*
 
 ---
 
@@ -258,6 +261,43 @@ Bitácora de cambios de estado operativo por equipo.
 | `observacion` | TextField | Not Null | Justificación del cambio de estado. |
 | `fecha_registro` | DateTimeField | Auto Add | Momento exacto del cambio. |
 
+### Tabla: `Repuesto` (inventario_repuesto)
+Control de repuestos y stock mínimo para operación de almacén.
+
+| Campo | Tipo | Restricciones | Descripción |
+| :--- | :--- | :--- | :--- |
+| `id` | BigAutoField | PK | Identificador único. |
+| `nombre` | CharField(120) | Unique, Not Null | Nombre del repuesto. |
+| `categoria` | CharField(80) | Blank | Clasificación interna del repuesto. |
+| `unidad` | CharField(20) | Choice | Unidad, paquete, metro o kit. |
+| `stock_actual` | PositiveIntegerField | Default: 0 | Cantidad disponible. |
+| `stock_minimo` | PositiveIntegerField | Default: 1 | Umbral mínimo para alerta operativa. |
+| `ubicacion` | CharField(120) | Blank | Ubicación física en almacén. |
+| `observaciones` | TextField | Blank | Detalle adicional del repuesto. |
+| `activo` | BooleanField | Default: True | Control lógico de uso. |
+| `actualizado_en` | DateTimeField | Auto Now | Última actualización. |
+
+*Regla: `stock_minimo` debe ser mayor a cero. La propiedad `bajo_minimo` se activa cuando `stock_actual <= stock_minimo`.*
+
+### Tabla: `MantenimientoPreventivo` (inventario_mantenimientopreventivo)
+Programación y resultado de mantenimientos preventivos por equipo.
+
+| Campo | Tipo | Restricciones | Descripción |
+| :--- | :--- | :--- | :--- |
+| `id` | BigAutoField | PK | Identificador único. |
+| `equipo` | ForeignKey | FK -> `Equipo` | Equipo programado para mantenimiento. |
+| `fecha_programada` | DateField | Not Null | Fecha prevista de mantenimiento. |
+| `frecuencia_dias` | PositiveIntegerField | Default: 90 | Intervalo sugerido para repetir mantenimiento. |
+| `responsable` | ForeignKey | FK -> `CustomUser` (Set Null) | Persona asignada como responsable. |
+| `descripcion` | TextField | Not Null | Alcance del mantenimiento programado. |
+| `estado` | CharField(20) | Choice | programado, realizado, vencido, cancelado. |
+| `resultado` | TextField | Blank | Resultado técnico cuando se marca como realizado. |
+| `fecha_realizado` | DateField | Null, Blank | Fecha real de ejecución. |
+| `creado_en` | DateTimeField | Auto Add | Fecha de creación del registro. |
+| `actualizado_en` | DateTimeField | Auto Now | Última actualización. |
+
+*Índice principal: `estado` + `fecha_programada` para alertas de próximos y vencidos.*
+
 ---
 
 ## 3. Aplicación: `auditoria` (Trazabilidad)
@@ -318,8 +358,8 @@ Tras analizar el esquema actual frente a los requerimientos futuros, se concluye
 *   **Análisis**: La auditoría registra acciones críticas con datos estructurados en `metadata`, evita duplicidad mediante `evento` + `hash_evento`, conserva eventos fallidos para reprocesamiento y permite exportar la bitácora filtrada en PDF.
 
 ### D. Despliegue en Docker
-*   **Estado**: **Soportado**.
-*   **Análisis**: El esquema utiliza relaciones estándar de Django y no depende de funciones específicas de motor que impidan la contenedorización. Es compatible con PostgreSQL y MariaDB en entornos Docker.
+*   **Estado**: **Pendiente de empaquetado, compatible a nivel de esquema**.
+*   **Análisis**: El esquema ya se ejecuta sobre PostgreSQL en desarrollo local mediante variables de entorno. La contenedorización queda pendiente para empaquetar aplicación, base de datos, archivos estáticos y servicio ASGI de forma reproducible.
 
 ### E. Recomendaciones de Integridad
 *   Se observa que el campo `codigo` de la incidencia se genera tras el primer guardado. Para escalabilidad masiva, se recomienda asegurar la atomicidad de este proceso mediante transacciones si se migra a un entorno de alta concurrencia.

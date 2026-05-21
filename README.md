@@ -2,7 +2,7 @@
 
 ![Django](https://img.shields.io/badge/django-%23092E20.svg?style=for-the-badge&logo=django&logoColor=white)
 ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
-![SQLite](https://img.shields.io/badge/sqlite-%2307405e.svg?style=for-the-badge&logo=sqlite&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/postgresql-316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
 
 ## 📝 Resumen del Sistema
 El **SGI-UGEL** es una solución integral diseñada para digitalizar el flujo de soporte técnico y administrativo en las Unidades de Gestión Educativa Local. El sistema transforma el caos de reportes verbales o por correo en un flujo de trabajo estructurado donde cada incidencia es registrada, categorizada, asignada a un especialista y monitoreada hasta su resolución final. 
@@ -19,16 +19,18 @@ Su objetivo principal es eliminar los cuellos de botella en la atención al usua
   - 📦 **Almacén:** Gestiona inventario y exporta Excel de inventario.
 - **Inventario:** Registro de equipos, estados técnicos, disponibilidad, historial, relación con incidencias, stock mínimo de repuestos y mantenimiento preventivo programado.
 - **Dashboard de KPIs:** Vista separada de incidencias e inventario con métricas operativas y exportación PDF.
+- **Notificaciones:** Campana priorizada en tiempo real para eventos de tickets, comentarios, SLA e inventario.
 - **Reportes:** PDF individual y por rango de incidencias, PDF de dashboard, PDF/Excel de inventario y PDF de auditoría.
 - **Seguridad:** Autenticación por DNI, permisos por rol, auditoría y control de acciones críticas mediante servicios de dominio.
 
 ## 🛠️ Stack Tecnológico
 
-- **Backend:** Django 5.x + Python 3.12
-- **Base de Datos:** SQLite en desarrollo. PostgreSQL queda planificado para despliegue.
+- **Backend:** Django 5.x + Python 3.11/3.12
+- **Base de Datos:** PostgreSQL local mediante variables de entorno. SQLite queda solo como alternativa local anterior.
 - **Frontend:** HTML5, CSS3 (Rich Aesthetics), JavaScript Vanilla
 - **Documentación:** ReportLab (Generación de PDF)
-- **Infraestructura:** Ejecución local con Django. Docker queda planificado para despliegue reproducible.
+- **Tiempo real:** Django Channels + Daphne/ASGI con WebSocket de notificaciones.
+- **Infraestructura:** Ejecución local con Django/PostgreSQL. Docker queda planificado para despliegue reproducible.
 
 ## Mejoras de Producción
 
@@ -113,6 +115,8 @@ Eventos implementados:
 - `inventario.estado_cambiado`
 - `inventario.reemplazo_registrado`
 
+La entrega visual en la campana se actualiza en tiempo real mediante ASGI/Channels. El cliente se conecta al WebSocket `/ws/notificaciones/` y recibe nuevas notificaciones sin recargar la página. En desarrollo se usa `InMemoryChannelLayer`; para producción se recomienda Redis como backend de canales.
+
 ### Trazabilidad
 
 `Auditoria.metadata` registra datos estructurados en JSON.
@@ -184,3 +188,18 @@ Validar restauración periódicamente en un entorno de prueba. Un backup que no 
    ```bash
    git clone [https://github.com/Stigh-creator/sgi-ugel-django.git](https://github.com/Stigh-creator/sgi-ugel-django.git)
    cd sgi-ugel-django
+   ```
+
+2. **Preparar entorno y base de datos:**
+   - Crear y activar el entorno virtual.
+   - Instalar dependencias con `pip install -r requirements.txt`.
+   - Configurar `.env` con las credenciales locales de PostgreSQL.
+   - Ejecutar migraciones con `python manage.py migrate`.
+   - Cargar catálogos base con `python cargar_maestros.py`.
+
+3. **Levantar el sistema en red local:**
+   ```bash
+   python manage.py runserver 0.0.0.0:8000
+   ```
+
+   Para pruebas internas se debe agregar la IP usada a `ALLOWED_HOSTS` mediante variables de entorno o configuración local.

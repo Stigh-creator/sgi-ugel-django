@@ -10,6 +10,7 @@ Este documento centraliza el funcionamiento real y técnico de la plataforma SGI
     *   **Trabajador (Usuario):** Reporta incidencias, comenta en el chat de seguimiento, y cierra sus propios tickets tras validar la solución.
     *   **Técnico TI:** Atiende, diagnostica y resuelve incidencias asignadas. Puede subir evidencias fotográficas de la solución.
     *   **Administrador / Ingeniero TI:** Gestión total de usuarios, áreas, inventario, asignaciones de carga de trabajo, reportes globales y auditoría.
+    *   **Almacén:** Gestiona inventario operativo, repuestos, mantenimiento preventivo y exportación Excel de equipos.
 
 ---
 
@@ -40,6 +41,12 @@ Permite visualizar información resumida sin sobrecargar los módulos operativos
 *   **Incidencias:** KPIs de críticas/alta prioridad, pendientes o activas, resueltas, cerradas, incidencias del día, SLA por vencer/vencidas y métricas por técnico.
 *   **Inventario:** Vista separada del dashboard de incidencias, con indicadores y gráficas de equipos por estado, disponibilidad, tipo, marca y área.
 *   **Exportación:** El dashboard de incidencias e inventario puede exportarse a PDF con filtros por fecha y criterios principales.
+
+### F. Notificaciones en Tiempo Real
+Permite avisar eventos relevantes sin recargar la página.
+*   **Acciones clave:** Campana priorizada en el header, contador de pendientes, enlaces directos, lectura individual/masiva y entrega por WebSocket.
+*   **Arquitectura:** Persistencia en `Notificacion` y `NotificacionUsuario`; emisión en tiempo real con Django Channels, Daphne/ASGI y endpoint `/ws/notificaciones/`.
+*   **Eventos cubiertos:** Asignación, reasignación, rechazo, resolución, cierre, comentarios, SLA vencido/por vencer y eventos relevantes de inventario.
 
 ---
 
@@ -219,7 +226,28 @@ Reglas:
 
 ---
 
-## 11. Funcionalidades Implementadas
+## 11. Arquitectura de Carpetas Actual
+
+El proyecto mantiene una separación por dominio, con el código de negocio dentro de apps Django y los archivos visuales centralizados en `static`.
+
+| Carpeta / archivo | Propósito actual |
+| :--- | :--- |
+| `gestion_incidencias/` | Configuración principal de Django: `settings.py`, `urls.py`, `asgi.py` y `wsgi.py`. |
+| `tickets/` | Núcleo funcional: usuarios, incidencias, SLA, notificaciones, servicios de dominio, vistas, formularios, templates y tests. |
+| `inventario/` | Gestión de equipos, repuestos, mantenimiento preventivo, exportaciones PDF/Excel, templates y tests. |
+| `auditoria/` | Bitácora estructurada, middleware, señales, vistas, exportación PDF y tests. |
+| `static/` | CSS y JavaScript compartido o por módulo. Incluye `static/js/notificaciones-realtime.js`. |
+| `media/` | Archivos cargados por usuarios: evidencias, fotos de perfil, equipos, documentos y reportes generados. |
+| `documentacion/` | Material académico y entregables externos del proyecto. |
+| `cargar_maestros.py` | Script de carga de catálogos base para iniciar una base limpia. |
+| `reset_db.py` | Utilidad local para reinicio controlado de datos durante desarrollo. |
+| `.env` | Variables sensibles locales. No debe subirse al repositorio. |
+
+Observación técnica: la estructura está coherente para continuar hacia PostgreSQL, Docker y despliegue. El siguiente orden recomendado es mantener `static` versionado, dejar `media` fuera de Git, no subir `venv`, y conservar `scratch`/temporales fuera del repositorio.
+
+---
+
+## 12. Funcionalidades Implementadas
 *   [x] Autenticación DNI y Perfiles con foto procesada.
 *   [x] Chat de seguimiento con miniaturas de imágenes.
 *   [x] Filtros inteligentes de incidencias por buscador, área, prioridad, estado y SLA vencidas.
@@ -238,9 +266,10 @@ Reglas:
 *   [x] Dashboard separado de inventario dentro del módulo Dashboard.
 *   [x] PDF de auditoría.
 *   [x] Campana de notificaciones priorizadas para administrador, técnico, almacén y trabajador.
+*   [x] Entrega de notificaciones en tiempo real mediante Daphne/ASGI, Channels y WebSocket.
+*   [x] Migración local a PostgreSQL mediante variables de entorno.
 
-## 12. Pendientes y Mejoras
+## 13. Pendientes y Mejoras
 *   [ ] Revisión final de manual académico, capturas y anexos antes de entrega.
-*   [ ] Migración planificada a PostgreSQL para publicación.
 *   [ ] Dockerización para despliegue reproducible.
-*   [ ] Configuración de entorno productivo: variables de entorno, servidor WSGI/ASGI, archivos estáticos, backups y monitoreo.
+*   [ ] Configuración de entorno productivo: variables de entorno, servidor ASGI, Redis para Channels, archivos estáticos, backups y monitoreo.
