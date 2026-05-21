@@ -882,3 +882,16 @@ th.sortable.desc .sort-icon::after { content: "\f128"; }
     margin-top: 4px;
     color: #dc3545;
 }
+
+/* Shared layout helpers */
+.js-hidden {
+    display: none;
+}
+
+.app-topbar {
+    height: 60px;
+}
+
+.error-logo {
+    max-height: 100px;
+}

@@ -66,6 +66,18 @@ def nombre_usuario(usuario):
     return usuario.get_full_name() or usuario.username
 
 
+def puede_ver_incidencia(usuario, incidencia):
+    if not usuario.is_authenticated:
+        return False
+    if is_admin(usuario):
+        return True
+    if usuario.es_tecnico:
+        return incidencia.tecnico_asignado_id == usuario.id or incidencia.creador_id == usuario.id
+    if usuario.es_usuario:
+        return incidencia.creador_id == usuario.id
+    return False
+
+
 def prioridad_label(value):
     return dict(Incidencia.PRIORIDAD_CHOICES).get(value, value or "Sin prioridad")
 
@@ -400,13 +412,9 @@ def crear_incidencia(request):
 def detalle_incidencia(request, pk):
     incidencia = get_object_or_404(optimized_incidencias_queryset(), pk=pk)
     
-    if not is_admin(request.user):
-        if request.user.es_tecnico and incidencia.tecnico_asignado != request.user:
-            messages.error(request, "No estás asignado a esta incidencia.")
-            return redirect('incidencias_list')
-        if request.user.es_usuario and incidencia.creador != request.user:
-            messages.error(request, "No tienes permiso para ver esta incidencia.")
-            return redirect('incidencias_list')
+    if not puede_ver_incidencia(request.user, incidencia):
+        messages.error(request, "No tienes permiso para ver esta incidencia.")
+        return redirect('incidencias_list')
     
     from auditoria.models import Auditoria
     from inventario.models import Equipo, EstadoEquipo
@@ -483,11 +491,7 @@ def detalle_incidencia(request, pk):
 def marcar_escribiendo(request, pk):
     incidencia = get_object_or_404(Incidencia, pk=pk)
     
-    puedo_ver = is_admin(request.user) or \
-                (request.user.es_tecnico and incidencia.tecnico_asignado == request.user) or \
-                (request.user.es_usuario and incidencia.creador == request.user)
-                
-    if not puedo_ver:
+    if not puede_ver_incidencia(request.user, incidencia):
         return HttpResponse(status=403)
 
     cache_key = f"typing_list_{pk}"
@@ -688,6 +692,9 @@ def crear_incidencia_modal(request):
 @require_POST
 def agregar_comentario(request, pk):
     incidencia = get_object_or_404(Incidencia, pk=pk)
+    if not puede_ver_incidencia(request.user, incidencia):
+        return JsonResponse({"success": False, "message": "No tienes permiso para comentar esta incidencia."}, status=403)
+
     if incidencia.estado_actual in {Incidencia.ESTADO_RECHAZADO, Incidencia.ESTADO_CERRADO}:
         return JsonResponse({"success": False, "message": "El seguimiento está bloqueado para esta incidencia."}, status=403)
 

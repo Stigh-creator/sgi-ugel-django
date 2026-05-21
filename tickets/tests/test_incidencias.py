@@ -1862,6 +1862,43 @@ class IncidenciasBusinessRulesTests(TestCase):
         self.assertIn(asignada_al_tecnico, asignadas)
         self.assertNotIn(creada_por_tecnico, asignadas)
 
+    def test_tecnico_puede_ver_detalle_de_incidencia_creada_por_el(self):
+        incidencia = Incidencia.objects.create(
+            creador=self.tecnico,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Incidencia creada por el técnico y asignada a otro especialista.",
+            tecnico_asignado=self.tecnico_2,
+            estado=get_estado(Incidencia.ESTADO_ASIGNADO),
+        )
+        self.client.force_login(self.tecnico)
+
+        response = self.client.get(reverse("detalle_incidencia", args=[incidencia.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["incidencia"], incidencia)
+
+    def test_usuario_sin_permiso_no_puede_comentar_incidencia_ajena(self):
+        incidencia = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Incidencia que no pertenece al técnico no asignado.",
+            tecnico_asignado=self.tecnico,
+            estado=get_estado(Incidencia.ESTADO_ASIGNADO),
+        )
+        self.client.force_login(self.tecnico_2)
+
+        response = self.client.post(
+            reverse("agregar_comentario", args=[incidencia.pk]),
+            {"texto": "Intento de comentario sin permiso."},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Comentario.objects.filter(incidencia=incidencia).exists())
+
     def test_snapshot_metricas_guarda_historico_diario(self):
         call_command("snapshot_metricas")
 

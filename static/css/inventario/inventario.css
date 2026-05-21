@@ -780,3 +780,28 @@
     background: #f8fafc;
     padding: 0.9rem 1rem;
 }
+
+.inventory-preview-image {
+    max-height: 200px;
+}
+
+.inventory-equipment-thumb {
+    width: 45px;
+    height: 45px;
+    object-fit: cover;
+}
+
+.inventory-equipment-thumb-empty {
+    width: 45px;
+    height: 45px;
+}
+
+.equipment-detail-photo {
+    max-height: 250px;
+    width: 100%;
+    object-fit: cover;
+}
+
+.equipment-detail-fallback-icon {
+    font-size: 4rem;
+}

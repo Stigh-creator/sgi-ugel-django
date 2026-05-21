@@ -199,3 +199,19 @@
     content: '\F5D5';
     opacity: 1;
 }
+
+.users-area-filter-wrap {
+    min-width: 220px;
+}
+
+.users-area-filter {
+    height: 45px;
+    border: 1px solid #e2e8f0;
+    padding-left: 1rem;
+    font-size: 0.85rem;
+}
+
+.form-select.is-locked {
+    pointer-events: none;
+    background-color: #e9ecef;
+}

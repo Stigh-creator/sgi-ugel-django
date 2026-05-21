@@ -335,10 +335,10 @@
                         <td>
                             {% if equipo.foto_estado %}
                             <a href="{{ equipo.foto_estado.url }}" target="_blank">
-                                <img src="{{ equipo.foto_estado.url }}" class="rounded shadow-sm border" style="width: 45px; height: 45px; object-fit: cover;" alt="Foto estado">
+                                <img src="{{ equipo.foto_estado.url }}" class="rounded shadow-sm border inventory-equipment-thumb" alt="Foto estado">
                             </a>
                             {% else %}
-                            <div class="bg-light rounded text-muted d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;">
+                            <div class="bg-light rounded text-muted d-flex align-items-center justify-content-center inventory-equipment-thumb-empty">
                                 <i class="bi bi-camera small"></i>
                             </div>
                             {% endif %}

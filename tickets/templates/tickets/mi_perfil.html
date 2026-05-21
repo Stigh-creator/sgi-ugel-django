@@ -64,8 +64,8 @@
                     {% endif %}
                 </div>
 
-                <div class="p-3 profile-area" style="background-color: var(--warning-soft);">
-                    <p class="mb-1 small text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Área de Trabajo
+                <div class="p-3 profile-area">
+                    <p class="mb-1 small text-muted text-uppercase fw-bold profile-area-label">Área de Trabajo
                     </p>
                     <div class="d-flex align-items-center justify-content-center text-dark">
                         {% if user.area %}
@@ -266,7 +266,7 @@
             <div class="modal-body p-4">
                 <p class="text-muted small mb-4">Usa el recuadro para centrar tu foto. Se guardará en formato cuadrado obligatoriamente.</p>
                 <div class="cropper-container-wrapper">
-                    <img id="cropper-image" src="" style="max-width: 100%; display: block;">
+                    <img id="cropper-image" src="" class="cropper-image">
                 </div>
             </div>
             <div class="modal-footer border-0 pt-0">

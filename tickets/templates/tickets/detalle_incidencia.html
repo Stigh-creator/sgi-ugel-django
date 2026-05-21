@@ -252,7 +252,7 @@
                                 </select>
                                 <div id="tipoResolucionHelp" class="alert alert-info py-2 px-3 small mt-2 mb-0 d-none"></div>
                             </div>
-                            <div class="col-md-6" id="equipoReemplazoGroup" style="display: none;">
+                            <div class="col-md-6 replacement-group" id="equipoReemplazoGroup">
                                 <label for="equipo_reemplazo" class="form-label-custom">Equipo de reemplazo temporal</label>
                                 <select id="equipo_reemplazo" name="equipo_reemplazo" class="form-select">
                                     <option value="">-- Seleccione equipo de reemplazo --</option>
@@ -279,7 +279,7 @@
                                         <div class="input-file-container">
                                             <input type="file" name="evidencia_solucion" id="id_evidencia_solucion" class="form-control" accept="image/jpeg,image/png,image/webp" capture="camera" required onchange="previewCardImage(this)">
                                         </div>
-                                        <div class="preview-container" style="display: none;">
+                                        <div class="preview-container js-hidden">
                                             <img src="" class="img-fluid rounded-3" alt="Vista previa">
                                             <button type="button" class="btn-remove-image" onclick="removeCardImage('id_evidencia_solucion')">
                                                 <i class="fas fa-times"></i>
@@ -293,7 +293,7 @@
                                         <div class="input-file-container">
                                             <input type="file" name="evidencia_solucion_2" id="id_evidencia_solucion_2" class="form-control" accept="image/jpeg,image/png,image/webp" capture="camera" onchange="previewCardImage(this)">
                                         </div>
-                                        <div class="preview-container" style="display: none;">
+                                        <div class="preview-container js-hidden">
                                             <img src="" class="img-fluid rounded-3" alt="Vista previa">
                                             <button type="button" class="btn-remove-image" onclick="removeCardImage('id_evidencia_solucion_2')">
                                                 <i class="fas fa-times"></i>
@@ -307,7 +307,7 @@
                                         <div class="input-file-container">
                                             <input type="file" name="evidencia_solucion_3" id="id_evidencia_solucion_3" class="form-control" accept="image/jpeg,image/png,image/webp" capture="camera" onchange="previewCardImage(this)">
                                         </div>
-                                        <div class="preview-container" style="display: none;">
+                                        <div class="preview-container js-hidden">
                                             <img src="" class="img-fluid rounded-3" alt="Vista previa">
                                             <button type="button" class="btn-remove-image" onclick="removeCardImage('id_evidencia_solucion_3')">
                                                 <i class="fas fa-times"></i>
@@ -325,7 +325,7 @@
                                 <button type="submit" id="btn-resolver" class="btn resolution-submit-btn w-100 fw-bold rounded-pill py-3">
                                     <i class="bi bi-check-circle-fill me-2"></i> Marcar como resuelto
                                 </button>
-                                <div id="resolution-error-msg" class="text-danger small mt-2 text-center" style="display: none;">
+                                <div id="resolution-error-msg" class="text-danger small mt-2 text-center resolution-error-message">
                                     <i class="bi bi-exclamation-triangle-fill me-1"></i>
                                     Para resolver, completa la descripción (mín. 20 caracteres) y adjunta la evidencia obligatoria.
                                 </div>
@@ -349,7 +349,7 @@
                     </div>
 
                     <div class="comments-composer">
-                        <div id="typing-indicator" class="text-muted small mb-2" style="height: 20px; font-style: italic;"></div>
+                        <div id="typing-indicator" class="text-muted small mb-2 typing-indicator"></div>
                         {% if incidencia.estado_visual == 'Rechazado' %}
                             <div class="chat-bloqueado p-3 text-center">
                                 <i class="bi bi-archive-fill me-2"></i> Seguimiento en <strong>modo histórico</strong>. El motivo del rechazo queda visible, pero no admite nuevos mensajes hasta que administración reasigne el ticket.
@@ -360,7 +360,7 @@
                                     {% csrf_token %}
                                     <div id="preview-container" class="d-flex flex-wrap gap-2 mb-2"></div>
                                     <div class="composer-row">
-                                        <textarea id="texto_comentario" name="texto" class="form-control composer-textarea" placeholder="Escribe un mensaje..." rows="1" style="resize: none;" required hx-post="{% url 'marcar_escribiendo' incidencia.id %}" hx-trigger="keyup changed delay:500ms" hx-swap="none"></textarea>
+                                        <textarea id="texto_comentario" name="texto" class="form-control composer-textarea" placeholder="Escribe un mensaje..." rows="1" required hx-post="{% url 'marcar_escribiendo' incidencia.id %}" hx-trigger="keyup changed delay:500ms" hx-swap="none"></textarea>
                                         <label for="id_evidencia_adjunta" class="composer-icon-btn" title="Adjuntar imagen">
                                             <i class="bi bi-camera-fill"></i>
                                             <input type="file" name="evidencia_adjunta" id="id_evidencia_adjunta" accept="image/jpeg,image/png,image/webp" capture="camera" class="d-none" onchange="previewImage(this)">
@@ -567,7 +567,7 @@
                                 <div class="input-file-container">
                                     <input type="file" name="imagen_1" id="id_reabrir_imagen_1" class="form-control" accept="image/jpeg,image/png,image/webp" capture="camera" onchange="previewCardImage(this)">
                                 </div>
-                                <div class="preview-container" style="display: none;">
+                                <div class="preview-container js-hidden">
                                     <img src="" class="img-fluid rounded-3" alt="Vista previa">
                                     <button type="button" class="btn-remove-image" onclick="removeCardImage('id_reabrir_imagen_1')">
                                         <i class="fas fa-times"></i>
@@ -581,7 +581,7 @@
                                 <div class="input-file-container">
                                     <input type="file" name="imagen_2" id="id_reabrir_imagen_2" class="form-control" accept="image/jpeg,image/png,image/webp" capture="camera" onchange="previewCardImage(this)">
                                 </div>
-                                <div class="preview-container" style="display: none;">
+                                <div class="preview-container js-hidden">
                                     <img src="" class="img-fluid rounded-3" alt="Vista previa">
                                     <button type="button" class="btn-remove-image" onclick="removeCardImage('id_reabrir_imagen_2')">
                                         <i class="fas fa-times"></i>
@@ -595,7 +595,7 @@
                                 <div class="input-file-container">
                                     <input type="file" name="imagen_3" id="id_reabrir_imagen_3" class="form-control" accept="image/jpeg,image/png,image/webp" capture="camera" onchange="previewCardImage(this)">
                                 </div>
-                                <div class="preview-container" style="display: none;">
+                                <div class="preview-container js-hidden">
                                     <img src="" class="img-fluid rounded-3" alt="Vista previa">
                                     <button type="button" class="btn-remove-image" onclick="removeCardImage('id_reabrir_imagen_3')">
                                         <i class="fas fa-times"></i>
@@ -678,7 +678,7 @@
         const help = document.getElementById('tipoResolucionHelp');
         if (!group || !replacement) return;
         const needsReplacement = selectEl.value === 'reemplazado';
-        group.style.display = needsReplacement ? '' : 'none';
+        group.style.display = needsReplacement ? 'block' : 'none';
         replacement.required = needsReplacement;
         if (!needsReplacement) {
             replacement.value = '';
@@ -805,9 +805,8 @@
                 const wrapper = document.createElement('div');
                 wrapper.className = 'position-relative';
                 wrapper.innerHTML = `
-                    <img src="${e.target.result}" class="rounded-3 border" style="width: 60px; height: 60px; object-fit: cover;">
-                    <button type="button" class="btn btn-danger btn-sm rounded-circle position-absolute" 
-                            style="top: -5px; right: -5px; width: 20px; height: 20px; padding: 0; font-size: 10px;"
+                    <img src="${e.target.result}" class="rounded-3 border comment-preview-image">
+                    <button type="button" class="btn btn-danger btn-sm rounded-circle position-absolute comment-preview-remove"
                             onclick="clearImage()">
                         <i class="bi bi-x"></i>
                     </button>

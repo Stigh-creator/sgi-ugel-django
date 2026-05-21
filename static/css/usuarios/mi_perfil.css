@@ -403,4 +403,17 @@ input::-webkit-credentials-auto-fill-button {
     align-items: center;
 }
 
+.profile-area {
+    background-color: var(--warning-soft);
+}
+
+.profile-area-label {
+    font-size: 0.6rem;
+}
+
+.cropper-image {
+    max-width: 100%;
+    display: block;
+}
+
 @media (max-width: 767px) { .btn-primary-custom, .btn-update-password { width: 100%; display: flex; justify-content: center; align-items: center; } }

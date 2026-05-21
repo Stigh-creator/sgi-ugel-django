@@ -55,7 +55,7 @@
                 </div>
                 <div>
                     <span class="text-muted small fw-bold d-block uppercase">Más Activo (Hoy)</span>
-                    <h3 class="mb-0 fw-bold fs-5 text-truncate" style="max-width: 150px;" title="{{ metrics.most_active_user }}">
+                    <h3 class="mb-0 fw-bold fs-5 text-truncate audit-active-user-name" title="{{ metrics.most_active_user }}">
                         {{ metrics.most_active_user }}
                     </h3>
                 </div>
@@ -90,7 +90,7 @@
                     <span class="module-label">Última Actividad</span>
                     {% if data.ultima_accion %}
                         <p class="small text-dark fw-bold mb-1 text-truncate">{{ data.ultima_accion.accion|capfirst }}</p>
-                        <p class="text-muted" style="font-size: 0.75rem;">{{ data.ultima_accion.fecha_hora|timesince }} atrás</p>
+                        <p class="text-muted audit-tiny-time">{{ data.ultima_accion.fecha_hora|timesince }} atrás</p>
                     {% else %}
                         <p class="small text-muted mb-3">Sin actividad reciente</p>
                     {% endif %}
@@ -180,7 +180,7 @@
                         <th>Usuario</th>
                         <th>Módulo</th>
                         <th>Acción</th>
-                        <th style="width: 48%; min-width: 360px;">Detalle</th>
+                        <th class="audit-detail-head">Detalle</th>
                         <th class="text-center">IP</th>
                     </tr>
                 </thead>
@@ -193,12 +193,12 @@
                         </td>
                         <td>
                             <div class="d-flex align-items-center gap-2">
-                                <span class="bg-light text-dark shadow-sm rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.8rem; font-weight: 700;">
+                                <span class="bg-light text-dark shadow-sm rounded-circle d-flex align-items-center justify-content-center audit-user-avatar">
                                     {{ log.usuario.username|slice:":1"|upper }}
                                 </span>
                                 <div>
                                     <div class="fw-bold">{% if log.usuario.first_name %}{{ log.usuario.first_name }} {{ log.usuario.last_name }}{% else %}{{ log.usuario.username }}{% endif %}</div>
-                                    <div class="small text-muted" style="font-size: 0.7rem;">DNI: {{ log.usuario.username }}</div>
+                                    <div class="small text-muted audit-user-dni">DNI: {{ log.usuario.username }}</div>
                                 </div>
                             </div>
                         </td>
@@ -210,8 +210,8 @@
                         <td>
                             <span class="fw-bold">{{ log.accion|capfirst }}</span>
                         </td>
-                        <td style="min-width: 360px;">
-                            <div class="small text-dark p-2 bg-light rounded-3 border-start border-3 border-{{ log.modulo }}" style="white-space: normal; line-height: 1.45;">
+                        <td class="audit-detail-cell">
+                            <div class="small text-dark p-2 bg-light rounded-3 border-start border-3 border-{{ log.modulo }} audit-detail-box">
                                 {{ log.descripcion }}
                             </div>
                         </td>
@@ -223,7 +223,7 @@
                     <tr>
                         <td colspan="6" class="text-center py-5">
                             <div class="text-center mb-3">
-                                <i class="bi bi-search text-muted opacity-25" style="font-size: 5rem;"></i>
+                                <i class="bi bi-search text-muted opacity-25 audit-empty-icon"></i>
                             </div>
                             <h5 class="fw-bold text-dark">No se encontraron resultados</h5>
                             <p class="text-muted">Intenta ajustar los filtros de búsqueda para obtener mejores resultados.</p>

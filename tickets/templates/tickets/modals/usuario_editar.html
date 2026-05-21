@@ -82,7 +82,7 @@
 
                         <div class="col-md-6">
                             <label class="form-label small fw-bold text-muted">Rol en el Sistema</label>
-                            <select name="role" class="form-select {% if update_form.role.errors %}is-invalid{% endif %}" required {% if update_form.has_active_incidents %}style="pointer-events: none; background-color: #e9ecef;" aria-disabled="true"{% endif %}>
+                            <select name="role" class="form-select {% if update_form.role.errors %}is-invalid{% endif %} {% if update_form.has_active_incidents %}is-locked{% endif %}" required {% if update_form.has_active_incidents %}aria-disabled="true"{% endif %}>
                                 {% for val, label in update_form.fields.role.choices %}
                                 {% with actual=update_form.role.value|stringformat:"s" opcion=val|stringformat:"s" %}
                                 <option value="{{ val|default:'' }}" {% if not update_form.role.value and not val %}selected{% elif actual == opcion %}selected{% endif %}>{{ label }}</option>
@@ -95,7 +95,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-bold text-muted">Área Perteneciente</label>
-                            <select name="area" class="form-select {% if update_form.area.errors %}is-invalid{% endif %}" required {% if update_form.has_active_incidents %}style="pointer-events: none; background-color: #e9ecef;" aria-disabled="true"{% endif %}>
+                            <select name="area" class="form-select {% if update_form.area.errors %}is-invalid{% endif %} {% if update_form.has_active_incidents %}is-locked{% endif %}" required {% if update_form.has_active_incidents %}aria-disabled="true"{% endif %}>
                                 {% for val, label in update_form.fields.area.choices %}
                                 {% with actual=update_form.area.value|stringformat:"s" opcion=val|stringformat:"s" %}
                                 <option value="{{ val|default:'' }}" {% if not update_form.area.value and not val %}selected{% elif actual == opcion %}selected{% endif %}>{{ label }}</option>

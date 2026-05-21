@@ -62,7 +62,7 @@
 {% endfor %}
 
 {# Indicador de escritura OOB (Out-of-Band swap) #}
-<div id="typing-indicator" hx-swap-oob="true" class="text-muted small mb-1" style="height: 20px; font-style: italic;">
+<div id="typing-indicator" hx-swap-oob="true" class="text-muted small mb-1 typing-indicator">
     {% if typing_users %}
         <i class="bi bi-pencil-fill me-1"></i>
         {% for name in typing_users %}

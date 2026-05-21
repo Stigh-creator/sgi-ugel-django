@@ -850,3 +850,85 @@
 .swal2-container {
     z-index: 9999 !important;
 }
+
+/* Extracted template presentation helpers */
+.category-guide-card {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef !important;
+}
+
+.category-guide-title {
+    color: #343a40;
+}
+
+.category-guide-content {
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.category-guide-inline {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    color: #495057;
+    font-size: 0.85rem;
+}
+
+.category-guide-inline-title {
+    color: #343a40;
+    font-size: 0.9rem;
+}
+
+.incidencias-new-button {
+    width: fit-content !important;
+    min-width: fit-content !important;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.ticket-description-cell {
+    max-width: 250px;
+}
+
+.ticket-assignee-name {
+    line-height: 1;
+}
+
+.ticket-assignee-role {
+    font-size: 0.6rem;
+}
+
+.ticket-unassigned-avatar {
+    width: 32px;
+    height: 32px;
+}
+
+.modal-user-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.8rem;
+}
+
+.modal-evidence-image {
+    height: 120px;
+    object-fit: cover;
+}
+
+.modal-timeline {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.modal-timeline-marker {
+    width: 10px;
+    height: 10px;
+    margin-left: -1px;
+    top: 10px;
+}
+
+.modal-timeline-image {
+    max-height: 150px;
+}
+
+.hidden-form-field {
+    display: none;
+}

@@ -8,7 +8,7 @@
                         <label class="form-label-custom">Creado por</label>
                         <div class="d-flex align-items-center gap-2">
                             <div class="bg-white rounded-circle p-1 shadow-sm">
-                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold modal-user-avatar">
                                     {{ incidencia.creador.first_name|slice:":1"|upper }}
                                 </div>
                             </div>
@@ -61,7 +61,7 @@
                             {% if incidencia.imagen_adjunta %}
                             <div class="col-4">
                                 <a href="{{ incidencia.imagen_adjunta.url }}" target="_blank" class="d-block overflow-hidden rounded-3 border shadow-sm">
-                                    <img src="{{ incidencia.imagen_adjunta.url }}" class="img-fluid w-100 hover-zoom" alt="Principal" style="height: 120px; object-fit: cover;">
+                                    <img src="{{ incidencia.imagen_adjunta.url }}" class="img-fluid w-100 hover-zoom modal-evidence-image" alt="Principal">
                                 </a>
                                 <small class="tiny-text text-center d-block mt-1">Principal</small>
                             </div>
@@ -70,7 +70,7 @@
                             {% if incidencia.imagen_2 %}
                             <div class="col-4">
                                 <a href="{{ incidencia.imagen_2.url }}" target="_blank" class="d-block overflow-hidden rounded-3 border shadow-sm">
-                                    <img src="{{ incidencia.imagen_2.url }}" class="img-fluid w-100 hover-zoom" alt="Adicional" style="height: 120px; object-fit: cover;">
+                                    <img src="{{ incidencia.imagen_2.url }}" class="img-fluid w-100 hover-zoom modal-evidence-image" alt="Adicional">
                                 </a>
                                 <small class="tiny-text text-center d-block mt-1">Evidencia 2</small>
                             </div>
@@ -79,7 +79,7 @@
                             {% if incidencia.imagen_3 %}
                             <div class="col-4">
                                 <a href="{{ incidencia.imagen_3.url }}" target="_blank" class="d-block overflow-hidden rounded-3 border shadow-sm">
-                                    <img src="{{ incidencia.imagen_3.url }}" class="img-fluid w-100 hover-zoom" alt="Adicional" style="height: 120px; object-fit: cover;">
+                                    <img src="{{ incidencia.imagen_3.url }}" class="img-fluid w-100 hover-zoom modal-evidence-image" alt="Adicional">
                                 </a>
                                 <small class="tiny-text text-center d-block mt-1">Evidencia 3</small>
                             </div>
@@ -132,10 +132,10 @@
         </div>
         
         <!-- Timeline Refactorizada -->
-        <div class="timeline-container-full mb-4" style="max-height: 500px; overflow-y: auto;">
+        <div class="timeline-container-full mb-4 modal-timeline">
             {% for item in timeline %}
             <div class="timeline-entry mb-3 border-start border-2 ps-3 position-relative">
-                <div class="timeline-marker position-absolute start-0 translate-middle-x bg-primary rounded-circle" style="width: 10px; height: 10px; margin-left: -1px; top: 10px;"></div>
+                <div class="timeline-marker position-absolute start-0 translate-middle-x bg-primary rounded-circle modal-timeline-marker"></div>
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <span class="badge {% if item.tipo == 'log' %}bg-light text-primary border{% else %}bg-success bg-opacity-10 text-success border border-success border-opacity-25{% endif %} tiny-text fw-bold">
                         {{ item.tipo|upper }}
@@ -149,7 +149,7 @@
                         <p class="small mb-1"><strong>{{ item.data.autor.first_name }}</strong>: {{ item.data.mensaje }}</p>
                         {% if item.data.imagen %}
                         <a href="{{ item.data.imagen.url }}" target="_blank" class="d-block mt-2">
-                            <img src="{{ item.data.imagen.url }}" class="img-fluid rounded-2 border" style="max-height: 150px;">
+                            <img src="{{ item.data.imagen.url }}" class="img-fluid rounded-2 border modal-timeline-image">
                         </a>
                         {% endif %}
                     {% endif %}

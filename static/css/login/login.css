@@ -362,3 +362,16 @@ body {
 .eye-icon i {
     font-size: 1.2rem;
 }
+
+.login-password-input {
+    padding-right: 45px !important;
+}
+
+.password-reset-modal {
+    border-radius: 1.5rem;
+}
+
+.password-reset-icon {
+    width: 80px;
+    height: 80px;
+}

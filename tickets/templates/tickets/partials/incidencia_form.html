@@ -2,7 +2,7 @@
     <!-- Fila 1: Categoría y Prioridad -->
     <div class="col-12">
         <label class="form-label-custom">Categoría de Falla</label>
-        <div style="display:none;">{{ form.categoria }}</div>
+        <div class="hidden-form-field">{{ form.categoria }}</div>
         <div class="category-chips {% if form.categoria.errors %}is-invalid-group{% endif %}" id="categoryChips">
             {% for value, label in form.categoria.field.choices %}
                 {% if value %}
@@ -20,7 +20,7 @@
     {% if not request.user.es_usuario %}
     <div class="col-12">
         <label class="form-label-custom">Nivel de Prioridad</label>
-        <div style="display:none;">{{ form.prioridad }}</div>
+        <div class="hidden-form-field">{{ form.prioridad }}</div>
         <div class="priority-cards {% if form.prioridad.errors %}is-invalid-group{% endif %}" id="priorityCards">
             {% for value, label in form.prioridad.field.choices %}
                 {% if value %}
@@ -45,13 +45,13 @@
     </div>
 
     <!-- Sección Equipo (Condicional) -->
-    <div id="sectionEquipo" class="col-12" style="display: none;">
+    <div id="sectionEquipo" class="col-12 js-hidden">
         <div class="section-equipo-container">
             <label class="form-label-custom">Equipo Afectado</label>
             {{ form.equipo }}
             
             <!-- Campos OTRO -->
-            <div id="sectionOtroEquipo" class="mt-4 pt-4 border-top" style="display: none;">
+            <div id="sectionOtroEquipo" class="mt-4 pt-4 border-top js-hidden">
                 <p class="tiny-text fw-bold text-primary mb-4 text-center">
                     <i class="fas fa-microchip me-2"></i>ESPECIFICACIONES DEL EQUIPO NO LISTADO
                 </p>
@@ -106,7 +106,7 @@
                     <div class="input-file-container">
                         {{ form.imagen_adjunta }}
                     </div>
-                    <div class="preview-container mt-2" style="display: none;">
+                    <div class="preview-container mt-2 js-hidden">
                         <img src="" class="img-fluid rounded-3" alt="Vista previa">
                         <button type="button" class="btn-remove-image" onclick="removeImage('id_imagen_adjunta')">
                             <i class="fas fa-times"></i>
@@ -121,7 +121,7 @@
                     <div class="input-file-container">
                         {{ form.imagen_2 }}
                     </div>
-                    <div class="preview-container mt-2" style="display: none;">
+                    <div class="preview-container mt-2 js-hidden">
                         <img src="" class="img-fluid rounded-3" alt="Vista previa">
                         <button type="button" class="btn-remove-image" onclick="removeImage('id_imagen_2')">
                             <i class="fas fa-times"></i>
@@ -136,7 +136,7 @@
                     <div class="input-file-container">
                         {{ form.imagen_3 }}
                     </div>
-                    <div class="preview-container mt-2" style="display: none;">
+                    <div class="preview-container mt-2 js-hidden">
                         <img src="" class="img-fluid rounded-3" alt="Vista previa">
                         <button type="button" class="btn-remove-image" onclick="removeImage('id_imagen_3')">
                             <i class="fas fa-times"></i>

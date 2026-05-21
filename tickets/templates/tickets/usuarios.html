@@ -31,8 +31,8 @@
                 <input type="text" name="q" placeholder="Buscar por nombre, DNI o correo..." value="{{ request.GET.q|default:'' }}">
             </div>
 
-            <div class="filter-wrap" style="min-width: 220px;">
-                <select name="area" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()" style="height: 45px; border: 1px solid #e2e8f0; padding-left: 1rem; font-size: 0.85rem;">
+            <div class="filter-wrap users-area-filter-wrap">
+                <select name="area" class="form-select form-select-sm rounded-pill users-area-filter" onchange="this.form.submit()">
                     <option value="">-- Filtrar por Área --</option>
                     {% for area in areas %}
                     <option value="{{ area.id }}" {% if request.GET.area == area.id|stringformat:"i" %}selected{% endif %}>{{ area.name }}</option>

@@ -51,8 +51,8 @@
                         <span class="input-group-text input-group-text-modern">
                             <i class="bi bi-lock fs-5"></i>
                         </span>
-                        <input type="password" id="password" name="password" class="form-control input-modern input-modern-with-icon"
-                            required placeholder="**********" tabindex="2" autocomplete="current-password" style="padding-right: 45px !important;">
+                        <input type="password" id="password" name="password" class="form-control input-modern input-modern-with-icon login-password-input"
+                            required placeholder="**********" tabindex="2" autocomplete="current-password">
                         <span id="togglePassword" class="eye-icon">
                             <i class="bi bi-eye" id="toggleIcon"></i>
                         </span>
@@ -179,14 +179,13 @@
 <!-- Modal Olvidé mi Contraseña -->
 <div class="modal fade" id="modalOlvido" tabindex="-1" aria-labelledby="modalOlvidoLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.5rem;">
+        <div class="modal-content border-0 shadow-lg password-reset-modal">
             <div class="modal-header border-0 pb-0 px-4 pt-4">
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body text-center p-4 p-md-5">
                 <div class="mb-4">
-                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm"
-                        style="width: 80px; height: 80px;">
+                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm password-reset-icon">
                         <i class="bi bi-shield-lock-fill fs-1"></i>
                     </div>
                 </div>
