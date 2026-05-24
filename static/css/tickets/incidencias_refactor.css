@@ -932,3 +932,83 @@
 .hidden-form-field {
     display: none;
 }
+
+.specialist-option,
+.specialist-item {
+    align-items: center;
+    display: flex;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.specialist-option {
+    padding: 0.2rem 0;
+}
+
+.specialist-item {
+    line-height: 1.2;
+}
+
+.specialist-status-dot {
+    border-radius: 999px;
+    flex: 0 0 auto;
+    height: 0.65rem;
+    width: 0.65rem;
+}
+
+.specialist-option.is-available .specialist-status-dot,
+.specialist-item.is-available .specialist-status-dot {
+    background: #16a34a;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.14);
+}
+
+.specialist-option.is-full .specialist-status-dot,
+.specialist-item.is-full .specialist-status-dot {
+    background: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.14);
+}
+
+.specialist-option-body,
+.specialist-item-body {
+    min-width: 0;
+}
+
+.specialist-option-name,
+.specialist-item-name {
+    display: block;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.specialist-option-meta,
+.specialist-item-meta {
+    display: block;
+    font-size: 0.75rem;
+    margin-top: 0.1rem;
+}
+
+.specialist-option.is-available .specialist-option-name,
+.specialist-item.is-available .specialist-item-name {
+    color: #15803d;
+}
+
+.specialist-option.is-available .specialist-option-meta,
+.specialist-item.is-available .specialist-item-meta {
+    color: #166534;
+}
+
+.specialist-option.is-full .specialist-option-name,
+.specialist-item.is-full .specialist-item-name {
+    color: #b91c1c;
+}
+
+.specialist-option.is-full .specialist-option-meta,
+.specialist-item.is-full .specialist-item-meta {
+    color: #b91c1c;
+}
+
+.ts-wrapper.specialist-select .ts-control input {
+    min-width: 0 !important;
+}

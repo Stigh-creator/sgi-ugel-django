@@ -1,3 +1,5 @@
+import json
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -7,6 +9,7 @@ from ..services import (
     compatible_replacement_type_ids,
     equipo_reemplazo_es_compatible,
     equipos_ocupados_por_incidencias,
+    get_active_ticket_load_for_user,
     replacement_blocking_states,
     validate_tecnico_capacity,
 )
@@ -35,6 +38,36 @@ class EquipoOrOtherChoiceField(forms.ModelChoiceField):
         if value == "otro":
             return None
         return super().clean(value)
+
+
+class EspecialistaSelect(forms.Select):
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex=subindex, attrs=attrs)
+        instance = getattr(value, "instance", None)
+        if instance:
+            load = get_active_ticket_load_for_user(
+                instance,
+                exclude_incidencia_id=getattr(self, "exclude_incidencia_id", None),
+            )
+            capacity = instance.capacidad_base or 4
+            state = "full" if load >= capacity else "available"
+            option["attrs"].update(
+                {
+                    "data-load": str(load),
+                    "data-capacity": str(capacity),
+                    "data-role": instance.role_short_label,
+                    "data-state": state,
+                    "data-data": json.dumps(
+                        {
+                            "load": load,
+                            "capacity": capacity,
+                            "role": instance.role_short_label,
+                            "state": state,
+                        }
+                    ),
+                }
+            )
+        return option
 
 
 class IncidenciaForm(forms.ModelForm):
@@ -363,13 +396,17 @@ class IncidenciaAdminForm(forms.ModelForm):
             role__in=[CustomUser.ROL_TECNICO, CustomUser.ROL_ADMIN],
             is_active=True,
         )
-        self.fields["tecnico_asignado"].required = True
-        self.fields["tecnico_asignado"].widget.attrs["class"] = "form-control live-search"
         self.fields["fecha_programada_atencion"].required = False
         self.fields["hora_programada_atencion"].required = False
         self.fields['tecnico_asignado'].label_from_instance = lambda obj: (
             f"{obj.first_name} {obj.last_name}".strip() or obj.username
-        ) + f" ({obj.get_role_display()})"
+        )
+        self.fields["tecnico_asignado"].required = True
+        self.fields["tecnico_asignado"].widget = EspecialistaSelect(
+            attrs={"class": "form-control live-search specialist-select"}
+        )
+        self.fields["tecnico_asignado"].widget.exclude_incidencia_id = self.instance.pk if self.instance else None
+        self.fields["tecnico_asignado"].widget.choices = self.fields["tecnico_asignado"].choices
 
         today = timezone.localtime(timezone.now()).date().isoformat()
         self.fields['fecha_programada_atencion'].widget.attrs['min'] = today

@@ -277,6 +277,42 @@
         });
     }
 
+    function initSpecialistSelect(tecnicoSelect) {
+        if (!window.TomSelect || !tecnicoSelect || tecnicoSelect.tomselect) return;
+
+        const specialistRender = (data, escape, compact = false) => {
+            const load = Number(data.load || 0);
+            const capacity = Number(data.capacity || 4);
+            const state = data.state || (load >= capacity ? 'full' : 'available');
+            const role = data.role || '';
+            const rootClass = compact ? 'specialist-item' : 'specialist-option';
+            return `
+                <div class="${rootClass} is-${escape(state)}">
+                    <span class="specialist-status-dot" aria-hidden="true"></span>
+                    <span class="${rootClass}-body">
+                        <span class="${rootClass}-name">${escape(data.text)}</span>
+                        <span class="${rootClass}-meta">${escape(role)} · ${load}/${capacity} activas</span>
+                    </span>
+                </div>
+            `;
+        };
+
+        new TomSelect(tecnicoSelect, {
+            create: false,
+            searchField: ['text', 'role'],
+            sortField: [{ field: 'state', direction: 'asc' }, { field: 'text', direction: 'asc' }],
+            render: {
+                option: (data, escape) => specialistRender(data, escape),
+                item: (data, escape) => specialistRender(data, escape, true)
+            },
+            onChange() {
+                this.close();
+                this.blur();
+                this.control_input?.blur();
+            }
+        });
+    }
+
     // Re-inicializar TomSelect y experiencia del modal cuando HTMX ya insertó el contenido
     document.body.addEventListener('htmx:afterSwap', function (evt) {
         if (evt.detail.target.id === 'incidenciasTableContainer') {
@@ -286,10 +322,14 @@
             const selects = evt.detail.target.querySelectorAll('.live-search');
             selects.forEach(el => {
                 if (window.TomSelect && !el.tomselect) {
-                    new TomSelect(el, {
-                        create: false,
-                        sortField: { field: "text", direction: "asc" }
-                    });
+                    if (el.classList.contains('specialist-select')) {
+                        initSpecialistSelect(el);
+                    } else {
+                        new TomSelect(el, {
+                            create: false,
+                            sortField: { field: "text", direction: "asc" }
+                        });
+                    }
                 }
             });
             if (window.initIncidenciaExperience) {

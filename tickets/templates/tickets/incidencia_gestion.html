@@ -96,15 +96,44 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js" crossorigin="anonymous"></script>
 <script>
+    function initSpecialistSelect(tecnicoSelect) {
+        if (!window.TomSelect || !tecnicoSelect || tecnicoSelect.tomselect) return;
+
+        const specialistRender = (data, escape, compact = false) => {
+            const load = Number(data.load || 0);
+            const capacity = Number(data.capacity || 4);
+            const state = data.state || (load >= capacity ? 'full' : 'available');
+            const role = data.role || '';
+            const rootClass = compact ? 'specialist-item' : 'specialist-option';
+            return `
+                <div class="${rootClass} is-${escape(state)}">
+                    <span class="specialist-status-dot" aria-hidden="true"></span>
+                    <span class="${rootClass}-body">
+                        <span class="${rootClass}-name">${escape(data.text)}</span>
+                        <span class="${rootClass}-meta">${escape(role)} · ${load}/${capacity} activas</span>
+                    </span>
+                </div>
+            `;
+        };
+
+        new TomSelect(tecnicoSelect, {
+            create: false,
+            searchField: ['text', 'role'],
+            sortField: [{ field: 'state', direction: 'asc' }, { field: 'text', direction: 'asc' }],
+            render: {
+                option: (data, escape) => specialistRender(data, escape),
+                item: (data, escape) => specialistRender(data, escape, true)
+            },
+            onChange() {
+                this.close();
+                this.blur();
+                this.control_input?.blur();
+            }
+        });
+    }
+
     document.addEventListener("DOMContentLoaded", function() {
-        // Inicializar TomSelect para el técnico
-        const tecnicoSelect = document.querySelector('#id_tecnico_asignado');
-        if (tecnicoSelect) {
-            new TomSelect(tecnicoSelect, {
-                create: false,
-                sortField: { field: "text", direction: "asc" }
-            });
-        }
+        initSpecialistSelect(document.querySelector('#id_tecnico_asignado'));
     });
 </script>
 {% endblock %}

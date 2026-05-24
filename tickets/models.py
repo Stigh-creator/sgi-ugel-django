@@ -1,6 +1,7 @@
 import os
 import uuid
 from django.contrib.auth.models import AbstractUser, UserManager
+from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.core.validators import EmailValidator
 from django.core.validators import RegexValidator
@@ -150,6 +151,44 @@ class CustomUser(AbstractUser):
         if self.telefono:
             if CustomUser.objects.filter(telefono=self.telefono).exclude(pk=self.pk).exists():
                 raise ValidationError({"telefono": "Este teléfono ya está en uso por otro usuario."})
+        if self.pk:
+            previous = CustomUser.objects.filter(pk=self.pk).only(
+                "first_name",
+                "last_name",
+                "role",
+                "area",
+                "is_staff",
+                "is_superuser",
+            ).first()
+            if previous:
+                protected_changes = {
+                    "first_name": self.first_name != previous.first_name,
+                    "last_name": self.last_name != previous.last_name,
+                    "role": self.role != previous.role,
+                    "area": self.area_id != previous.area_id,
+                    "is_staff": self.is_staff != previous.is_staff,
+                    "is_superuser": self.is_superuser != previous.is_superuser,
+                }
+                if any(protected_changes.values()):
+                    IncidenciaModel = apps.get_model("tickets", "Incidencia")
+                    active_states = [
+                        "Pendiente",
+                        "Asignado",
+                        "En Proceso",
+                        "Rechazado",
+                        "Reabierto",
+                        "Resuelto",
+                    ]
+                    has_active_incidents = IncidenciaModel.objects.filter(
+                        models.Q(tecnico_asignado=self) | models.Q(creador=self),
+                        estado__name__in=active_states,
+                    ).exists()
+                    if has_active_incidents:
+                        raise ValidationError(
+                            "No se pueden modificar nombres, apellidos, rol, área o permisos "
+                            "porque el usuario tiene incidencias activas o pendientes. "
+                            "Solo se permite actualizar correo y teléfono."
+                        )
 
     @property
     def cambio_clave_pendiente(self):
