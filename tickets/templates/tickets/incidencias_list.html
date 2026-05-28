@@ -65,12 +65,24 @@
             <input type="hidden" name="tab" id="pdfCurrentTabInput" value="{{ active_tab }}">
             <div class="d-flex flex-column flex-md-row gap-2 align-items-md-end">
                 <div>
-                    <label class="form-label small fw-semibold mb-1">Desde</label>
-                    <input type="date" name="start_date" class="form-control" value="{{ pdf_month_start|date:'Y-m-d' }}">
+                    <label class="form-label small fw-semibold mb-1" for="pdfStartDate">Desde</label>
+                    <input
+                        type="date"
+                        name="start_date"
+                        id="pdfStartDate"
+                        class="form-control"
+                        value="{% if start_date_selected %}{{ start_date_selected }}{% else %}{{ pdf_month_start|date:'Y-m-d' }}{% endif %}"
+                        data-default-value="{{ pdf_month_start|date:'Y-m-d' }}">
                 </div>
                 <div>
-                    <label class="form-label small fw-semibold mb-1">Hasta</label>
-                    <input type="date" name="end_date" class="form-control" value="{{ pdf_today_end|date:'Y-m-d' }}">
+                    <label class="form-label small fw-semibold mb-1" for="pdfEndDate">Hasta</label>
+                    <input
+                        type="date"
+                        name="end_date"
+                        id="pdfEndDate"
+                        class="form-control"
+                        value="{% if end_date_selected %}{{ end_date_selected }}{% else %}{{ pdf_today_end|date:'Y-m-d' }}{% endif %}"
+                        data-default-value="{{ pdf_today_end|date:'Y-m-d' }}">
                 </div>
                 <button type="submit" class="btn btn-danger rounded-pill fw-bold px-4">
                     <i class="bi bi-download me-2"></i>Descargar rango
@@ -86,6 +98,8 @@
             hx-target="#incidenciasTableContainer"
             hx-trigger="change, input delay:300ms from:input[name='q'], search from:input[name='q']">
             <input type="hidden" name="tab" id="currentTabInput" value="{{ active_tab }}">
+            <input type="hidden" name="start_date" id="filterStartDate" value="{{ start_date_selected|default:'' }}">
+            <input type="hidden" name="end_date" id="filterEndDate" value="{{ end_date_selected|default:'' }}">
 
             <div class="search-wrap-modern ticket-filter-search">
                 <i class="bi bi-search me-2 text-muted"></i>
@@ -201,7 +215,7 @@
 
             <button
                 type="button"
-                class="filter-dropdown-btn ticket-filter-clear {% if query or estado_selected or area_selected or prioridad_selected or sla_selected or active_tab == 'reportadas' %}active{% endif %}"
+                class="filter-dropdown-btn ticket-filter-clear {% if query or estado_selected or area_selected or prioridad_selected or sla_selected or start_date_selected or end_date_selected or active_tab == 'reportadas' %}active{% endif %}"
                 onclick="clearFilters()"
                 title="Limpiar filtros">
                 <i class="bi bi-arrow-counterclockwise"></i>
@@ -395,6 +409,30 @@
     syncTicketTabs();
     syncAllFilters();
 
+    function syncPdfRangeToListFilters({ submit = true } = {}) {
+        const form = document.getElementById('filterForm');
+        const pdfStart = document.getElementById('pdfStartDate');
+        const pdfEnd = document.getElementById('pdfEndDate');
+        const filterStart = document.getElementById('filterStartDate');
+        const filterEnd = document.getElementById('filterEndDate');
+
+        if (!form || !pdfStart || !pdfEnd || !filterStart || !filterEnd) return;
+
+        filterStart.value = pdfStart.value || '';
+        filterEnd.value = pdfEnd.value || '';
+
+        if (submit) {
+            form.dispatchEvent(new Event('change'));
+        }
+    }
+
+    document.getElementById('pdfStartDate')?.addEventListener('change', function () {
+        syncPdfRangeToListFilters();
+    });
+    document.getElementById('pdfEndDate')?.addEventListener('change', function () {
+        syncPdfRangeToListFilters();
+    });
+
     document.querySelectorAll('.ticket-tab-switcher .ticket-tab-btn').forEach(label => {
         label.addEventListener('click', function () {
             const form = document.getElementById('filterForm');
@@ -519,6 +557,14 @@
         if (prioridadFilter) prioridadFilter.value = '';
         const slaFilter = document.getElementById('slaFilter');
         if (slaFilter) slaFilter.value = '';
+        const filterStart = document.getElementById('filterStartDate');
+        if (filterStart) filterStart.value = '';
+        const filterEnd = document.getElementById('filterEndDate');
+        if (filterEnd) filterEnd.value = '';
+        const pdfStart = document.getElementById('pdfStartDate');
+        if (pdfStart) pdfStart.value = pdfStart.dataset.defaultValue || '';
+        const pdfEnd = document.getElementById('pdfEndDate');
+        if (pdfEnd) pdfEnd.value = pdfEnd.dataset.defaultValue || '';
         
         syncAllFilters();
         {% if user.role == 'usuario' %}

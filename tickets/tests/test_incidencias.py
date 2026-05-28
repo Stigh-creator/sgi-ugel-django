@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
@@ -12,7 +12,7 @@ from django.utils import timezone
 from auditoria.models import Auditoria, EventoFallido
 from inventario.models import Equipo, EstadoEquipo, HistorialEstadoEquipo, Marca, TipoEquipo
 from tickets.forms.forms_incidencias import IncidenciaAdminForm, IncidenciaCierreForm, IncidenciaForm
-from tickets.models import Area, Comentario, CustomUser, EstadoSLA, Incidencia, MetricaDiaria, Notificacion, NotificacionUsuario, ReemplazoEquipoIncidencia
+from tickets.models import Area, Comentario, CustomUser, Estado, EstadoSLA, Incidencia, MetricaDiaria, Notificacion, NotificacionUsuario, ReemplazoEquipoIncidencia
 from tickets.services import (
     aceptar_incidencia_service,
     assign_incidencia_service,
@@ -92,6 +92,46 @@ class IncidenciasBusinessRulesTests(TestCase):
             b"GIF87a\x01\x00\x01\x00\x80\x01\x00\x00\x00\x00ccc,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;",
             content_type="image/gif",
         )
+
+    def _incidencia_con_fecha(self, descripcion, fecha):
+        estado, _ = Estado.objects.get_or_create(name=Incidencia.ESTADO_PENDIENTE)
+        incidencia = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion=descripcion,
+            estado=estado,
+        )
+        Incidencia.objects.filter(pk=incidencia.pk).update(fecha_creacion=fecha)
+        incidencia.refresh_from_db()
+        return incidencia
+
+    def test_listado_filtra_incidencias_por_rango_de_fecha_creacion(self):
+        self.client.force_login(self.admin)
+        dentro = self._incidencia_con_fecha("Ticket dentro del rango", datetime(2026, 5, 15, 10, tzinfo=timezone.get_current_timezone()))
+        fuera = self._incidencia_con_fecha("Ticket fuera del rango", datetime(2026, 4, 20, 10, tzinfo=timezone.get_current_timezone()))
+
+        response = self.client.get(
+            reverse("incidencias_list"),
+            {"start_date": "2026-05-01", "end_date": "2026-05-31"},
+        )
+
+        self.assertContains(response, dentro.descripcion)
+        self.assertNotContains(response, fuera.descripcion)
+
+    def test_listado_ordena_incidencias_por_fecha_creacion_ascendente_y_descendente(self):
+        self.client.force_login(self.admin)
+        antigua = self._incidencia_con_fecha("Ticket antiguo", datetime(2026, 4, 1, 9, tzinfo=timezone.get_current_timezone()))
+        reciente = self._incidencia_con_fecha("Ticket reciente", datetime(2026, 5, 20, 9, tzinfo=timezone.get_current_timezone()))
+
+        response_asc = self.client.get(reverse("incidencias_list"), {"order": "fecha_creacion"})
+        html_asc = response_asc.content.decode()
+        self.assertLess(html_asc.index(antigua.descripcion), html_asc.index(reciente.descripcion))
+
+        response_desc = self.client.get(reverse("incidencias_list"), {"order": "-fecha_creacion"})
+        html_desc = response_desc.content.decode()
+        self.assertLess(html_desc.index(reciente.descripcion), html_desc.index(antigua.descripcion))
 
     def test_get_equipos_for_area_filtra_area_principal_para_admin_y_tecnico(self):
         area_planificacion = Area.objects.create(name="Planificación", sede_principal="UPDI")
@@ -412,6 +452,15 @@ class IncidenciasBusinessRulesTests(TestCase):
         self.assertEqual(incidencia.estado_actual, Incidencia.ESTADO_ASIGNADO)
 
     def test_resolver_reparado_mantiene_en_reparacion_y_cierre_lo_deja_operativo(self):
+        admin_observador = CustomUser.objects.create_user(
+            username="99887766",
+            password="Admin1234!",
+            first_name="Rosa",
+            last_name="Admin",
+            role=CustomUser.ROL_ADMIN,
+            area=self.area,
+            telefono="900000007",
+        )
         incidencia = Incidencia.objects.create(
             creador=self.usuario,
             area=self.area,
@@ -437,6 +486,12 @@ class IncidenciasBusinessRulesTests(TestCase):
         cerrar_incidencia_service(incidencia, self.usuario)
         self.equipo.refresh_from_db()
         self.assertEqual(self.equipo.estado.nombre, "Operativo")
+        notificacion = Notificacion.objects.get(incidencia=incidencia, tipo="estado")
+        destinatarios = set(notificacion.usuarios.values_list("usuario_id", flat=True))
+        self.assertIn(self.tecnico.pk, destinatarios)
+        self.assertIn(self.admin.pk, destinatarios)
+        self.assertIn(admin_observador.pk, destinatarios)
+        self.assertNotIn(self.usuario.pk, destinatarios)
 
     def test_resolver_reemplazado_deja_antiguo_inoperativo_y_nuevo_operativo_al_cerrar(self):
         area_reemplazo = Area.objects.create(name="Gestión Pedagógica")
@@ -1080,6 +1135,15 @@ class IncidenciasBusinessRulesTests(TestCase):
         self.assertEqual(incidencia.prioridad, Incidencia.PRIORIDAD_ALTA)
 
     def test_tecnico_asignado_puede_aceptar_ticket_asignado(self):
+        admin_observador = CustomUser.objects.create_user(
+            username="55667788",
+            password="Admin1234!",
+            first_name="Dora",
+            last_name="Admin",
+            role=CustomUser.ROL_ADMIN,
+            area=self.area,
+            telefono="900000006",
+        )
         incidencia = Incidencia.objects.create(
             creador=self.usuario,
             area=self.area,
@@ -1094,6 +1158,12 @@ class IncidenciasBusinessRulesTests(TestCase):
 
         incidencia.refresh_from_db()
         self.assertEqual(incidencia.estado_actual, Incidencia.ESTADO_EN_PROCESO)
+        notificacion = Notificacion.objects.get(incidencia=incidencia, tipo="estado")
+        destinatarios = set(notificacion.usuarios.values_list("usuario_id", flat=True))
+        self.assertIn(self.usuario.pk, destinatarios)
+        self.assertIn(admin_observador.pk, destinatarios)
+        self.assertIn(self.admin.pk, destinatarios)
+        self.assertNotIn(self.tecnico.pk, destinatarios)
 
     def test_rechazo_requiere_motivo_y_registra_estado(self):
         incidencia = Incidencia.objects.create(

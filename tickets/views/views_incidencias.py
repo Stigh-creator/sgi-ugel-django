@@ -6,6 +6,7 @@ from django.db.models import Count, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from datetime import timedelta
 from django.core.cache import cache
 from django.views.decorators.http import require_POST
@@ -282,6 +283,8 @@ def incidencias_list(request):
     prioridad_f = request.GET.get("prioridad", "")
     sla_f = request.GET.get("sla", "")
     order_f = request.GET.get("order", "-fecha_creacion")
+    start_date_f = request.GET.get("start_date", "")
+    end_date_f = request.GET.get("end_date", "")
     
     active_tab = resolve_active_tab_for_user(user, request.GET.get("tab"))
     queryset, active_tab = get_visible_incidencias_queryset(user, active_tab)
@@ -292,6 +295,12 @@ def incidencias_list(request):
         queryset = queryset.filter(area_id=area_f)
     if prioridad_f:
         queryset = queryset.filter(prioridad=prioridad_f)
+    start_date = parse_date(start_date_f) if start_date_f else None
+    end_date = parse_date(end_date_f) if end_date_f else None
+    if start_date:
+        queryset = queryset.filter(fecha_creacion__date__gte=start_date)
+    if end_date:
+        queryset = queryset.filter(fecha_creacion__date__lte=end_date)
     if sla_f == "vencidas":
         now = timezone.now()
         queryset = queryset.filter(
@@ -331,6 +340,8 @@ def incidencias_list(request):
         "area_selected": area_f,
         "prioridad_selected": prioridad_f,
         "sla_selected": sla_f,
+        "start_date_selected": start_date_f,
+        "end_date_selected": end_date_f,
         "order_selected": order_f,
         "active_tab": active_tab,
         "now": timezone.localtime(timezone.now()),

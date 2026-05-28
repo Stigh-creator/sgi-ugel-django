@@ -105,7 +105,7 @@
             <tr>
                 <td colspan="6" class="text-center py-5 text-muted">
                     <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                    {% if query or estado_selected %}
+                    {% if query or estado_selected or area_selected or prioridad_selected or sla_selected or start_date_selected or end_date_selected %}
                     No existen incidencias con el filtro seleccionado.
                     {% elif active_tab == 'reportadas' %}
                     No hay incidencias reportadas por usted.
@@ -176,7 +176,7 @@
         {% empty %}
         <div class="text-center py-5 text-muted">
             <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-            {% if query or estado_selected %}
+            {% if query or estado_selected or area_selected or prioridad_selected or sla_selected or start_date_selected or end_date_selected %}
             No existen incidencias con el filtro seleccionado.
             {% elif active_tab == 'reportadas' %}
             No hay incidencias reportadas por usted.

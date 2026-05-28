@@ -211,8 +211,10 @@ def recipients_for_event(evento, incidencia, actor=None):
         "incidencia.creada",
         "incidencia.asignada",
         "incidencia.reasignada",
+        "incidencia.aceptada",
         "incidencia.rechazada",
         "incidencia.reabierta",
+        "incidencia.cerrada",
         "inventario.integridad_alerta",
     }:
         usuarios.update(admins)
