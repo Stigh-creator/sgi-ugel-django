@@ -16,9 +16,6 @@
             <div class="d-flex flex-column">
                 <span class="user-name-text">
                     {{ user_obj.get_full_name|default:user_obj.username }}
-                    {% if user_obj.is_superuser %}
-                    <span class="badge bg-dark ms-1">Superusuario</span>
-                    {% endif %}
                     {% if user_obj.cambio_clave_pendiente %}
                     <span title="Cambio de clave pendiente" aria-label="Cambio de clave pendiente">⚠️</span>
                     {% endif %}
@@ -39,8 +36,7 @@
     </td>
     <td>
         {% if user_obj.is_superuser %}
-        <span class="badge bg-dark">Superusuario</span>
-        <span class="badge role-badge-admin">Administrador</span>
+        <span class="badge role-badge-admin">Administrador principal</span>
         {% elif user_obj.role == 'administrador' %}
         <span class="badge role-badge-admin">Administrador</span>
         {% elif user_obj.role == 'tecnico' %}
