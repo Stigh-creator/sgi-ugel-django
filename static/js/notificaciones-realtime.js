@@ -4,13 +4,91 @@
 
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
     const socketUrl = `${protocol}://${window.location.host}/ws/notificaciones/`;
+    const soundStorageKey = "sgiNotificationSoundEnabled";
+    const soundToggle = bell.querySelector(".notification-sound-toggle");
     let socket = null;
     let retryTimer = null;
+    let audioContext = null;
+    let soundEnabled = readStoredSoundPreference();
 
     function escapeHtml(value) {
         const div = document.createElement("div");
         div.textContent = value || "";
         return div.innerHTML;
+    }
+
+    function readStoredSoundPreference() {
+        try {
+            return window.localStorage?.getItem(soundStorageKey) === "true";
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function getAudioContext() {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return null;
+        if (!audioContext) audioContext = new AudioContext();
+        return audioContext;
+    }
+
+    function setSoundEnabled(enabled) {
+        soundEnabled = enabled;
+        try {
+            window.localStorage?.setItem(soundStorageKey, enabled ? "true" : "false");
+        } catch (error) {
+            // localStorage puede estar bloqueado en algunos navegadores.
+        }
+
+        if (!soundToggle) return;
+        soundToggle.classList.toggle("is-enabled", enabled);
+        soundToggle.setAttribute("aria-pressed", enabled ? "true" : "false");
+        soundToggle.setAttribute(
+            "title",
+            enabled
+                ? "Desactivar sonido de notificaciones"
+                : "Activar sonido de prioridad alta y crítica"
+        );
+        const icon = soundToggle.querySelector("i");
+        if (icon) {
+            icon.className = enabled ? "bi bi-volume-up-fill" : "bi bi-volume-mute";
+        }
+    }
+
+    function playTone(frequency, startTime, duration, volume) {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+
+        const oscillator = ctx.createOscillator();
+        const gain = ctx.createGain();
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(frequency, startTime);
+        gain.gain.setValueAtTime(0.0001, startTime);
+        gain.gain.exponentialRampToValueAtTime(volume, startTime + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+        oscillator.connect(gain);
+        gain.connect(ctx.destination);
+        oscillator.start(startTime);
+        oscillator.stop(startTime + duration + 0.02);
+    }
+
+    function playNotificationSound(priority) {
+        if (!soundEnabled) return;
+        if (!["alta", "critica"].includes(priority)) return;
+
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        if (ctx.state === "suspended") {
+            ctx.resume().catch(function () {});
+        }
+
+        const now = ctx.currentTime;
+        if (priority === "critica") {
+            playTone(880, now, 0.12, 0.08);
+            playTone(1174, now + 0.16, 0.16, 0.08);
+        } else {
+            playTone(740, now, 0.12, 0.055);
+        }
     }
 
     function updateBadge(count) {
@@ -34,6 +112,7 @@
     function ensureReadAllButton(count) {
         const header = bell.querySelector(".notification-menu-header");
         if (!header) return;
+        const actions = bell.querySelector(".notification-actions") || header;
         let form = header.querySelector("form");
         if (count > 0 && !form) {
             form = document.createElement("form");
@@ -44,7 +123,7 @@
                 <input type="hidden" name="csrfmiddlewaretoken" value="${escapeHtml(bell.dataset.csrfToken || "")}">
                 <button type="submit" class="notification-read-all no-loading">Leer todas</button>
             `;
-            header.appendChild(form);
+            actions.appendChild(form);
         } else if (count <= 0 && form) {
             form.remove();
         }
@@ -96,11 +175,29 @@
             updateBadge(count);
             ensureReadAllButton(count);
             prependNotification(data);
+            playNotificationSound(data.prioridad || "media");
         };
         socket.onclose = scheduleReconnect;
         socket.onerror = function () {
             socket.close();
         };
+    }
+
+    if (soundToggle) {
+        setSoundEnabled(soundEnabled);
+        soundToggle.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const nextState = !soundEnabled;
+            if (nextState) {
+                const ctx = getAudioContext();
+                if (ctx && ctx.state === "suspended") {
+                    ctx.resume().catch(function () {});
+                }
+                if (ctx) playTone(660, ctx.currentTime, 0.08, 0.045);
+            }
+            setSoundEnabled(nextState);
+        });
     }
 
     connect();

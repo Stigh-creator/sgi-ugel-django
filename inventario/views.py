@@ -246,6 +246,7 @@ def inventario_control_operativo(request):
         "repuesto_form": RepuestoForm(),
         "mantenimiento_form": MantenimientoPreventivoForm(usuarios_queryset=usuarios_mantenimiento_queryset()),
         "can_manage_inventory": can_manage_inventory(request.user),
+        "can_manage_maintenance": can_manage_inventory(request.user),
         "today": today,
     }
     return render(request, "inventario/control_operativo.html", context)

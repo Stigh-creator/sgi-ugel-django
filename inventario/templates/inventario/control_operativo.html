@@ -27,6 +27,8 @@
             <button type="button" class="btn btn-primary rounded-pill fw-semibold" data-bs-toggle="modal" data-bs-target="#modalNuevoRepuesto">
                 <i class="bi bi-plus-lg me-2"></i>Repuesto
             </button>
+            {% endif %}
+            {% if can_manage_maintenance %}
             <button type="button" class="btn btn-outline-primary rounded-pill fw-semibold" data-bs-toggle="modal" data-bs-target="#modalNuevoMantenimiento">
                 <i class="bi bi-calendar-plus me-2"></i>Mantenimiento
             </button>
@@ -194,7 +196,7 @@
                                 </span>
                             </td>
                             <td class="text-end">
-                                {% if can_manage_inventory %}
+                                {% if can_manage_maintenance %}
                                 <button type="button" class="inventory-ops-mini-btn ms-auto"
                                     data-bs-toggle="modal"
                                     data-bs-target="#modalCompletarMantenimiento"
@@ -266,7 +268,9 @@
         </div>
     </div>
 </div>
+{% endif %}
 
+{% if can_manage_maintenance %}
 <div class="modal fade" id="modalNuevoMantenimiento" tabindex="-1" aria-labelledby="modalNuevoMantenimientoLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">

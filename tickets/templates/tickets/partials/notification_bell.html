@@ -4,7 +4,7 @@
     data-mark-read-url="{% url 'marcar_notificaciones_leidas' %}"
     data-csrf-token="{{ csrf_token }}"
 >
-    <button class="btn btn-link position-relative text-dark notification-bell-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Notificaciones">
+    <button class="btn btn-link position-relative text-dark notification-bell-btn" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Notificaciones">
         <i class="bi bi-bell fs-5"></i>
         {% if header_notificaciones_no_leidas %}
         <span class="notification-badge">{{ header_notificaciones_no_leidas }}</span>
@@ -16,12 +16,22 @@
                 <span class="notification-title">Notificaciones</span>
                 <small>{{ header_notificaciones_no_leidas }} sin leer</small>
             </div>
-            {% if header_notificaciones_no_leidas %}
-            <form method="post" action="{% url 'marcar_notificaciones_leidas' %}" class="m-0">
-                {% csrf_token %}
-                <button type="submit" class="notification-read-all no-loading">Leer todas</button>
-            </form>
-            {% endif %}
+            <div class="notification-actions">
+                <button
+                    type="button"
+                    class="notification-sound-toggle no-loading"
+                    aria-pressed="false"
+                    title="Activar sonido de prioridad alta y crítica"
+                >
+                    <i class="bi bi-volume-mute"></i>
+                </button>
+                {% if header_notificaciones_no_leidas %}
+                <form method="post" action="{% url 'marcar_notificaciones_leidas' %}" class="m-0">
+                    {% csrf_token %}
+                    <button type="submit" class="notification-read-all no-loading">Leer todas</button>
+                </form>
+                {% endif %}
+            </div>
         </div>
 
         <div class="notification-list">

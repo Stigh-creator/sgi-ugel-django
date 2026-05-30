@@ -183,6 +183,26 @@
     justify-content: space-between;
 }
 
+.dashboard-mobile-toggle {
+    align-items: center;
+    background: #fff;
+    border: 1px solid #dbe3ef;
+    border-radius: 0.9rem;
+    box-shadow: 0 0.35rem 0.9rem rgba(15, 23, 42, 0.06);
+    color: #0f172a;
+    display: none;
+    font-weight: 800;
+    justify-content: space-between;
+    margin-bottom: 0.85rem;
+    min-height: 44px;
+    padding: 0 0.9rem;
+    width: 100%;
+}
+
+.dashboard-collapsible-mobile {
+    min-width: 0;
+}
+
 .inventory-kpi-card .card-body {
     padding: 1rem 1.1rem;
 }
@@ -407,6 +427,22 @@ canvas {
     .dashboard-section-heading {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .dashboard-mobile-toggle {
+        display: inline-flex;
+    }
+
+    .dashboard-collapsible-mobile {
+        overflow: hidden;
+        transition: max-height 0.22s ease, opacity 0.18s ease, margin-bottom 0.18s ease;
+    }
+
+    .dashboard-collapsible-mobile.is-collapsed-mobile {
+        max-height: 0;
+        margin-bottom: 0 !important;
+        opacity: 0;
+        pointer-events: none;
     }
     
     .col-xl-4, .col-xl-8 {

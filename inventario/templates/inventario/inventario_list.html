@@ -11,7 +11,7 @@
 {% block content %}
 <div class="container-fluid">
     <!-- Page Header -->
-    <div class="page-header d-flex justify-content-between align-items-center">
+    <div class="page-header inventory-page-header d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center gap-3">
             <div class="header-icon">
                 <i class="bi bi-pc-display"></i>
@@ -21,10 +21,12 @@
                 <p class="text-muted mb-0">Gestión de activos tecnológicos institucionales.</p>
             </div>
         </div>
-        <div class="d-flex gap-2 flex-wrap justify-content-end">
-            <a href="{% url 'inventario_control_operativo' %}" class="btn btn-light border rounded-pill fw-semibold">
+        <div class="inventory-header-actions d-flex gap-2 flex-wrap justify-content-end">
+            {% if can_manage_inventory or request.user.es_admin %}
+            <a href="{% url 'inventario_control_operativo' %}" class="btn-new inventory-control-btn">
                 <i class="bi bi-clipboard2-pulse me-2"></i>Control operativo
             </a>
+            {% endif %}
             {% if can_manage_inventory %}
             <button type="button" class="btn-new btn-hover-scale" data-bs-toggle="modal" data-bs-target="#modalNuevoEquipo">
                 <i class="bi bi-plus-lg"></i> Registrar Equipo
@@ -43,7 +45,12 @@
     </div>
 
     <!-- Quick Stats -->
-    <div class="row g-4 mb-4">
+    <div class="inventory-stats-block">
+        <button type="button" class="inventory-stats-toggle d-md-none" data-inventory-stats-toggle aria-expanded="true">
+            <span><i class="bi bi-bar-chart-line me-2"></i>Resumen de equipos</span>
+            <i class="bi bi-chevron-up" data-inventory-stats-icon></i>
+        </button>
+        <div class="row g-4 mb-4 inventory-stats-grid" data-inventory-stats>
         <div class="col-md">
             <div class="stat-card">
                 <div class="stat-icon icon-total"><i class="bi bi-box"></i></div>
@@ -99,6 +106,7 @@
                 <h3 class="h2 fw-bold mb-0 text-danger">{{ stats.no_disponibles }}</h3>
                 <p class="text-muted small mb-0">No disponibles</p>
             </div>
+        </div>
         </div>
     </div>
 
@@ -650,6 +658,22 @@
         modalEdit._element.querySelector('form').action = `/inventario/{{ equipo_id_error }}/editar/`;
         modalEdit.show();
         {% endif %}
+
+        const statsToggle = document.querySelector('[data-inventory-stats-toggle]');
+        const statsGrid = document.querySelector('[data-inventory-stats]');
+        const statsIcon = document.querySelector('[data-inventory-stats-icon]');
+        if (statsToggle && statsGrid) {
+            statsToggle.addEventListener('click', function() {
+                const isHidden = statsGrid.classList.toggle('is-collapsed-mobile');
+                statsToggle.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
+                statsToggle.querySelector('span').innerHTML = isHidden
+                    ? '<i class="bi bi-bar-chart-line me-2"></i>Mostrar resumen'
+                    : '<i class="bi bi-bar-chart-line me-2"></i>Resumen de equipos';
+                if (statsIcon) {
+                    statsIcon.className = isHidden ? 'bi bi-chevron-down' : 'bi bi-chevron-up';
+                }
+            });
+        }
     });
 </script>
 {% endblock %}

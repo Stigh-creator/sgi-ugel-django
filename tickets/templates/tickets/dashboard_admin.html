@@ -25,6 +25,11 @@
     </div>
 
     <section class="dashboard-panel dashboard-panel-incidencias">
+        <button type="button" class="dashboard-mobile-toggle d-lg-none" data-dashboard-collapse-toggle="incidencias-pdf" aria-expanded="true">
+            <span><i class="bi bi-file-earmark-pdf me-2"></i>Reporte PDF</span>
+            <i class="bi bi-chevron-up" data-dashboard-collapse-icon></i>
+        </button>
+        <div class="dashboard-collapsible-mobile" data-dashboard-collapse-target="incidencias-pdf">
         <form class="dashboard-export-panel card shadow-sm border-0 rounded-4 mb-4 no-loading" method="get" action="{% url 'export_dashboard_pdf' %}" target="_blank" data-local-submit-guard="true">
             <div class="dashboard-export-header">
                 <div class="dashboard-export-title">
@@ -88,7 +93,13 @@
                 </div>
             </div>
         </form>
+        </div>
 
+        <button type="button" class="dashboard-mobile-toggle d-lg-none" data-dashboard-collapse-toggle="incidencias-resumen" aria-expanded="true">
+            <span><i class="bi bi-speedometer2 me-2"></i>Resumen</span>
+            <i class="bi bi-chevron-up" data-dashboard-collapse-icon></i>
+        </button>
+        <div class="dashboard-collapsible-mobile" data-dashboard-collapse-target="incidencias-resumen">
         <div class="row g-4">
             <div class="col-md-4 col-xl-3">
                 <div class="card stat-card shadow-sm h-100">
@@ -191,6 +202,7 @@
                 </div>
             </div>
         </div>
+        </div>
 
         <div class="card stat-card shadow-sm mt-4">
             <div class="card-header bg-white border-0 pb-0">
@@ -242,11 +254,13 @@
                 <h2 class="h5 fw-bold mb-1">Resumen de equipos</h2>
                 <p class="text-muted small mb-0">Indicadores rápidos del estado institucional sin duplicar el módulo de inventario.</p>
             </div>
-            <a href="{% url 'inventario_list' %}" class="btn btn-sm btn-outline-primary rounded-pill">
-                <i class="bi bi-box-seam me-1"></i>Abrir inventario
-            </a>
         </div>
 
+        <button type="button" class="dashboard-mobile-toggle d-lg-none" data-dashboard-collapse-toggle="inventario-pdf" aria-expanded="true">
+            <span><i class="bi bi-file-earmark-pdf me-2"></i>Reporte PDF</span>
+            <i class="bi bi-chevron-up" data-dashboard-collapse-icon></i>
+        </button>
+        <div class="dashboard-collapsible-mobile" data-dashboard-collapse-target="inventario-pdf">
         <form class="dashboard-export-panel dashboard-export-panel-compact card shadow-sm border-0 rounded-4 mt-3 mb-4 no-loading" method="get" action="{% url 'export_dashboard_inventario_pdf' %}" target="_blank" data-local-submit-guard="true">
             <div class="dashboard-export-header">
                 <div class="dashboard-export-title">
@@ -310,7 +324,13 @@
                 </div>
             </div>
         </form>
+        </div>
 
+        <button type="button" class="dashboard-mobile-toggle d-lg-none" data-dashboard-collapse-toggle="inventario-resumen" aria-expanded="true">
+            <span><i class="bi bi-speedometer2 me-2"></i>Resumen</span>
+            <i class="bi bi-chevron-up" data-dashboard-collapse-icon></i>
+        </button>
+        <div class="dashboard-collapsible-mobile" data-dashboard-collapse-target="inventario-resumen">
         <div class="row g-4 mt-1">
             <div class="col-md-6 col-xl-3">
                 <div class="card stat-card inventory-kpi-card shadow-sm h-100">
@@ -357,7 +377,13 @@
                 </div>
             </div>
         </div>
+        </div>
 
+        <button type="button" class="dashboard-mobile-toggle d-lg-none" data-dashboard-collapse-toggle="inventario-graficas" aria-expanded="true">
+            <span><i class="bi bi-bar-chart-line me-2"></i>Gráficas</span>
+            <i class="bi bi-chevron-up" data-dashboard-collapse-icon></i>
+        </button>
+        <div class="dashboard-collapsible-mobile" data-dashboard-collapse-target="inventario-graficas">
         <div class="row g-4 mt-1">
             <div class="col-lg-6">
                 <div class="card stat-card inventory-chart-card shadow-sm h-100">
@@ -408,6 +434,33 @@
                 </div>
             </div>
         </div>
+        </div>
     </section>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-dashboard-collapse-toggle]').forEach(function (button) {
+            const key = button.dataset.dashboardCollapseToggle;
+            const target = document.querySelector(`[data-dashboard-collapse-target="${key}"]`);
+            const icon = button.querySelector('[data-dashboard-collapse-icon]');
+            const label = button.querySelector('span');
+            const defaultLabel = label ? label.innerHTML : '';
+            if (!target) return;
+
+            button.addEventListener('click', function () {
+                    const collapsed = target.classList.toggle('is-collapsed-mobile');
+                    button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+                    if (icon) icon.className = collapsed ? 'bi bi-chevron-down' : 'bi bi-chevron-up';
+                    if (label) {
+                        label.innerHTML = collapsed
+                        ? defaultLabel.replace(/(Reporte PDF|Gráficas|Resumen)/, 'Mostrar $1')
+                        : defaultLabel;
+                    }
+            });
+        });
+    });
+</script>
 {% endblock %}

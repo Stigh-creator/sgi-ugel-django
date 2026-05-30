@@ -176,6 +176,37 @@ body.sidebar-open {
     font-weight: 600;
 }
 
+.notification-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex: 0 0 auto;
+}
+
+.notification-sound-toggle {
+    width: 34px;
+    height: 34px;
+    border: 1px solid #dbeafe;
+    background: #fff;
+    color: var(--ink-muted);
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.notification-sound-toggle:hover {
+    background: #eff6ff;
+    color: var(--primary-color);
+}
+
+.notification-sound-toggle.is-enabled {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+    color: var(--primary-color);
+}
+
 .notification-read-all {
     border: 0;
     background: #eff6ff;

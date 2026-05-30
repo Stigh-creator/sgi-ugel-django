@@ -54,7 +54,8 @@ kanban modificado.xlsx
 ~$*.xlsx
 
 # Docker
-docker-compose.override.yml
+# Se versiona porque define el modo desarrollo local del proyecto.
+!docker-compose.override.yml
 
 # Environment template allowed for deployment documentation
 !.env.example

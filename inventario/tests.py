@@ -86,6 +86,7 @@ class InventarioRulesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.equipo.codigo_equipo)
         self.assertNotContains(response, "Registrar Equipo")
+        self.assertNotContains(response, "Control operativo")
         self.assertNotContains(response, "/inventario/exportar/excel/")
         self.assertContains(response, "/inventario/exportar/pdf/")
 
