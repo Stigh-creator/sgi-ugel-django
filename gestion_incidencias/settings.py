@@ -15,6 +15,11 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-only-chang
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() == 'true'
 # Dominios o direcciones IP desde las cuales se puede acceder a la aplicación
 ALLOWED_HOSTS = [host.strip() for host in os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host.strip()]
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
+]
 
 # 2. Aplicaciones instaladas (ajustado para la base, sin extras)
 # Declara los módulos internos de Django y las aplicaciones propias del proyecto
@@ -39,6 +44,16 @@ CHANNEL_LAYERS = {
         "BACKEND": "channels.layers.InMemoryChannelLayer",
     }
 }
+REDIS_URL = os.environ.get("REDIS_URL")
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [REDIS_URL],
+            },
+        }
+    }
 
 # 3. Usuario Personalizado y autenticación
 # Indica a Django que utilice el modelo CustomUser en lugar del modelo de usuario por defecto
@@ -84,8 +99,8 @@ TEMPLATES = [
 WSGI_APPLICATION = 'gestion_incidencias.wsgi.application'
 
 # 6. Motor de Base de Datos
-# Por defecto usa SQLite para desarrollo local. PostgreSQL se activa solo por variables de entorno.
-DB_ENGINE = os.environ.get("DB_ENGINE", "django.db.backends.sqlite3")
+# PostgreSQL es el motor principal. SQLite queda solo si se define explícitamente en variables de entorno.
+DB_ENGINE = os.environ.get("DB_ENGINE", "django.db.backends.postgresql")
 
 if DB_ENGINE == "django.db.backends.postgresql":
     DATABASES = {
@@ -134,6 +149,7 @@ DEFAULT_CHARSET = "utf-8"
 # URL y directorio para archivos de diseño (CSS, JavaScript, imágenes del tema)
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+STATIC_ROOT = os.environ.get("DJANGO_STATIC_ROOT", os.path.join(BASE_DIR, "staticfiles"))
 
 # URL y directorio para archivos subidos por los usuarios (ej. capturas de pantalla)
 MEDIA_URL = '/media/'

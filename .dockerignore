@@ -1,0 +1,34 @@
+# Python/runtime
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+
+# Local databases and runtime output
+db.sqlite3
+db.sqlite3-journal
+db copy.sqlite3
+media/
+staticfiles/
+
+# Secrets and local environment files
+.env
+.env.*
+!.env.example
+
+# Git/editor/local documents
+.git/
+.gitignore
+.vscode/
+.idea/
+scratch/
+documentacion/
+kanban modificado.xlsx
+~$*.xlsx
+
+# Logs and temp files
+*.log
+*.tmp

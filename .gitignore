@@ -54,8 +54,10 @@ kanban modificado.xlsx
 ~$*.xlsx
 
 # Docker
-.dockerignore
 docker-compose.override.yml
+
+# Environment template allowed for deployment documentation
+!.env.example
 
 # PostgreSQL (Configuración futura)
 # Si usas archivos de volumen locales para Postgres
