@@ -7,7 +7,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                     aria-label="Close"></button>
             </div>
-            <form action="{% url 'equipo_crear' %}" method="POST" enctype="multipart/form-data" novalidate class="js-disable-on-submit">
+            <form action="{% url 'equipo_crear' %}" method="POST" enctype="multipart/form-data" novalidate class="js-disable-on-submit" id="formNuevoEquipo" data-required-gated="true">
                 {% csrf_token %}
                 <div class="modal-body p-4">
                     <div class="row g-3">
@@ -17,7 +17,9 @@
                                 name="{{ form.codigo_equipo.name }}"
                                 value="{{ form.codigo_equipo.value|default:'' }}"
                                 class="form-control {% if form.codigo_equipo.errors %}is-invalid{% endif %}"
-                                placeholder="Ej: PC-001">
+                                placeholder="Ej: PC-001"
+                                required
+                                data-required-for-create>
                             {% for error in form.codigo_equipo.errors %}
                             <div class="invalid-feedback">{{ error }}</div>
                             {% endfor %}
@@ -27,7 +29,9 @@
                             <input type="text" name="{{ form.nombre_equipo.name }}"
                                 value="{{ form.nombre_equipo.value|default:'' }}"
                                 class="form-control {% if form.nombre_equipo.errors %}is-invalid{% endif %}"
-                                placeholder="Nombre descriptivo">
+                                placeholder="Nombre descriptivo"
+                                required
+                                data-required-for-create>
                             {% for error in form.nombre_equipo.errors %}
                             <div class="invalid-feedback">{{ error }}</div>
                             {% endfor %}
@@ -35,7 +39,9 @@
                         <div class="col-md-4">
                             <label class="form-label small fw-bold text-muted">Tipo</label>
                             <select name="{{ form.tipo_equipo.name }}"
-                                class="form-select {% if form.tipo_equipo.errors %}is-invalid{% endif %}">
+                                class="form-select {% if form.tipo_equipo.errors %}is-invalid{% endif %}"
+                                required
+                                data-required-for-create>
                                 {% for val, label in form.fields.tipo_equipo.choices %}
                                 {% with actual=form.tipo_equipo.value|stringformat:"s" opcion=val|stringformat:"s" %}
                                 <option value="{{ val|default:'' }}" {% if not form.tipo_equipo.value and not val %}selected{% elif actual == opcion %}selected{% endif %}>{{ label }}</option>
@@ -46,7 +52,9 @@
                         <div class="col-md-4">
                             <label class="form-label small fw-bold text-muted">Marca</label>
                             <select name="{{ form.marca.name }}"
-                                class="form-select {% if form.marca.errors %}is-invalid{% endif %}">
+                                class="form-select {% if form.marca.errors %}is-invalid{% endif %}"
+                                required
+                                data-required-for-create>
                                 {% for val, label in form.fields.marca.choices %}
                                 {% with actual=form.marca.value|stringformat:"s" opcion=val|stringformat:"s" %}
                                 <option value="{{ val|default:'' }}" {% if not form.marca.value and not val %}selected{% elif actual == opcion %}selected{% endif %}>{{ label }}</option>
@@ -58,7 +66,9 @@
                             <label class="form-label small fw-bold text-muted">Modelo</label>
                             <input type="text" name="{{ form.modelo.name }}"
                                 value="{{ form.modelo.value|default:'' }}"
-                                class="form-control {% if form.modelo.errors %}is-invalid{% endif %}">
+                                class="form-control {% if form.modelo.errors %}is-invalid{% endif %}"
+                                required
+                                data-required-for-create>
                             {% for error in form.modelo.errors %}
                             <div class="invalid-feedback">{{ error }}</div>
                             {% endfor %}
@@ -75,7 +85,9 @@
                         <div class="col-md-6">
                             <label class="form-label small fw-bold text-muted">Área Asignada</label>
                             <select name="{{ form.area.name }}"
-                                class="form-select {% if form.area.errors %}is-invalid{% endif %}">
+                                class="form-select {% if form.area.errors %}is-invalid{% endif %}"
+                                required
+                                data-required-for-create>
                                 {% for val, label in form.fields.area.choices %}
                                 {% with actual=form.area.value|stringformat:"s" opcion=val|stringformat:"s" %}
                                 <option value="{{ val|default:'' }}" {% if not form.area.value and not val %}selected{% elif actual == opcion %}selected{% endif %}>{{ label }}</option>
@@ -89,7 +101,9 @@
                         <div class="col-md-6">
                             <label class="form-label small fw-bold text-muted">Disponibilidad</label>
                             <select name="{{ form.disponibilidad.name }}"
-                                class="form-select {% if form.disponibilidad.errors %}is-invalid{% endif %}">
+                                class="form-select {% if form.disponibilidad.errors %}is-invalid{% endif %}"
+                                required
+                                data-required-for-create>
                                 {% for val, label in form.fields.disponibilidad.choices %}
                                 {% with actual=form.disponibilidad.value|stringformat:"s" opcion=val|stringformat:"s" %}
                                 <option value="{{ val }}" {% if actual == opcion %}selected{% endif %}>{{ label }}</option>
@@ -103,7 +117,9 @@
                         <div class="col-md-6">
                             <label class="form-label small fw-bold text-muted">Estado Inicial</label>
                             <select name="{{ form.estado.name }}"
-                                class="form-select {% if form.estado.errors %}is-invalid{% endif %}">
+                                class="form-select {% if form.estado.errors %}is-invalid{% endif %}"
+                                required
+                                data-required-for-create>
                                 {% for val, label in form.fields.estado.choices %}
                                 {% with actual=form.estado.value|stringformat:"s" opcion=val|stringformat:"s" %}
                                 <option value="{{ val|default:'' }}" {% if not form.estado.value and not val %}selected{% elif actual == opcion %}selected{% endif %}>{{ label }}</option>
@@ -149,7 +165,7 @@
                 <div class="modal-footer bg-light border-0">
                     <button type="button" class="btn btn-secondary px-4 rounded-pill"
                         data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary px-4 rounded-pill d-inline-flex align-items-center gap-2" data-loading-disable data-loading-label="Guardando equipo...">
+                    <button type="submit" class="btn btn-primary px-4 rounded-pill d-inline-flex align-items-center gap-2" data-loading-disable data-loading-label="Guardando equipo..." disabled aria-disabled="true">
                         <span class="spinner-border spinner-border-sm d-none submit-spinner" role="status" aria-hidden="true"></span>
                         <span class="submit-label">Guardar Equipo</span>
                     </button>

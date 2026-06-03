@@ -78,6 +78,11 @@
     margin-bottom: 1.25rem;
 }
 
+.sticky-sidebar {
+    position: sticky;
+    top: 2rem;
+}
+
 .pdf-range-form {
     border-top: 1px solid var(--border);
     padding-top: 1rem;

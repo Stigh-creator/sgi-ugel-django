@@ -1,5 +1,10 @@
 import os
+import logging
+
 from PIL import Image, ImageOps
+
+logger = logging.getLogger(__name__)
+
 
 def process_image(image_field, size=(800, 800), quality=75):
     """
@@ -37,5 +42,5 @@ def process_image(image_field, size=(800, 800), quality=75):
                 img.save(img_path, format="JPEG", **save_kwargs)
             else:
                 img.save(img_path, quality=quality, optimize=True)
-        except Exception as e:
-            print(f"Error processing image {img_path}: {e}")
+        except Exception:
+            logger.exception("Error processing image %s", img_path)

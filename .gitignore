@@ -71,3 +71,4 @@ scratch/
 # Datos de prueba locales
 inventario/management/commands/cargar_equipos_ugel.py
 inventario/management/commands/cargar_repuestos_ugel.py
+inventario/management/commands/cargar_inventario_base_ugel.py

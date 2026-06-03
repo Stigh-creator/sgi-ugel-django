@@ -282,7 +282,13 @@ def build_event_message(evento, incidencia, actor=None, metadata=None):
         "incidencia.comentada": f"{codigo} {actor_name} añadió un comentario al seguimiento.",
         "incidencia.resuelta": f"{codigo} Incidencia marcada como Resuelta por {actor_name}. Tipo de solución: {metadata.get('tipo_resolucion', 'No registrado')}.",
         "incidencia.reabierta": f"{codigo} Incidencia reabierta por {actor_name}. Motivo: {metadata.get('motivo', '')}.",
-        "incidencia.cerrada": f"{codigo} Incidencia cerrada definitivamente por {actor_name}.",
+        "incidencia.cerrada": (
+            f"{codigo} Incidencia cerrada automáticamente por el sistema. "
+            "Motivo: venció el plazo de auto-cierre sin que el trabajador aceptara la solución "
+            "o reabriera la incidencia."
+            if metadata.get("auto")
+            else f"{codigo} Incidencia cerrada definitivamente por {actor_name}."
+        ),
         "incidencia.sla_por_vencer": f"{codigo} SLA por vencer. Tipo: {metadata.get('tipo_sla', 'No registrado')}.",
         "incidencia.sla_respuesta_vencido": f"{codigo} SLA de respuesta vencido.",
         "incidencia.sla_resolucion_vencido": f"{codigo} SLA de resolución vencido.",
@@ -697,7 +703,17 @@ class IncidenciaService:
         incidencia.auto_cerrado = auto
         incidencia.save(update_fields=["fecha_cierre", "auto_cerrado"])
         aplicar_inventario_al_cerrar_incidencia(incidencia=incidencia, usuario=usuario)
-        emitir_evento_incidencia("incidencia.cerrada", incidencia, actor=usuario, metadata={"auto": auto})
+        metadata = {"auto": auto}
+        if auto:
+            metadata.update(
+                {
+                    "motivo": "Venció el plazo de auto-cierre sin aceptación ni reapertura del trabajador.",
+                    "fecha_auto_cierre": incidencia.fecha_auto_cierre.isoformat()
+                    if incidencia.fecha_auto_cierre
+                    else None,
+                }
+            )
+        emitir_evento_incidencia("incidencia.cerrada", incidencia, actor=usuario, metadata=metadata)
         return incidencia
 
 

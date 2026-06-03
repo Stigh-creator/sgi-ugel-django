@@ -7,3 +7,11 @@ services:
       - .:/app
       - static_volume:/app/staticfiles
       - media_volume:/app/media
+
+  scheduler:
+    environment:
+      DJANGO_DEBUG: "True"
+    volumes:
+      - .:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media

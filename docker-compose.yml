@@ -20,6 +20,26 @@ services:
       redis:
         condition: service_started
 
+  scheduler:
+    build: .
+    command: sh -c "python manage.py migrate && while true; do python manage.py procesar_sla_incidencias; python manage.py autocerrar_incidencias_resueltas; python manage.py metricas_operativas_sgi; sleep $${SGI_SCHEDULER_INTERVAL:-900}; done"
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+      DJANGO_STATIC_ROOT: /app/staticfiles
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
   db:
     image: postgres:17
     environment:

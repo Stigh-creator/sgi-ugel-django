@@ -14,6 +14,11 @@
     font-family: var(--font-body);
 }
 
+.auto-close-aside {
+    border-color: #fde68a;
+    background: #fffbeb;
+}
+
 .detail-section {
     background: #ffffff;
     border: 1px solid var(--line-soft);

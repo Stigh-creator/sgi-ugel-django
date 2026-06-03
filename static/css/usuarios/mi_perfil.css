@@ -5,6 +5,36 @@
     --text-muted: #6c757d;
 }
 
+.wrapper-forced {
+    background-color: #f4f7f6;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.security-alert {
+    border: 1px solid rgba(220, 53, 69, 0.22);
+    background-color: #f8d7da;
+    color: #842029;
+    border-radius: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.9rem 1rem;
+}
+
+.security-alert-icon {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: rgba(220, 53, 69, 0.12);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
 /* ===============================
    CARD PERFIL (sin romper global)
 ================================= */

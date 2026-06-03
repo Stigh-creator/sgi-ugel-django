@@ -443,6 +443,42 @@
                 </div>
                 {% endif %}
 
+                {% if auto_close_notice %}
+                <div class="aside-group auto-close-aside" data-auto-close-deadline="{{ auto_close_notice.fecha_iso }}">
+                    <div class="aside-title-row">
+                        <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
+                            <i class="bi bi-hourglass-bottom text-warning"></i>
+                            Auto-cierre
+                        </h6>
+                    </div>
+                    <dl class="aside-list mb-0">
+                        <div>
+                            <dt>Prioridad</dt>
+                            <dd>{{ auto_close_notice.prioridad }}</dd>
+                        </div>
+                        <div>
+                            <dt>Plazo configurado</dt>
+                            <dd>{{ auto_close_notice.auto_cierre_horas }} horas</dd>
+                        </div>
+                        <div>
+                            <dt>Fecha límite</dt>
+                            <dd>{{ auto_close_notice.fecha|date:"d/m/Y H:i" }}</dd>
+                        </div>
+                        <div>
+                            <dt>{% if auto_close_notice.vencido %}Estado{% else %}Tiempo restante{% endif %}</dt>
+                            <dd class="fw-bold text-warning">
+                                {% if auto_close_notice.vencido %}
+                                Pendiente del ciclo automático
+                                {% else %}
+                                <span data-auto-close-countdown>{{ auto_close_notice.tiempo }}</span>
+                                {% endif %}
+                            </dd>
+                        </div>
+                    </dl>
+                    <small class="d-block text-muted mt-2">Si el trabajador no cierra ni reabre, el sistema cerrará el ticket y lo registrará en auditoría.</small>
+                </div>
+                {% endif %}
+
                 <div class="aside-group">
                     <div class="aside-title-row">
                         <h6 class="mb-0 fw-bold">Ficha de incidencia</h6>
@@ -903,6 +939,38 @@
                 document.body.style.overflow = 'auto';
             }
         };
+    }
+
+    function formatAutoCloseTime(ms) {
+        if (ms <= 0) return 'vencido; se cerrará en el próximo ciclo automático';
+        const totalSeconds = Math.floor(ms / 1000);
+        const days = Math.floor(totalSeconds / 86400);
+        const hours = Math.floor((totalSeconds % 86400) / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        const parts = [];
+        if (days) parts.push(`${days} día${days === 1 ? '' : 's'}`);
+        if (hours) parts.push(`${hours} hora${hours === 1 ? '' : 's'}`);
+        if (!days && minutes) parts.push(`${minutes} minuto${minutes === 1 ? '' : 's'}`);
+        if (!days && !hours && seconds) parts.push(`${seconds} segundo${seconds === 1 ? '' : 's'}`);
+        return parts.slice(0, 2).join(' y ') || 'menos de 1 minuto';
+    }
+
+    function syncAutoCloseCountdowns() {
+        const wrappers = document.querySelectorAll('[data-auto-close-deadline]');
+        wrappers.forEach(wrapper => {
+            const deadline = new Date(wrapper.dataset.autoCloseDeadline);
+            if (Number.isNaN(deadline.getTime())) return;
+            const remaining = deadline.getTime() - Date.now();
+            wrapper.querySelectorAll('[data-auto-close-countdown]').forEach(el => {
+                el.textContent = formatAutoCloseTime(remaining);
+            });
+        });
+    }
+
+    syncAutoCloseCountdowns();
+    if (document.querySelector('[data-auto-close-deadline]')) {
+        setInterval(syncAutoCloseCountdowns, 1000);
     }
 
     document.body.addEventListener('htmx:afterOnLoad', function(evt) {

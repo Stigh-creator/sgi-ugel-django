@@ -562,6 +562,43 @@
             });
         });
 
+        const nuevoEquipoForm = document.getElementById('formNuevoEquipo');
+        if (nuevoEquipoForm) {
+            const requiredFields = Array.from(nuevoEquipoForm.querySelectorAll('[data-required-for-create]'));
+            const submitButton = nuevoEquipoForm.querySelector('[type="submit"]');
+
+            const fieldHasValue = field => {
+                if (field.tagName === 'SELECT') {
+                    return field.value !== '';
+                }
+                return field.value.trim() !== '';
+            };
+
+            const syncCreateButtonState = () => {
+                const isComplete = requiredFields.every(fieldHasValue);
+                if (!submitButton) return;
+                submitButton.disabled = !isComplete;
+                submitButton.setAttribute('aria-disabled', String(!isComplete));
+            };
+
+            requiredFields.forEach(field => {
+                field.addEventListener('input', syncCreateButtonState);
+                field.addEventListener('change', syncCreateButtonState);
+            });
+
+            nuevoEquipoForm.addEventListener('submit', event => {
+                syncCreateButtonState();
+                if (submitButton?.disabled) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    requiredFields.find(field => !fieldHasValue(field))?.focus();
+                }
+            }, true);
+
+            syncCreateButtonState();
+            document.getElementById('modalNuevoEquipo')?.addEventListener('shown.bs.modal', syncCreateButtonState);
+        }
+
         document.querySelectorAll('.js-disable-on-submit').forEach(form => {
             form.dataset.localSubmitGuard = 'true';
             form.addEventListener('submit', function(event) {

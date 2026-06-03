@@ -12,7 +12,7 @@ from django.utils import timezone
 from auditoria.models import Auditoria, EventoFallido
 from inventario.models import Equipo, EstadoEquipo, HistorialEstadoEquipo, Marca, TipoEquipo
 from tickets.forms.forms_incidencias import IncidenciaAdminForm, IncidenciaCierreForm, IncidenciaForm
-from tickets.models import Area, Comentario, CustomUser, Estado, EstadoSLA, Incidencia, MetricaDiaria, Notificacion, NotificacionUsuario, ReemplazoEquipoIncidencia
+from tickets.models import Area, Comentario, CustomUser, Estado, EstadoSLA, Incidencia, MetricaDiaria, Notificacion, NotificacionUsuario, ReemplazoEquipoIncidencia, SLAConfiguracion
 from tickets.services import (
     aceptar_incidencia_service,
     assign_incidencia_service,
@@ -492,6 +492,63 @@ class IncidenciasBusinessRulesTests(TestCase):
         self.assertIn(self.admin.pk, destinatarios)
         self.assertIn(admin_observador.pk, destinatarios)
         self.assertNotIn(self.usuario.pk, destinatarios)
+
+    def test_autocierre_registra_auditoria_con_motivo_automatico(self):
+        incidencia = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Incidencia resuelta pendiente de validacion del trabajador.",
+            tecnico_asignado=self.tecnico,
+            estado=get_estado(Incidencia.ESTADO_RESUELTO),
+            fecha_resolucion=timezone.now() - timedelta(hours=25),
+            fecha_auto_cierre=timezone.now() - timedelta(minutes=5),
+        )
+
+        call_command("autocerrar_incidencias_resueltas")
+        incidencia.refresh_from_db()
+
+        self.assertEqual(incidencia.estado_actual, Incidencia.ESTADO_CERRADO)
+        self.assertTrue(incidencia.auto_cerrado)
+        auditoria = Auditoria.objects.get(evento="incidencia.cerrada", referencia_id=incidencia.pk)
+        self.assertIn("cerrada automáticamente", auditoria.descripcion)
+        self.assertIn("venció el plazo de auto-cierre", auditoria.descripcion)
+        self.assertTrue(auditoria.metadata["auto"])
+        self.assertIn("sin aceptación ni reapertura", auditoria.metadata["motivo"])
+
+    def test_detalle_resuelto_informa_panel_lateral_de_autocierre_al_trabajador(self):
+        SLAConfiguracion.objects.update_or_create(
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            categoria=None,
+            defaults={
+                "tiempo_respuesta_minutos": 240,
+                "tiempo_resolucion_minutos": 1440,
+                "auto_cierre_horas": 72,
+                "activo": True,
+            },
+        )
+        incidencia = Incidencia.objects.create(
+            creador=self.usuario,
+            area=self.area,
+            categoria="software",
+            prioridad=Incidencia.PRIORIDAD_MEDIA,
+            descripcion="Incidencia resuelta esperando conformidad.",
+            tecnico_asignado=self.tecnico,
+            estado=get_estado(Incidencia.ESTADO_RESUELTO),
+            solucion_aplicada="Se restauró el servicio y se validó conectividad básica.",
+            tipo_resolucion=Incidencia.RESOLUCION_REPARADO,
+            fecha_resolucion=timezone.now(),
+            fecha_auto_cierre=timezone.now() + timedelta(hours=72),
+        )
+        self.client.force_login(self.usuario)
+
+        response = self.client.get(reverse("detalle_incidencia", args=[incidencia.pk]))
+
+        self.assertContains(response, "Auto-cierre")
+        self.assertContains(response, "Plazo configurado")
+        self.assertContains(response, "72 horas")
+        self.assertContains(response, "Si el trabajador no cierra ni reabre")
 
     def test_resolver_reemplazado_deja_antiguo_inoperativo_y_nuevo_operativo_al_cerrar(self):
         area_reemplazo = Area.objects.create(name="Gestión Pedagógica")

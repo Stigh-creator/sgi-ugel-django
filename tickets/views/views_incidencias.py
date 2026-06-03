@@ -15,7 +15,7 @@ from auditoria.utils import registrar_auditoria
 from .views_utils import (
     is_admin, is_fetch_request, add_form_errors_to_messages, HttpResponseClientRefresh, page_querystring
 )
-from ..models import Area, Comentario, CustomUser, Incidencia, IncidenciaImagen, Estado
+from ..models import Area, Comentario, CustomUser, Incidencia, IncidenciaImagen, Estado, SLAConfiguracion
 from ..forms.forms_incidencias import (
     IncidenciaAdminForm,
     IncidenciaForm,
@@ -144,6 +144,48 @@ def build_sla_notice(incidencia, user):
         "vencido": vencido,
         "tiempo": format_timedelta_humano(delta),
         "estado": incidencia.get_estado_sla_display(),
+    }
+
+
+def build_auto_close_notice(incidencia, user):
+    if incidencia.estado_actual != Incidencia.ESTADO_RESUELTO or not incidencia.fecha_auto_cierre:
+        return None
+
+    config = (
+        SLAConfiguracion.objects.filter(
+            prioridad=incidencia.prioridad,
+            categoria=incidencia.categoria,
+            activo=True,
+        ).first()
+        or SLAConfiguracion.objects.filter(
+            prioridad=incidencia.prioridad,
+            categoria__isnull=True,
+            activo=True,
+        ).first()
+    )
+    auto_cierre_horas = config.auto_cierre_horas if config else 72
+    now = timezone.now()
+    delta = incidencia.fecha_auto_cierre - now
+    vencido = delta.total_seconds() <= 0
+
+    if incidencia.creador_id == user.id:
+        mensaje = (
+            "Revisa la solución. Si estás conforme, cierra el ticket; si el problema continúa, reábrelo con el motivo."
+        )
+    else:
+        mensaje = (
+            "La incidencia espera validación del trabajador. Si no confirma ni reabre dentro del plazo, "
+            "el sistema la cerrará automáticamente."
+        )
+
+    return {
+        "fecha": timezone.localtime(incidencia.fecha_auto_cierre),
+        "fecha_iso": incidencia.fecha_auto_cierre.isoformat(),
+        "vencido": vencido,
+        "tiempo": format_timedelta_humano(delta),
+        "prioridad": prioridad_label(incidencia.prioridad),
+        "auto_cierre_horas": auto_cierre_horas,
+        "mensaje": mensaje,
     }
 
 
@@ -487,6 +529,7 @@ def detalle_incidencia(request, pk):
         'equipos_reemplazo': equipos_reemplazo.select_related("area", "marca", "tipo_equipo"),
         'now': timezone.localtime(timezone.now()),
         'sla_notice': build_sla_notice(incidencia, request.user),
+        'auto_close_notice': build_auto_close_notice(incidencia, request.user),
     }
 
     if request.headers.get('HX-Request') and not request.method == 'POST':
