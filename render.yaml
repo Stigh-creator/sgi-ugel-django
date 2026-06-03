@@ -1,0 +1,48 @@
+services:
+  - type: web
+    name: gestion-incidencias-web
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /login/
+    envVars:
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gestion-incidencias-db
+          property: connectionString
+      - key: DB_CONN_MAX_AGE
+        value: "60"
+      - key: DJANGO_STATIC_ROOT
+        value: /app/staticfiles
+
+  - type: cron
+    name: gestion-incidencias-scheduler
+    runtime: docker
+    schedule: "*/15 * * * *"
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: sh -c "python manage.py procesar_sla_incidencias && python manage.py autocerrar_incidencias_resueltas && python manage.py metricas_operativas_sgi"
+    envVars:
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_SECRET_KEY
+        fromService:
+          type: web
+          name: gestion-incidencias-web
+          envVarKey: DJANGO_SECRET_KEY
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gestion-incidencias-db
+          property: connectionString
+      - key: DB_CONN_MAX_AGE
+        value: "60"
+
+databases:
+  - name: gestion-incidencias-db
+    databaseName: gestion_incidencias
+    user: gestion_user
+    postgresMajorVersion: "17"

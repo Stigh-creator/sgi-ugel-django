@@ -21,4 +21,4 @@ COPY . /app/
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py migrate && python manage.py collectstatic --noinput && daphne -b 0.0.0.0 -p 8000 gestion_incidencias.asgi:application"]
+CMD ["sh", "-c", "python manage.py migrate && python manage.py collectstatic --noinput && daphne -b 0.0.0.0 -p ${PORT:-8000} gestion_incidencias.asgi:application"]

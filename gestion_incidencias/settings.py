@@ -1,6 +1,7 @@
 import os
 from importlib.util import find_spec
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 from dotenv import load_dotenv
 
@@ -15,11 +16,18 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-only-chang
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() == 'true'
 # Dominios o direcciones IP desde las cuales se puede acceder a la aplicación
 ALLOWED_HOSTS = [host.strip() for host in os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host.strip()]
+RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
     if origin.strip()
 ]
+if RENDER_EXTERNAL_HOSTNAME:
+    render_origin = f"https://{RENDER_EXTERNAL_HOSTNAME}"
+    if render_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(render_origin)
 
 # 2. Aplicaciones instaladas (ajustado para la base, sin extras)
 # Declara los módulos internos de Django y las aplicaciones propias del proyecto
@@ -72,6 +80,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+if find_spec("whitenoise"):
+    MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
 
 # Archivo principal de enrutamiento que conecta las URLs con las vistas
 ROOT_URLCONF = 'gestion_incidencias.urls'
@@ -101,8 +111,22 @@ WSGI_APPLICATION = 'gestion_incidencias.wsgi.application'
 # 6. Motor de Base de Datos
 # PostgreSQL es el motor principal. SQLite queda solo si se define explícitamente en variables de entorno.
 DB_ENGINE = os.environ.get("DB_ENGINE", "django.db.backends.postgresql")
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
-if DB_ENGINE == "django.db.backends.postgresql":
+if DB_ENGINE == "django.db.backends.postgresql" and DATABASE_URL:
+    parsed_db_url = urlparse(DATABASE_URL)
+    DATABASES = {
+        "default": {
+            "ENGINE": DB_ENGINE,
+            "NAME": unquote(parsed_db_url.path.lstrip("/")),
+            "USER": unquote(parsed_db_url.username or ""),
+            "PASSWORD": unquote(parsed_db_url.password or ""),
+            "HOST": parsed_db_url.hostname or "",
+            "PORT": str(parsed_db_url.port or 5432),
+            "CONN_MAX_AGE": int(os.environ.get("DB_CONN_MAX_AGE", "60")),
+        }
+    }
+elif DB_ENGINE == "django.db.backends.postgresql":
     DATABASES = {
         "default": {
             "ENGINE": DB_ENGINE,
@@ -150,6 +174,15 @@ DEFAULT_CHARSET = "utf-8"
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 STATIC_ROOT = os.environ.get("DJANGO_STATIC_ROOT", os.path.join(BASE_DIR, "staticfiles"))
+if find_spec("whitenoise"):
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
 
 # URL y directorio para archivos subidos por los usuarios (ej. capturas de pantalla)
 MEDIA_URL = '/media/'
