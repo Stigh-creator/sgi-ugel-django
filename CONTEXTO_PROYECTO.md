@@ -209,6 +209,10 @@ Comandos disponibles:
 *   `python manage.py snapshot_metricas`
 *   `python manage.py reprocesar_eventos_fallidos`
 
+Ejecución automatizada actual:
+*   En local con Docker Compose, el servicio `scheduler` ejecuta SLA, auto-cierre y métricas cada 15 minutos por defecto.
+*   En Render, `render.yaml` define un Cron Job `gestion-incidencias-scheduler` con la misma frecuencia.
+
 Reglas:
 *   Los jobs son idempotentes.
 *   SLA vencido se notifica una sola vez por tipo de vencimiento.
@@ -241,9 +245,15 @@ El proyecto mantiene una separación por dominio, con el código de negocio dent
 | `documentacion/` | Material académico y entregables externos del proyecto. |
 | `cargar_maestros.py` | Script de carga de catálogos base para iniciar una base limpia. |
 | `reset_db.py` | Utilidad local para reinicio controlado de datos durante desarrollo. |
+| `requirements.txt` | Dependencias Python del sistema, incluyendo Django, Daphne, Channels, PostgreSQL, ReportLab y WhiteNoise. |
+| `Dockerfile` | Imagen de ejecución para despliegue Docker y Render. |
+| `docker-compose.yml` | Orquestación local de `web`, `scheduler`, PostgreSQL y Redis. |
+| `docker-compose.override.yml` | Ajustes de desarrollo local con código montado y `runserver`. |
+| `render.yaml` | Blueprint de Render para servicio web, PostgreSQL y cron operativo. |
+| `.env.example` | Plantilla de variables de entorno locales y de producción sin secretos reales. |
 | `.env` | Variables sensibles locales. No debe subirse al repositorio. |
 
-Observación técnica: la estructura está coherente para continuar hacia PostgreSQL, Docker y despliegue. El siguiente orden recomendado es mantener `static` versionado, dejar `media` fuera de Git, no subir `venv`, y conservar `scratch`/temporales fuera del repositorio.
+Observación técnica: la estructura ya está preparada para ejecución local con Docker Compose y despliegue en Render mediante Docker. El siguiente orden recomendado es mantener `static` versionado, dejar `media` fuera de Git, no subir `venv`, conservar temporales fuera del repositorio y definir almacenamiento persistente para `media/` antes de producción real.
 
 ---
 
@@ -268,8 +278,12 @@ Observación técnica: la estructura está coherente para continuar hacia Postgr
 *   [x] Campana de notificaciones priorizadas para administrador, técnico, almacén y trabajador.
 *   [x] Entrega de notificaciones en tiempo real mediante Daphne/ASGI, Channels y WebSocket.
 *   [x] Migración local a PostgreSQL mediante variables de entorno.
+*   [x] Dockerización local con servicios web, scheduler, PostgreSQL y Redis.
+*   [x] Preparación de despliegue en Render con `render.yaml`, Docker, PostgreSQL y Cron Job.
+*   [x] Configuración de WhiteNoise para archivos estáticos en producción.
 
 ## 13. Pendientes y Mejoras
 *   [ ] Revisión final de manual académico, capturas y anexos antes de entrega.
-*   [ ] Dockerización para despliegue reproducible.
-*   [ ] Configuración de entorno productivo: variables de entorno, servidor ASGI, Redis para Channels, archivos estáticos, backups y monitoreo.
+*   [ ] Configurar almacenamiento persistente o externo para `media/` en producción.
+*   [ ] Configurar Redis externo para Channels si se escala a más de una instancia.
+*   [ ] Definir política final de backups, monitoreo y restauración periódica en el proveedor.

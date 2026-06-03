@@ -25,12 +25,13 @@ Su objetivo principal es eliminar los cuellos de botella en la atención al usua
 
 ## 🛠️ Stack Tecnológico
 
-- **Backend:** Django 5.x + Python 3.11/3.12
-- **Base de Datos:** PostgreSQL local mediante variables de entorno. SQLite queda solo como alternativa local anterior.
+- **Backend:** Django 5.x + Python 3.11
+- **Base de Datos:** PostgreSQL mediante variables de entorno o `DATABASE_URL`.
 - **Frontend:** HTML5, CSS3 (Rich Aesthetics), JavaScript Vanilla
 - **Documentación:** ReportLab (Generación de PDF)
 - **Tiempo real:** Django Channels + Daphne/ASGI con WebSocket de notificaciones.
-- **Infraestructura:** Ejecución local con Django/PostgreSQL. Docker queda planificado para despliegue reproducible.
+- **Infraestructura:** Docker Compose local con servicios `web`, `scheduler`, `db` y `redis`; despliegue preparado para Render con `render.yaml`.
+- **Estáticos:** WhiteNoise para servir archivos estáticos en producción.
 
 ## Mejoras de Producción
 
@@ -150,7 +151,17 @@ python manage.py snapshot_metricas
 python manage.py reprocesar_eventos_fallidos
 ```
 
-Ejecución recomendada en producción:
+En Docker Compose existe un servicio `scheduler` que ejecuta cada 15 minutos:
+
+```bash
+python manage.py procesar_sla_incidencias
+python manage.py autocerrar_incidencias_resueltas
+python manage.py metricas_operativas_sgi
+```
+
+En Render, `render.yaml` crea un Cron Job equivalente con frecuencia de 15 minutos.
+
+Ejecución recomendada si se administra manualmente en producción:
 
 ```bash
 */5 * * * * /ruta/python /ruta/manage.py procesar_sla_incidencias
@@ -179,10 +190,11 @@ Validar restauración periódicamente en un entorno de prueba. Un backup que no 
 ## 📦 Instalación y Configuración
 
 ### Prerrequisitos
-- Python 3.10+
-- Pip (Gestor de paquetes)
+- Docker Desktop y Docker Compose para el flujo recomendado.
+- Python 3.11+ y Pip solo si se ejecuta sin Docker.
+- Git para clonar y publicar el proyecto.
 
-### Pasos para ejecución local
+### Ejecución local con Docker
 
 1. **Clonar el repositorio:**
    ```bash
@@ -190,16 +202,79 @@ Validar restauración periódicamente en un entorno de prueba. Un backup que no 
    cd sgi-ugel-django
    ```
 
-2. **Preparar entorno y base de datos:**
-   - Crear y activar el entorno virtual.
-   - Instalar dependencias con `pip install -r requirements.txt`.
-   - Configurar `.env` con las credenciales locales de PostgreSQL.
-   - Ejecutar migraciones con `python manage.py migrate`.
-   - Cargar catálogos base con `python cargar_maestros.py`.
+2. **Crear archivo de entorno:**
+   Copiar `.env.example` como `.env` y ajustar al menos:
+   - `DJANGO_SECRET_KEY`
+   - `DB_PASSWORD`
+   - `DJANGO_ALLOWED_HOSTS`
+   - `DJANGO_CSRF_TRUSTED_ORIGINS` si se accede desde otra IP o dominio.
 
-3. **Levantar el sistema en red local:**
+3. **Levantar servicios:**
+   ```bash
+   docker compose up --build
+   ```
+
+4. **Cargar catálogos base en una base limpia:**
+   ```bash
+   docker compose exec web python cargar_maestros.py
+   ```
+
+5. **Ingresar al sistema:**
+   Abrir `http://localhost:8000`.
+
+El `docker-compose.override.yml` está pensado para desarrollo local: monta el código dentro del contenedor y usa `runserver`. El `docker-compose.yml` base mantiene la configuración más cercana a producción con Daphne/ASGI.
+
+### Ejecución local sin Docker
+
+1. Crear y activar un entorno virtual.
+2. Instalar dependencias:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Configurar `.env` con PostgreSQL local.
+4. Ejecutar migraciones y catálogos:
+   ```bash
+   python manage.py migrate
+   python cargar_maestros.py
+   ```
+5. Levantar:
    ```bash
    python manage.py runserver 0.0.0.0:8000
    ```
 
-   Para pruebas internas se debe agregar la IP usada a `ALLOWED_HOSTS` mediante variables de entorno o configuración local.
+## Despliegue en Render
+
+El proyecto incluye `render.yaml` para crear desde GitHub:
+
+- Servicio web Docker (`gestion-incidencias-web`).
+- Base PostgreSQL (`gestion-incidencias-db`).
+- Cron Job Docker (`gestion-incidencias-scheduler`) cada 15 minutos para SLA, auto-cierre y métricas.
+
+Pasos generales:
+
+1. Subir a GitHub los cambios de `Dockerfile`, `requirements.txt`, `render.yaml`, `gestion_incidencias/settings.py` y `.env.example`.
+2. En Render, crear un **Blueprint** desde el repositorio.
+3. Verificar que Render genere `DJANGO_SECRET_KEY` y conecte `DATABASE_URL` desde PostgreSQL.
+4. Luego del primer despliegue, ejecutar una tarea puntual para migraciones/catálogos si hace falta:
+   ```bash
+   python manage.py migrate
+   python cargar_maestros.py
+   ```
+
+Notas importantes para producción:
+
+- Los archivos de `media/` subidos por usuarios pueden perderse si no se configura disco persistente o almacenamiento externo en Render.
+- Para WebSockets en una sola instancia se puede trabajar con la configuración actual; si se escala a varias instancias, configurar Redis externo y `REDIS_URL`.
+- Mantener `.env` fuera de Git. El archivo versionado es `.env.example`.
+
+## Archivos Importantes
+
+| Archivo | Uso |
+| :--- | :--- |
+| `requirements.txt` | Dependencias Python, incluye Django, Channels, Daphne, PostgreSQL, ReportLab y WhiteNoise. |
+| `.env.example` | Plantilla de variables locales y de producción. No contiene secretos reales. |
+| `Dockerfile` | Imagen Docker para Render y ejecución productiva. |
+| `docker-compose.yml` | Servicios locales principales: web, scheduler, PostgreSQL y Redis. |
+| `docker-compose.override.yml` | Ajustes de desarrollo local con volumen de código y `runserver`. |
+| `render.yaml` | Blueprint de Render para web, base PostgreSQL y cron programado. |
+| `.dockerignore` | Evita copiar `.env`, temporales, media local y dependencias al build. |
