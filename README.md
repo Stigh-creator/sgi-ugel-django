@@ -208,6 +208,7 @@ Validar restauración periódicamente en un entorno de prueba. Un backup que no 
    - `DB_PASSWORD`
    - `DJANGO_ALLOWED_HOSTS`
    - `DJANGO_CSRF_TRUSTED_ORIGINS` si se accede desde otra IP o dominio.
+   - Variables de seguridad productiva (`DJANGO_SECURE_SSL_REDIRECT`, `DJANGO_SESSION_COOKIE_SECURE`, `DJANGO_CSRF_COOKIE_SECURE` y `DJANGO_SECURE_HSTS_SECONDS`) cuando se ejecute fuera del entorno local.
 
 3. **Levantar servicios:**
    ```bash
@@ -249,12 +250,13 @@ El proyecto incluye `render.yaml` para crear desde GitHub:
 - Servicio web Docker (`gestion-incidencias-web`).
 - Base PostgreSQL (`gestion-incidencias-db`).
 - Cron Job Docker (`gestion-incidencias-scheduler`) cada 15 minutos para SLA, auto-cierre y métricas.
+- Disco persistente `gestion-incidencias-media` montado en `/app/media` para archivos subidos por usuarios.
 
 Pasos generales:
 
 1. Subir a GitHub los cambios de `Dockerfile`, `requirements.txt`, `render.yaml`, `gestion_incidencias/settings.py` y `.env.example`.
 2. En Render, crear un **Blueprint** desde el repositorio.
-3. Verificar que Render genere `DJANGO_SECRET_KEY` y conecte `DATABASE_URL` desde PostgreSQL.
+3. Verificar que Render genere `DJANGO_SECRET_KEY`, conecte `DATABASE_URL` desde PostgreSQL y mantenga activas las variables HTTPS/cookies seguras definidas en `render.yaml`.
 4. Luego del primer despliegue, ejecutar una tarea puntual para migraciones/catálogos si hace falta:
    ```bash
    python manage.py migrate
@@ -263,7 +265,7 @@ Pasos generales:
 
 Notas importantes para producción:
 
-- Los archivos de `media/` subidos por usuarios pueden perderse si no se configura disco persistente o almacenamiento externo en Render.
+- Los archivos de `media/` subidos por usuarios quedan cubiertos por el disco persistente configurado en `render.yaml`. Si se cambia de proveedor o se escala la estrategia, usar almacenamiento externo equivalente.
 - Para WebSockets en una sola instancia se puede trabajar con la configuración actual; si se escala a varias instancias, configurar Redis externo y `REDIS_URL`.
 - Mantener `.env` fuera de Git. El archivo versionado es `.env.example`.
 

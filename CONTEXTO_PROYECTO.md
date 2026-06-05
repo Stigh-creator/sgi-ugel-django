@@ -249,11 +249,11 @@ El proyecto mantiene una separación por dominio, con el código de negocio dent
 | `Dockerfile` | Imagen de ejecución para despliegue Docker y Render. |
 | `docker-compose.yml` | Orquestación local de `web`, `scheduler`, PostgreSQL y Redis. |
 | `docker-compose.override.yml` | Ajustes de desarrollo local con código montado y `runserver`. |
-| `render.yaml` | Blueprint de Render para servicio web, PostgreSQL y cron operativo. |
+| `render.yaml` | Blueprint de Render para servicio web, PostgreSQL, cron operativo y disco persistente para `media/`. |
 | `.env.example` | Plantilla de variables de entorno locales y de producción sin secretos reales. |
 | `.env` | Variables sensibles locales. No debe subirse al repositorio. |
 
-Observación técnica: la estructura ya está preparada para ejecución local con Docker Compose y despliegue en Render mediante Docker. El siguiente orden recomendado es mantener `static` versionado, dejar `media` fuera de Git, no subir `venv`, conservar temporales fuera del repositorio y definir almacenamiento persistente para `media/` antes de producción real.
+Observación técnica: la estructura ya está preparada para ejecución local con Docker Compose y despliegue en Render mediante Docker. El siguiente orden recomendado es mantener `static` versionado, dejar `media` fuera de Git, no subir `venv`, conservar temporales fuera del repositorio y conservar el disco persistente de Render montado en `/app/media` para producción real.
 
 ---
 
@@ -281,9 +281,10 @@ Observación técnica: la estructura ya está preparada para ejecución local co
 *   [x] Dockerización local con servicios web, scheduler, PostgreSQL y Redis.
 *   [x] Preparación de despliegue en Render con `render.yaml`, Docker, PostgreSQL y Cron Job.
 *   [x] Configuración de WhiteNoise para archivos estáticos en producción.
+*   [x] Configuración de disco persistente en Render para archivos `media/`.
+*   [x] Configuración productiva de redirección HTTPS, cookies seguras y HSTS base mediante variables de entorno.
 
 ## 13. Pendientes y Mejoras
 *   [ ] Revisión final de manual académico, capturas y anexos antes de entrega.
-*   [ ] Configurar almacenamiento persistente o externo para `media/` en producción.
 *   [ ] Configurar Redis externo para Channels si se escala a más de una instancia.
 *   [ ] Definir política final de backups, monitoreo y restauración periódica en el proveedor.

@@ -5,6 +5,10 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /login/
+    disk:
+      name: gestion-incidencias-media
+      mountPath: /app/media
+      sizeGB: 1
     envVars:
       - key: DJANGO_DEBUG
         value: "False"
@@ -18,6 +22,14 @@ services:
         value: "60"
       - key: DJANGO_STATIC_ROOT
         value: /app/staticfiles
+      - key: DJANGO_SECURE_SSL_REDIRECT
+        value: "True"
+      - key: DJANGO_SESSION_COOKIE_SECURE
+        value: "True"
+      - key: DJANGO_CSRF_COOKIE_SECURE
+        value: "True"
+      - key: DJANGO_SECURE_HSTS_SECONDS
+        value: "3600"
 
   - type: cron
     name: gestion-incidencias-scheduler
