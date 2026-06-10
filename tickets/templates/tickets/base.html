@@ -49,33 +49,35 @@
             </a>
 
             <nav class="nav flex-column mt-3">
+                {% with current_url=request.resolver_match.url_name %}
                 {% if user.role == 'almacen' %}
-                <a class="nav-card {% if request.resolver_match.url_name == 'inventario_list' or request.resolver_match.url_name == 'equipo_detalle' %}active{% endif %}"
+                <a class="nav-card {% if current_url == 'inventario_list' or current_url == 'equipo_detalle' or current_url == 'equipo_crear' or current_url == 'equipo_editar' or current_url == 'equipo_export_pdf' or current_url == 'inventario_export_pdf' or current_url == 'inventario_export_excel' %}active{% endif %}"
                     href="{% url 'inventario_list' %}">
                     <i class="fas fa-boxes"></i> Inventario
                 </a>
-                <a class="nav-card {% if request.resolver_match.url_name == 'inventario_control_operativo' %}active{% endif %}"
+                <a class="nav-card {% if current_url == 'inventario_control_operativo' or current_url == 'repuesto_crear' or current_url == 'repuesto_actualizar_stock' or current_url == 'mantenimiento_crear' or current_url == 'mantenimiento_completar' %}active{% endif %}"
                     href="{% url 'inventario_control_operativo' %}">
                     <i class="fas fa-clipboard-check"></i> Control operativo
                 </a>
 
                 {% elif user.role == 'administrador' or user.is_staff %}
-                <a class="nav-card {% if request.resolver_match.url_name == 'dashboard_admin' %}active{% endif %}"
+                <a class="nav-card {% if current_url == 'dashboard_admin' or current_url == 'export_dashboard_pdf' or current_url == 'export_dashboard_inventario_pdf' %}active{% endif %}"
                     href="{% url 'dashboard_admin' %}">
                     <i class="fas fa-tachometer-alt"></i> Dashboard
                 </a>
-                <a class="nav-card" href="{% url 'incidencias_admin' %}">
+                <a class="nav-card {% if current_url == 'incidencias_admin' or current_url == 'incidencias_list' or current_url == 'crear_incidencia' or current_url == 'crear_incidencia_modal' or current_url == 'detalle_incidencia' or current_url == 'gestionar_incidencia' or current_url == 'agregar_comentario' or current_url == 'asignar_tecnico' or current_url == 'aceptar_incidencia' or current_url == 'rechazar_incidencia' or current_url == 'resolver_incidencia' or current_url == 'reabrir_incidencia' or current_url == 'cerrar_incidencia' or current_url == 'export_ticket_pdf' or current_url == 'export_reporte_pdf' %}active{% endif %}"
+                    href="{% url 'incidencias_admin' %}">
                     <i class="fas fa-tasks"></i> Incidencias
                 </a>
-                <a class="nav-card {% if request.resolver_match.url_name == 'usuarios' %}active{% endif %}"
+                <a class="nav-card {% if current_url == 'usuarios' or current_url == 'crear_usuario' or current_url == 'editar_usuario' or current_url == 'toggle_usuario_status' or current_url == 'reset_password_admin' %}active{% endif %}"
                     href="{% url 'usuarios' %}">
                     <i class="fas fa-users"></i> Usuarios
                 </a>
-                <a class="nav-card {% if request.resolver_match.url_name == 'inventario_list' or request.resolver_match.url_name == 'equipo_detalle' %}active{% endif %}"
+                <a class="nav-card {% if current_url == 'inventario_list' or current_url == 'equipo_detalle' or current_url == 'equipo_crear' or current_url == 'equipo_editar' or current_url == 'equipo_export_pdf' or current_url == 'inventario_export_pdf' or current_url == 'inventario_export_excel' %}active{% endif %}"
                     href="{% url 'inventario_list' %}">
                     <i class="fas fa-boxes"></i> Inventario
                 </a>
-                <a class="nav-card {% if request.resolver_match.url_name == 'inventario_control_operativo' %}active{% endif %}"
+                <a class="nav-card {% if current_url == 'inventario_control_operativo' or current_url == 'repuesto_crear' or current_url == 'repuesto_actualizar_stock' or current_url == 'mantenimiento_crear' or current_url == 'mantenimiento_completar' %}active{% endif %}"
                     href="{% url 'inventario_control_operativo' %}">
                     <i class="fas fa-clipboard-check"></i> Control operativo
                 </a>
@@ -85,20 +87,21 @@
                 </a>
 
                 {% elif user.role == 'tecnico' %}
-                <a class="nav-card {% if request.resolver_match.url_name == 'dashboard_tecnico' %}active{% endif %}"
+                <a class="nav-card {% if current_url == 'dashboard_tecnico' %}active{% endif %}"
                     href="{% url 'dashboard_tecnico' %}">
                     <i class="fas fa-tachometer-alt"></i> Dashboard
                 </a>
-                <a class="nav-card" href="{% url 'incidencias_asignadas' %}">
+                <a class="nav-card {% if current_url == 'incidencias_asignadas' or current_url == 'incidencias_list' or current_url == 'detalle_incidencia' or current_url == 'gestionar_incidencia' or current_url == 'agregar_comentario' or current_url == 'aceptar_incidencia' or current_url == 'rechazar_incidencia' or current_url == 'resolver_incidencia' or current_url == 'reabrir_incidencia' or current_url == 'cerrar_incidencia' or current_url == 'export_ticket_pdf' or current_url == 'export_reporte_pdf' %}active{% endif %}"
+                    href="{% url 'incidencias_asignadas' %}">
                     <i class="fas fa-clipboard-list"></i> Mis Tareas
                 </a>
-                <a class="nav-card {% if request.resolver_match.url_name == 'inventario_list' or request.resolver_match.url_name == 'equipo_detalle' %}active{% endif %}"
+                <a class="nav-card {% if current_url == 'inventario_list' or current_url == 'equipo_detalle' or current_url == 'inventario_export_pdf' %}active{% endif %}"
                     href="{% url 'inventario_list' %}">
                     <i class="fas fa-boxes"></i> Inventario
                 </a>
 
                 {% else %}
-                <a class="nav-card {% if request.resolver_match.url_name == 'mis_incidencias' %}active{% endif %}"
+                <a class="nav-card {% if current_url == 'mis_incidencias' or current_url == 'crear_incidencia' or current_url == 'crear_incidencia_modal' or current_url == 'detalle_incidencia' or current_url == 'agregar_comentario' or current_url == 'cerrar_incidencia' or current_url == 'export_ticket_pdf' %}active{% endif %}"
                     href="{% url 'mis_incidencias' %}">
                     <i class="fas fa-ticket-alt"></i> Mis Reportes
                 </a>
@@ -106,10 +109,11 @@
 
                 <div class="sidebar-divider"></div>
 
-                <a class="nav-card {% if request.resolver_match.url_name == 'mi_perfil' %}active{% endif %}"
+                <a class="nav-card {% if current_url == 'mi_perfil' or current_url == 'update_photo' or current_url == 'password_change_forced' %}active{% endif %}"
                     href="{% url 'mi_perfil' %}">
                     <i class="fas fa-user-cog"></i> Mi Perfil
                 </a>
+                {% endwith %}
             </nav>
             <div class="mt-auto px-3 pt-3 pb-4">
                 <a class="nav-card nav-card-danger" href="{% url 'logout' %}" id="logoutTrigger"

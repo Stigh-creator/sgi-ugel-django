@@ -474,6 +474,7 @@ body.sidebar-open {
     align-items: center;
     gap: 10px;
     padding: 10px;
+    border-left: 4px solid transparent;
     border-radius: var(--radius-md);
     background: var(--surface-2);
     text-decoration: none;
@@ -486,9 +487,15 @@ body.sidebar-open {
 }
 
 .nav-card.active {
-    background: var(--estado-en-proceso-bg);
-    color: var(--estado-en-proceso-rail);
+    background: #dbeafe;
+    border-left-color: #2563eb;
+    color: #1e3a8a;
     font-weight: 600;
+    box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.12);
+}
+
+.nav-card.active i {
+    color: #2563eb;
 }
 
 .nav-card-danger {
