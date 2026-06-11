@@ -5,6 +5,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from tickets.models import Area, CustomUser
+from tickets.models import Incidencia, ReemplazoEquipoIncidencia
 
 from .models import Equipo, EstadoEquipo, Marca, MantenimientoPreventivo, Repuesto, TipoEquipo
 
@@ -170,6 +171,74 @@ class InventarioRulesTests(TestCase):
         self.equipo.refresh_from_db()
         self.assertEqual(self.equipo.estado, self.estado_operativo)
         self.assertEqual(self.equipo.disponibilidad, Equipo.DISPONIBILIDAD_EN_USO)
+
+    def test_almacen_libera_reemplazo_temporal_desde_inventario(self):
+        area_trabajador = Area.objects.create(name="Mesa de Partes")
+        trabajador = CustomUser.objects.create_user(
+            username="33334444",
+            password="Usuario1234!",
+            first_name="Tania",
+            last_name="Trabajador",
+            role=CustomUser.ROL_TRABAJADOR,
+            area=area_trabajador,
+            telefono="999111666",
+        )
+        equipo_original = Equipo.objects.create(
+            codigo_equipo="LP-ORIG",
+            nombre_equipo="Laptop usuario",
+            tipo_equipo=self.tipo,
+            marca=self.marca,
+            modelo="Probook",
+            area=area_trabajador,
+            estado=self.estado_operativo,
+            activo=True,
+        )
+        incidencia = Incidencia.objects.create(
+            creador=trabajador,
+            area=area_trabajador,
+            equipo=equipo_original,
+            categoria="hardware",
+            descripcion="Pantalla dañada.",
+        )
+        self.equipo.area = area_trabajador
+        self.equipo.disponibilidad = Equipo.DISPONIBILIDAD_REEMPLAZO_TEMPORAL
+        self.equipo.origen_ocupacion = Equipo.ORIGEN_OCUPACION_REEMPLAZO
+        self.equipo.save(update_fields=["area", "disponibilidad", "origen_ocupacion", "actualizado_en"])
+        registro = ReemplazoEquipoIncidencia.objects.create(
+            incidencia=incidencia,
+            equipo_original=equipo_original,
+            equipo_reemplazo=self.equipo,
+            area_origen=self.area,
+            area_destino=area_trabajador,
+            usuario=self.almacen,
+            motivo="Préstamo temporal por reparación.",
+            activo=True,
+        )
+
+        response = self.client.post(
+            reverse("equipo_editar", args=[self.equipo.pk]),
+            {
+                "codigo_equipo": self.equipo.codigo_equipo,
+                "nombre_equipo": self.equipo.nombre_equipo,
+                "tipo_equipo": self.tipo.pk,
+                "marca": self.marca.pk,
+                "modelo": self.equipo.modelo,
+                "numero_serie": self.equipo.numero_serie or "",
+                "area": area_trabajador.pk,
+                "estado": self.estado_operativo.pk,
+                "disponibilidad": Equipo.DISPONIBILIDAD_LIBRE,
+                "observaciones": self.equipo.observaciones or "",
+            },
+        )
+
+        self.assertRedirects(response, reverse("inventario_list"))
+        registro.refresh_from_db()
+        self.equipo.refresh_from_db()
+        self.assertFalse(registro.activo)
+        self.assertIsNotNone(registro.fecha_fin)
+        self.assertEqual(self.equipo.disponibilidad, Equipo.DISPONIBILIDAD_LIBRE)
+        self.assertIsNone(self.equipo.origen_ocupacion)
+        self.assertEqual(self.equipo.area, self.area)
 
     def test_excel_de_inventario_solo_almacen_y_superusuario(self):
         self.client.force_login(self.admin)

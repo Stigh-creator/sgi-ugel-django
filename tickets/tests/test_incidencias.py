@@ -550,7 +550,7 @@ class IncidenciasBusinessRulesTests(TestCase):
         self.assertContains(response, "72 horas")
         self.assertContains(response, "Si el trabajador no cierra ni reabre")
 
-    def test_resolver_reemplazado_deja_antiguo_inoperativo_y_nuevo_operativo_al_cerrar(self):
+    def test_resolver_reemplazado_mantiene_prestamo_temporal_al_cerrar_ticket(self):
         area_reemplazo = Area.objects.create(name="Gestión Pedagógica")
         reemplazo = Equipo.objects.create(
             codigo_equipo="PC-REMP",
@@ -603,10 +603,10 @@ class IncidenciasBusinessRulesTests(TestCase):
         self.assertEqual(self.equipo.estado.nombre, "Inoperativo")
         self.assertEqual(self.equipo.disponibilidad, Equipo.DISPONIBILIDAD_NO_DISPONIBLE)
         self.assertEqual(reemplazo.estado.nombre, "Operativo")
-        self.assertEqual(reemplazo.disponibilidad, Equipo.DISPONIBILIDAD_LIBRE)
-        self.assertIsNone(reemplazo.origen_ocupacion)
-        self.assertEqual(reemplazo.area, area_reemplazo)
-        self.assertFalse(ReemplazoEquipoIncidencia.objects.get(incidencia=incidencia).activo)
+        self.assertEqual(reemplazo.disponibilidad, Equipo.DISPONIBILIDAD_REEMPLAZO_TEMPORAL)
+        self.assertEqual(reemplazo.origen_ocupacion, Equipo.ORIGEN_OCUPACION_REEMPLAZO)
+        self.assertEqual(reemplazo.area, self.area)
+        self.assertTrue(ReemplazoEquipoIncidencia.objects.get(incidencia=incidencia).activo)
 
     def test_reemplazo_pc_y_laptop_son_compatibles(self):
         tipo_laptop = TipoEquipo.objects.create(nombre="Laptop")
@@ -2043,7 +2043,7 @@ class IncidenciasBusinessRulesTests(TestCase):
         self.assertGreaterEqual(snapshot.tickets_abiertos, 0)
         self.assertIn("reemplazos_activos", snapshot.metadata)
 
-    def test_integridad_global_fix_cierra_reemplazo_huerfano(self):
+    def test_integridad_global_no_cierra_reemplazo_temporal_activo_de_ticket_cerrado(self):
         reemplazo = Equipo.objects.create(
             codigo_equipo="PC-HUERFANO",
             nombre_equipo="PC Reemplazo Huérfano",
@@ -2080,7 +2080,7 @@ class IncidenciasBusinessRulesTests(TestCase):
 
         registro.refresh_from_db()
         reemplazo.refresh_from_db()
-        self.assertFalse(registro.activo)
-        self.assertIsNotNone(registro.fecha_fin)
-        self.assertEqual(reemplazo.disponibilidad, Equipo.DISPONIBILIDAD_LIBRE)
-        self.assertIsNone(reemplazo.origen_ocupacion)
+        self.assertTrue(registro.activo)
+        self.assertIsNone(registro.fecha_fin)
+        self.assertEqual(reemplazo.disponibilidad, Equipo.DISPONIBILIDAD_REEMPLAZO_TEMPORAL)
+        self.assertEqual(reemplazo.origen_ocupacion, Equipo.ORIGEN_OCUPACION_REEMPLAZO)

@@ -18,7 +18,7 @@ from .forms import (
     RepuestoForm,
     RepuestoStockForm,
 )
-from .services import registrar_cambio_manual_estado_equipo
+from .services import cerrar_reemplazos_temporales_por_equipo, registrar_cambio_manual_estado_equipo
 from tickets.models import Area, CustomUser
 from tickets.views.views_utils import add_form_errors_to_messages, page_querystring
 from tickets.services import normalize_expression, normalize_text
@@ -461,12 +461,14 @@ def equipo_crear(request):
 @require_POST
 def equipo_editar(request, pk):
     equipo = get_object_or_404(Equipo, pk=pk, activo=True)
+    area_ant = equipo.area
+    nombre_ant = equipo.nombre_equipo
+    disponibilidad_ant = equipo.get_disponibilidad_display()
+    disponibilidad_codigo_ant = equipo.disponibilidad
     form = EquipoForm(request.POST, request.FILES, instance=equipo)
     if form.is_valid():
-        area_ant = equipo.area
-        nombre_ant = equipo.nombre_equipo
-        disponibilidad_ant = equipo.get_disponibilidad_display()
         form.save()
+        equipo.refresh_from_db()
         
         cambios = []
         if area_ant != equipo.area:
@@ -478,6 +480,14 @@ def equipo_editar(request, pk):
             if equipo.disponibilidad != Equipo.DISPONIBILIDAD_LIBRE and not equipo.origen_ocupacion:
                 equipo.origen_ocupacion = Equipo.ORIGEN_OCUPACION_ASIGNACION_DIRECTA
                 equipo.save(update_fields=["origen_ocupacion", "actualizado_en"])
+            if (
+                disponibilidad_codigo_ant == Equipo.DISPONIBILIDAD_REEMPLAZO_TEMPORAL
+                and equipo.disponibilidad == Equipo.DISPONIBILIDAD_LIBRE
+            ):
+                cerrados = cerrar_reemplazos_temporales_por_equipo(equipo=equipo, usuario=request.user)
+                if cerrados:
+                    cambios.append("Préstamo temporal finalizado y equipo devuelto a su área de origen")
+                    equipo.refresh_from_db()
             
         desc = f"Se actualizó el equipo {equipo.codigo_equipo}."
         if cambios:

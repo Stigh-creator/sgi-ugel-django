@@ -250,7 +250,6 @@ def aplicar_inventario_al_resolver_incidencia(*, incidencia, usuario):
 
 
 def aplicar_inventario_al_cerrar_incidencia(*, incidencia, usuario):
-    cerrar_reemplazos_temporales_por_incidencia(incidencia=incidencia, usuario=usuario)
     if not incidencia.equipo or incidencia.tipo_resolucion != incidencia.RESOLUCION_REPARADO:
         return None
     return cambiar_estado_equipo_por_incidencia(
@@ -299,5 +298,44 @@ def cerrar_reemplazos_temporales_por_incidencia(*, incidencia, usuario):
                 },
                 actor=usuario,
             )
+        cerrados.append(reemplazo)
+    return cerrados
+
+
+def cerrar_reemplazos_temporales_por_equipo(*, equipo, usuario):
+    cerrados = []
+    reemplazos = ReemplazoEquipoIncidencia.objects.select_related("incidencia", "area_origen").filter(
+        equipo_reemplazo=equipo,
+        activo=True,
+    )
+    for reemplazo in reemplazos:
+        reemplazo.activo = False
+        reemplazo.fecha_fin = timezone.now()
+        reemplazo.save(update_fields=["activo", "fecha_fin"])
+        equipo.disponibilidad = equipo.DISPONIBILIDAD_LIBRE
+        equipo.origen_ocupacion = None
+        update_fields = ["disponibilidad", "origen_ocupacion", "actualizado_en"]
+        if reemplazo.area_origen_id:
+            equipo.area = reemplazo.area_origen
+            update_fields.append("area")
+        equipo.save(update_fields=update_fields)
+        registrar_auditoria(
+            None,
+            "Inventario",
+            "cerró reemplazo temporal",
+            (
+                f"Equipo {equipo.codigo_equipo} devuelto y liberado como reemplazo temporal "
+                f"asociado a la incidencia {reemplazo.incidencia.codigo}."
+            ),
+            equipo.id,
+            metadata={
+                "incidencia_id": reemplazo.incidencia_id,
+                "codigo": reemplazo.incidencia.codigo,
+                "reemplazo_id": reemplazo.id,
+                "equipo_reemplazo_id": equipo.id,
+                "origen": "Inventario",
+            },
+            actor=usuario,
+        )
         cerrados.append(reemplazo)
     return cerrados
