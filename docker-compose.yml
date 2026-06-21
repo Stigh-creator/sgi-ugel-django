@@ -1,63 +1,83 @@
 services:
-  web:
-    build: .
-    command: sh -c "python manage.py migrate && python manage.py collectstatic --noinput && daphne -b 0.0.0.0 -p 8000 gestion_incidencias.asgi:application"
-    env_file:
-      - .env
-    environment:
-      DB_HOST: db
-      DB_PORT: 5432
-      REDIS_URL: redis://redis:6379/0
-      DJANGO_STATIC_ROOT: /app/staticfiles
-    ports:
-      - "8000:8000"
-    volumes:
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-
-  scheduler:
-    build: .
-    command: sh -c "python manage.py migrate && while true; do python manage.py procesar_sla_incidencias; python manage.py autocerrar_incidencias_resueltas; python manage.py metricas_operativas_sgi; sleep $${SGI_SCHEDULER_INTERVAL:-900}; done"
-    env_file:
-      - .env
-    environment:
-      DB_HOST: db
-      DB_PORT: 5432
-      REDIS_URL: redis://redis:6379/0
-      DJANGO_STATIC_ROOT: /app/staticfiles
-    volumes:
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
+  sgi-db:
+    image: postgres:17-alpine
+    container_name: sgi-db
     restart: unless-stopped
-
-  db:
-    image: postgres:17
-    environment:
-      POSTGRES_DB: ${DB_NAME:-gestion_incidencias}
-      POSTGRES_USER: ${DB_USER:-gestion_user}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-change_me}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-gestion_user} -d ${DB_NAME:-gestion_incidencias}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      - ./pg_data:/var/lib/postgresql/data
+    ports:
+      - "54335:5432"
+    environment:
+      POSTGRES_DB: gestion_incidencias_prod
+      POSTGRES_USER: gestion_prod_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    networks:
+      - sgi-network
 
-  redis:
+  sgi-redis:
     image: redis:7-alpine
+    container_name: sgi-redis
+    restart: unless-stopped
+    ports:
+      - "6381:6379"
+    volumes:
+      - ./redis_data:/data
+    networks:
+      - sgi-network
 
-volumes:
-  postgres_data:
-  static_volume:
-  media_volume:
+  sgi-web:
+    image: saithg04/sgi-ugel-django:latest
+    container_name: sgi-web
+    restart: unless-stopped
+    command: /app/run_web.sh
+    env_file:
+      - /home/isai.quiroga.2004/environments/sgi-ugel-django.env
+    volumes:
+      - ./storage/static:/app/staticfiles
+      - ./storage/media:/app/media
+    depends_on:
+      - sgi-db
+      - sgi-redis
+    networks:
+      - sgi-network
+
+  sgi-scheduler:
+    image: saithg04/sgi-ugel-django:latest
+    container_name: sgi-scheduler
+    restart: unless-stopped
+    command: /app/run_scheduler.sh
+    env_file:
+      - /home/isai.quiroga.2004/environments/sgi-ugel-django.env
+    volumes:
+      - ./storage/static:/app/staticfiles
+      - ./storage/media:/app/media
+    depends_on:
+      - sgi-db
+      - sgi-redis
+    networks:
+      - sgi-network
+
+  cloudflared-tunnel-sgi:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared-tunnel-sgi
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token-file /run/secrets/cloudflared_token_sgi
+    secrets:
+      - cloudflared_token_sgi
+    networks:
+      - sgi-network
+
+networks:
+  sgi-network:
+    name: sgi-network
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  cloudflared_token_sgi:
+    file: ./secrets/cloudflared_token_sgi.txt
+
+
+

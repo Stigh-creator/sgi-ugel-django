@@ -32,3 +32,11 @@ kanban modificado.xlsx
 # Logs and temp files
 *.log
 *.tmp
+
+# Production directories and environments
+pg_data/
+redis_data/
+secrets/
+storage/
+../environments/
+

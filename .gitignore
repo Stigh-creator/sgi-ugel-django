@@ -64,6 +64,13 @@ kanban modificado.xlsx
 # Si usas archivos de volumen locales para Postgres
 # pgdata/
 
+# Local production bind mount directories
+pg_data/
+redis_data/
+secrets/
+storage/
+
+
 # Private Documents
 documentacion/
 scratch/
