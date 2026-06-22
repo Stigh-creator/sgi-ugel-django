@@ -1,0 +1,40 @@
+{% load static %}
+<div class="modal fade" id="modalEditarArea" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-edit me-2"></i>Editar Área
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formEditarArea" action="" method="POST" novalidate class="js-ajax-area-form">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="js-form-alert d-none alert alert-danger py-2 px-3 mb-3" role="alert"></div>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label small fw-bold text-muted">Nombre del Área</label>
+                            <input type="text" name="name" placeholder="Ej: Contabilidad" required
+                                   value=""
+                                   class="form-control">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label small fw-bold text-muted">Sede Principal</label>
+                            <select name="sede_principal" class="form-select" required>
+                                {% for val, label in update_form.fields.sede_principal.choices %}
+                                <option value="{{ val|default:'' }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary px-4 rounded-pill">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

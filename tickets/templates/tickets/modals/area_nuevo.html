@@ -1,0 +1,48 @@
+{% load static %}
+<div class="modal fade" id="modalNuevaArea" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-sitemap me-2"></i>Registrar Nueva Área
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formNuevaArea" action="{% url 'area_crear' %}" method="POST" novalidate class="js-ajax-area-form">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="js-form-alert d-none alert alert-danger py-2 px-3 mb-3" role="alert"></div>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label small fw-bold text-muted">Nombre del Área</label>
+                            <input type="text" name="name" placeholder="Ej: Contabilidad" required
+                                   value="{{ creation_form.name.value|default:'' }}"
+                                   class="form-control {% if creation_form.name.errors %}is-invalid{% endif %}">
+                            {% for error in creation_form.name.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label small fw-bold text-muted">Sede Principal</label>
+                            <select name="sede_principal" class="form-select {% if creation_form.sede_principal.errors %}is-invalid{% endif %}" required>
+                                {% for val, label in creation_form.fields.sede_principal.choices %}
+                                {% with actual=creation_form.sede_principal.value|stringformat:"s" opcion=val|stringformat:"s" %}
+                                <option value="{{ val|default:'' }}" {% if not creation_form.sede_principal.value and not val %}selected{% elif actual == opcion %}selected{% endif %}>{{ label }}</option>
+                                {% endwith %}
+                                {% endfor %}
+                            </select>
+                            {% for error in creation_form.sede_principal.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary px-4 rounded-pill">Registrar Área</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

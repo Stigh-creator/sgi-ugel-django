@@ -14,6 +14,7 @@ from .views.views_exports import (
     export_dashboard_incidencias_pdf, export_dashboard_inventario_pdf,
 )
 from .views.views_notificaciones import leer_notificacion, marcar_notificaciones_leidas
+from .views.views_areas import areas_list, area_crear, area_editar, area_eliminar
 
 urlpatterns = [
     # Exportaciones
@@ -45,6 +46,13 @@ urlpatterns = [
     path("usuarios/<int:pk>/toggle-status/", toggle_usuario_status, name="toggle_usuario_status"),
     path("usuarios/<int:pk>/reset-password/", reset_password_admin, name="reset_password_admin"),
     path('cambio-obligatorio/', password_change_forced, name='password_change_forced'),
+
+    # Áreas (CRUD)
+    path("areas/", areas_list, name="areas_list"),
+    path("areas/crear/", area_crear, name="area_crear"),
+    path("areas/<int:pk>/editar/", area_editar, name="area_editar"),
+    path("areas/<int:pk>/eliminar/", area_eliminar, name="area_eliminar"),
+
 
     # Incidencias (Épica 2 Refactorizada)
     path('incidencias/', incidencias_list, name='incidencias_list'),

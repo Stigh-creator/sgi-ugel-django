@@ -73,6 +73,10 @@
                     href="{% url 'usuarios' %}">
                     <i class="fas fa-users"></i> Usuarios
                 </a>
+                <a class="nav-card {% if current_url == 'areas_list' or current_url == 'area_crear' or current_url == 'area_editar' %}active{% endif %}"
+                    href="{% url 'areas_list' %}">
+                    <i class="fas fa-sitemap"></i> Áreas
+                </a>
                 <a class="nav-card {% if current_url == 'inventario_list' or current_url == 'equipo_detalle' or current_url == 'equipo_crear' or current_url == 'equipo_editar' or current_url == 'equipo_export_pdf' or current_url == 'inventario_export_pdf' or current_url == 'inventario_export_excel' %}active{% endif %}"
                     href="{% url 'inventario_list' %}">
                     <i class="fas fa-boxes"></i> Inventario
