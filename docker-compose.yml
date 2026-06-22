@@ -59,6 +59,19 @@ services:
     networks:
       - sgi-network
 
+  sgi-nginx:
+    image: nginx:alpine
+    container_name: sgi-nginx
+    restart: unless-stopped
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./storage/static:/app/staticfiles:ro
+      - ./storage/media:/app/media:ro
+    depends_on:
+      - sgi-web
+    networks:
+      - sgi-network
+
   cloudflared-tunnel-sgi:
     image: cloudflare/cloudflared:latest
     container_name: cloudflared-tunnel-sgi
