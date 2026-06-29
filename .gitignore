@@ -70,6 +70,10 @@ redis_data/
 secrets/
 storage/
 
+# Local generated artifacts
+.codex_spreadsheet_work/
+outputs/
+
 
 # Private Documents
 documentacion/

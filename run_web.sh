@@ -2,16 +2,18 @@
 echo "Aplicando migraciones de base de datos..."
 python manage.py migrate
 
-echo "Creando usuario administrador por defecto si no existe..."
-python manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.filter(username='00000000').exists() or User.objects.create_superuser('00000000', 'admin@example.com', 'P@ssword', first_name='Admin', last_name='SGI', telefono='999999999')"
+echo "Asegurando usuario administrador y datos maestros obligatorios..."
+python manage.py asegurar_base_sgi
 
-echo "Cargando datos maestros iniciales..."
-python cargar_maestros.py
-
+if [ "$SGI_LOAD_DEMO_DATA" = "true" ]; then
+  echo "Cargando datos demostrativos para presentacion..."
+  python manage.py cargar_demo_presentacion_sgi
+else
+  echo "Carga demo omitida. Defina SGI_LOAD_DEMO_DATA=true para activarla."
+fi
 
 echo "Recolectando archivos estáticos..."
 python manage.py collectstatic --noinput
 
 echo "Iniciando servidor web Daphne..."
 exec daphne -b 0.0.0.0 -p ${PORT:-8000} gestion_incidencias.asgi:application
-
